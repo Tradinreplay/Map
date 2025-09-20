@@ -971,20 +971,8 @@ function saveMarker(e) {
                 // 移除舊標記
                 map.removeLayer(marker.leafletMarker);
                 
-                // 創建新標記
-                marker.leafletMarker = L.marker([marker.lat, marker.lng], {
-                    icon: createCustomMarkerIcon(marker.color, marker.icon)
-                }).addTo(map);
-                
-                marker.leafletMarker.bindPopup(`
-                    <strong>${marker.name}</strong><br>
-                    ${marker.description}<br>
-                    <button onclick="editMarker('${marker.id}')">編輯</button>
-                `);
-                
-                marker.leafletMarker.on('click', function() {
-                    selectGroup(marker.groupId, marker.subgroupId);
-                });
+                // 重新添加標記到地圖
+                addMarkerToMap(marker);
             }
         }
     } else {
@@ -1053,18 +1041,25 @@ function addMarkerToMap(marker) {
     const customIcon = createCustomMarkerIcon(marker.color || 'red', marker.icon || '📍');
     const leafletMarker = L.marker([marker.lat, marker.lng], { icon: customIcon }).addTo(map);
     
-    leafletMarker.bindPopup(`
-        <strong>${marker.name}</strong><br>
-        ${marker.description}<br>
-        <button onclick="editMarker('${marker.id}')">編輯</button>
-        <button onclick="setTrackingTarget('${marker.id}')" style="margin-left: 5px;">設為追蹤目標</button>
-        <button onclick="showOnlyThisMarker('${marker.id}')" style="margin-left: 5px;">只顯示此標記</button>
-    `);
+    // 創建簡化的彈出視窗內容
+    const groupName = marker.groupId ? (groups.find(g => g.id === marker.groupId)?.name || '未知群組') : '無群組';
+    const subgroupName = marker.subgroupId ? 
+        (groups.find(g => g.id === marker.groupId)?.subgroups.find(sg => sg.id === marker.subgroupId)?.name || '未知子群組') : 
+        '無子群組';
     
-    // 添加標記點擊事件
-    leafletMarker.on('click', function() {
-        setFilter('marker', marker.id);
-    });
+    leafletMarker.bindPopup(`
+        <div style="text-align: center; min-width: 200px;">
+            <div style="font-size: 18px; margin-bottom: 8px;">${marker.icon} <strong>${marker.name}</strong></div>
+            <div style="font-size: 12px; color: #666; margin-bottom: 8px;">編號: ${marker.id}</div>
+            <div style="font-size: 12px; color: #666; margin-bottom: 8px;">群組: ${groupName}</div>
+            <div style="font-size: 12px; color: #666; margin-bottom: 12px;">子群組: ${subgroupName}</div>
+            <div style="display: flex; gap: 5px; justify-content: center; flex-wrap: wrap;">
+                <button onclick="editMarker('${marker.id}')" style="padding: 4px 8px; font-size: 12px;">編輯</button>
+                <button onclick="setTrackingTarget('${marker.id}')" style="padding: 4px 8px; font-size: 12px;">追蹤</button>
+                <button onclick="showOnlyThisMarker('${marker.id}')" style="padding: 4px 8px; font-size: 12px;">只顯示</button>
+            </div>
+        </div>
+    `);
     
     marker.leafletMarker = leafletMarker;
 }
@@ -1829,10 +1824,27 @@ window.showOnlyThisMarker = showOnlyThisMarker;
 
 function saveCurrentSettings() {
     try {
-        // 獲取當前設定值
-        const enableNotifications = document.getElementById('enableNotifications').checked;
-        const currentAlertDistance = parseInt(document.getElementById('alertDistance').value);
-        const currentAlertInterval = parseInt(document.getElementById('alertInterval').value);
+        // 獲取當前設定值，加入安全檢查
+        const enableNotificationsEl = document.getElementById('enableNotifications');
+        const alertDistanceEl = document.getElementById('alertDistance');
+        const alertIntervalEl = document.getElementById('alertInterval');
+        
+        if (!enableNotificationsEl || !alertDistanceEl || !alertIntervalEl) {
+            throw new Error('設定介面元素未找到');
+        }
+        
+        const enableNotifications = enableNotificationsEl.checked;
+        const currentAlertDistance = parseInt(alertDistanceEl.value);
+        const currentAlertInterval = parseInt(alertIntervalEl.value);
+        
+        // 驗證數值
+        if (isNaN(currentAlertDistance) || currentAlertDistance < 1) {
+            throw new Error('提醒距離必須是有效的正數');
+        }
+        
+        if (isNaN(currentAlertInterval) || currentAlertInterval < 1) {
+            throw new Error('提醒間隔必須是有效的正數');
+        }
         
         // 準備標註點資料（不包含markers屬性的簡化版本）
         const markersToSave = markers.map(marker => ({

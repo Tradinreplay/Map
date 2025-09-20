@@ -267,7 +267,8 @@ body {
     overflow-y: auto;
 }
 
-.group-item, .marker-item {
+/* 組別項目樣式 */
+.group-item {
     background: rgba(255, 255, 255, 0.6);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
@@ -280,16 +281,50 @@ body {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-.group-item:hover, .marker-item:hover {
-    background: rgba(255, 255, 255, 0.8);
+.group-item:hover {
+    background: rgba(0, 122, 255, 0.08);
+    border-color: rgba(0, 122, 255, 0.2);
     transform: translateY(-2px);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 4px 16px rgba(0, 122, 255, 0.15);
+}
+
+.group-item:active {
+    background: rgba(0, 122, 255, 0.15);
+    border-color: rgba(0, 122, 255, 0.4);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 122, 255, 0.25);
 }
 
 .group-item.active {
     background: rgba(0, 122, 255, 0.1);
     border-color: rgba(0, 122, 255, 0.3);
     box-shadow: 0 4px 16px rgba(0, 122, 255, 0.2);
+}
+
+/* 標記項目樣式 */
+.marker-item {
+    background: rgba(255, 255, 255, 0.6);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    margin: 8px 0;
+    padding: 16px;
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.marker-item:hover {
+    background: rgba(255, 255, 255, 0.8);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
+.marker-item:active {
+    background: rgba(255, 255, 255, 0.9);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 .subgroup-item {
@@ -302,6 +337,28 @@ body {
     font-size: 14px;
     border: 1px solid rgba(255, 255, 255, 0.2);
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.subgroup-item:hover {
+    background: rgba(52, 199, 89, 0.08);
+    border-color: rgba(52, 199, 89, 0.2);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(52, 199, 89, 0.15);
+}
+
+.subgroup-item:active {
+    background: rgba(52, 199, 89, 0.15);
+    border-color: rgba(52, 199, 89, 0.4);
+    transform: translateY(0px);
+    box-shadow: 0 1px 4px rgba(52, 199, 89, 0.25);
+}
+
+.subgroup-item.active {
+    background: rgba(52, 199, 89, 0.1);
+    border-color: rgba(52, 199, 89, 0.3);
+    box-shadow: 0 2px 8px rgba(52, 199, 89, 0.2);
 }
 
 .group-actions, .subgroup-actions {
