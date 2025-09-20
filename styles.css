@@ -93,7 +93,7 @@ body {
     color: rgba(0, 255, 255, 0.6);
 }
 
-.group-controls button, #addGroupBtn {
+.group-controls button, #addGroupBtn, #resetBtn {
     background: rgba(0, 122, 255, 1);
     color: white;
     border: none;
@@ -115,6 +115,16 @@ body {
 .group-controls button:active, #addGroupBtn:active {
     transform: translateY(0) scale(0.98);
     box-shadow: 0 1px 4px rgba(0, 122, 255, 0.4);
+}
+
+.reset-btn {
+    background: rgba(255, 149, 0, 1) !important;
+    box-shadow: 0 2px 8px rgba(255, 149, 0, 0.3) !important;
+}
+
+.reset-btn:hover {
+    background: rgba(255, 149, 0, 0.8) !important;
+    box-shadow: 0 4px 12px rgba(255, 149, 0, 0.4) !important;
 }
 
 .groups-list, .markers-list {
@@ -713,6 +723,10 @@ form input:focus, form textarea:focus, form select:focus {
 
 .notification.warning {
     background: #ed8936;
+}
+
+.notification.info {
+    background: #3182ce;
 }
 
 @keyframes slideInRight {

@@ -52,6 +52,7 @@
                 <h2>當前位置</h2>
                 <div id="currentLocation">定位中...</div>
                 <button id="centerMapBtn">回到當前位置</button>
+                <button id="testNotificationBtn" style="margin-top: 10px; background: #ff6b35; color: white;">🔔 測試通知</button>
             </div>
         </div>
 
@@ -139,12 +140,19 @@
                 </div>
                 
                 <div class="setup-section">
-                    <h3>位置權限</h3>
-                    <p>為了提供位置提醒功能，我們需要獲取您的位置權限。</p>
+                    <h3>權限設定</h3>
+                    <p>為了提供完整的位置提醒功能，我們需要以下權限：</p>
                     <label class="checkbox-label">
                         <input type="checkbox" id="setupEnableLocation" checked>
-                        啟用位置追蹤和提醒
+                        📍 啟用位置追蹤
                     </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="setupEnableNotifications" checked>
+                        🔔 啟用通知提醒 (建議手機用戶開啟)
+                    </label>
+                    <div class="permission-note">
+                        <small>💡 手機用戶建議同時開啟兩項權限以獲得最佳體驗</small>
+                    </div>
                 </div>
             </div>
             
@@ -177,5 +185,19 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="script.js"></script>
+    
+    <!-- Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(function(registration) {
+                        console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                    }, function(err) {
+                        console.log('ServiceWorker registration failed: ', err);
+                    });
+            });
+        }
+    </script>
 </body>
 </html>

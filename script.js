@@ -16,6 +16,7 @@ let lastAlertTimes = new Map(); // 記錄每個標註點的最後提醒時間
 let alertTimers = new Map(); // 記錄每個標註點的定時器
 let markersInRange = new Set(); // 記錄當前在範圍內的標註點
 let trackingTarget = null; // 當前追蹤的目標標註點
+let currentFilter = null; // 當前過濾設定 { type: 'marker'|'group'|'subgroup', id: string }
 
 // 資料結構
 class Group {
@@ -133,8 +134,14 @@ function createCurrentLocationIcon() {
 
 // 初始化事件監聽器
 function initEventListeners() {
-    // 組別管理
+    // 新增組別按鈕
     document.getElementById('addGroupBtn').addEventListener('click', addGroup);
+    
+    // 顯示所有標記按鈕
+    document.getElementById('showAllMarkersBtn').addEventListener('click', function() {
+        clearFilter();
+        selectGroup(null); // 重置群組選擇
+    });
     document.getElementById('groupNameInput').addEventListener('keypress', function(e) {
         if (e.key === 'Enter') addGroup();
     });
@@ -224,6 +231,9 @@ function initEventListeners() {
     // 建立組別表單
 document.getElementById('createGroupForm').addEventListener('submit', handleCreateGroup);
 
+// 測試通知按鈕
+document.getElementById('testNotificationBtn').addEventListener('click', testNotification);
+
 // 添加重置功能（用於測試）
 window.resetSetup = function() {
     localStorage.removeItem('hasSeenSetup');
@@ -280,12 +290,45 @@ function requestLocationPermission() {
 // 請求通知權限
 function requestNotificationPermission() {
     if ('Notification' in window) {
-        Notification.requestPermission().then(function(permission) {
-            if (permission === 'granted') {
-                showNotification('通知權限已啟用');
-            } else {
-                showNotification('通知權限被拒絕', 'warning');
+        // 檢查當前權限狀態
+        if (Notification.permission === 'granted') {
+            showNotification('通知權限已啟用');
+            return Promise.resolve('granted');
+        } else if (Notification.permission === 'denied') {
+            showNotification('通知權限被拒絕，請在瀏覽器設定中手動啟用', 'warning');
+            return Promise.resolve('denied');
+        } else {
+            // 請求權限
+            return Notification.requestPermission().then(function(permission) {
+                if (permission === 'granted') {
+                    showNotification('通知權限已啟用');
+                    // 註冊Service Worker推送通知
+                    registerPushNotification();
+                } else {
+                    showNotification('通知權限被拒絕，部分功能可能無法正常使用', 'warning');
+                }
+                return permission;
+            });
+        }
+    } else {
+        showNotification('您的瀏覽器不支援通知功能', 'error');
+        return Promise.resolve('unsupported');
+    }
+}
+
+// 註冊推送通知
+function registerPushNotification() {
+    if ('serviceWorker' in navigator && 'PushManager' in window) {
+        navigator.serviceWorker.ready.then(function(registration) {
+            // 檢查是否已經訂閱
+            return registration.pushManager.getSubscription();
+        }).then(function(subscription) {
+            if (!subscription) {
+                // 如果沒有訂閱，創建新的訂閱
+                console.log('Push notification ready for mobile devices');
             }
+        }).catch(function(error) {
+            console.log('Push notification setup failed:', error);
         });
     }
 }
@@ -320,6 +363,7 @@ function handleInitialSetup() {
     const alertDistanceValue = document.getElementById('setupAlertDistance').value;
     const alertIntervalValue = document.getElementById('setupAlertInterval').value;
     const enableLocation = document.getElementById('setupEnableLocation').checked;
+    const enableNotifications = document.getElementById('setupEnableNotifications').checked;
     
     // 保存設定
     alertDistance = parseInt(alertDistanceValue);
@@ -328,7 +372,7 @@ function handleInitialSetup() {
     // 更新UI中的設定值
     document.getElementById('alertDistance').value = alertDistance;
     document.getElementById('alertInterval').value = alertInterval;
-    document.getElementById('enableNotifications').checked = enableLocation;
+    document.getElementById('enableNotifications').checked = enableNotifications;
     
     // 設定預設組別
     if (defaultGroupId) {
@@ -342,11 +386,28 @@ function handleInitialSetup() {
     // 關閉彈窗
     document.getElementById('initialSetupModal').style.display = 'none';
     
-    // 如果啟用位置功能，請求權限
+    // 請求權限
+    const permissionPromises = [];
+    
     if (enableLocation) {
-        requestLocationPermission();
-        requestNotificationPermission();
+        permissionPromises.push(requestLocationPermission());
     }
+    
+    if (enableNotifications) {
+        permissionPromises.push(requestNotificationPermission());
+    }
+    
+    // 等待所有權限請求完成
+    Promise.all(permissionPromises).then(() => {
+        if (enableNotifications && Notification.permission === 'granted') {
+            showNotification('🎉 所有權限設定完成！您現在可以接收位置提醒了', 'success');
+        } else if (enableLocation) {
+            showNotification('✅ 位置權限已設定，您可以開始使用地圖功能', 'success');
+        }
+    }).catch((error) => {
+        console.log('Permission setup error:', error);
+        showNotification('⚠️ 部分權限設定失敗，您可以稍後在設定中重新啟用', 'warning');
+    });
     
     saveData();
 }
@@ -510,14 +571,17 @@ function selectGroup(groupId, subgroupId = null) {
     if (groupId === null) {
         currentGroup = null;
         currentSubgroup = null;
+        clearFilter(); // 清除過濾條件，顯示所有標記
     } else {
         currentGroup = groups.find(g => g.id === groupId) || null;
         
         // 找到對應的子群組對象
         if (subgroupId && currentGroup) {
             currentSubgroup = currentGroup.subgroups.find(sg => sg.id === subgroupId) || null;
+            setFilter('subgroup', subgroupId); // 設定子群組過濾
         } else {
             currentSubgroup = null;
+            setFilter('group', groupId); // 設定群組過濾
         }
     }
     
@@ -536,7 +600,6 @@ function selectGroup(groupId, subgroupId = null) {
     }
     
     updateMarkersList();
-    updateMapMarkers();
 }
 
 // 標註功能
@@ -770,7 +833,13 @@ function addMarkerToMap(marker) {
         ${marker.description}<br>
         <button onclick="editMarker('${marker.id}')">編輯</button>
         <button onclick="setTrackingTarget('${marker.id}')" style="margin-left: 5px;">設為追蹤目標</button>
+        <button onclick="showOnlyThisMarker('${marker.id}')" style="margin-left: 5px;">只顯示此標記</button>
     `);
+    
+    // 添加標記點擊事件
+    leafletMarker.on('click', function() {
+        setFilter('marker', marker.id);
+    });
     
     marker.leafletMarker = leafletMarker;
 }
@@ -1045,26 +1114,102 @@ function stopRepeatedAlert(markerId) {
 function showLocationAlert(marker, distance) {
     const message = `您已接近標記點 "${marker.name}"，距離約 ${Math.round(distance)} 公尺`;
     
-    // 顯示瀏覽器通知
-    if (Notification.permission === 'granted') {
-        new Notification('位置提醒', {
-            body: message,
-            icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="red"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>'
+    // 嘗試多種通知方式以確保手機瀏覽器能收到通知
+    
+    // 1. Service Worker 通知 (最適合手機)
+    if ('serviceWorker' in navigator && Notification.permission === 'granted') {
+        navigator.serviceWorker.ready.then(function(registration) {
+            registration.showNotification('位置提醒', {
+                body: message,
+                icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="red"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>',
+                badge: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="red"><circle cx="12" cy="12" r="10"/></svg>',
+                vibrate: [200, 100, 200, 100, 200],
+                tag: 'location-alert-' + marker.id,
+                requireInteraction: true,
+                silent: false,
+                actions: [
+                    {
+                        action: 'view',
+                        title: '查看位置'
+                    }
+                ]
+            });
+        }).catch(function(error) {
+            console.log('Service Worker notification failed:', error);
+            // 降級到普通通知
+            fallbackNotification();
         });
+    } else {
+        fallbackNotification();
     }
     
-    // 顯示彈窗提醒
+    function fallbackNotification() {
+        // 2. 普通瀏覽器通知
+        if (Notification.permission === 'granted') {
+            try {
+                const notification = new Notification('位置提醒', {
+                    body: message,
+                    icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="red"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>',
+                    vibrate: [200, 100, 200],
+                    tag: 'location-alert',
+                    requireInteraction: true
+                });
+                
+                // 點擊通知時的處理
+                notification.onclick = function() {
+                    window.focus();
+                    if (marker.leafletMarker) {
+                        marker.leafletMarker.openPopup();
+                        map.setView([marker.lat, marker.lng], 16);
+                    }
+                    notification.close();
+                };
+            } catch (error) {
+                console.log('Standard notification failed:', error);
+            }
+        }
+    }
+    
+    // 3. 手機震動 (如果支援)
+    if ('vibrate' in navigator) {
+        navigator.vibrate([200, 100, 200, 100, 200]);
+    }
+    
+    // 4. 顯示彈窗提醒 (確保一定有視覺提醒)
     document.getElementById('notificationMessage').textContent = message;
     document.getElementById('notificationModal').style.display = 'block';
     
-    // 3秒後自動關閉通知彈窗
+    // 5秒後自動關閉通知彈窗 (手機上給更多時間)
     setTimeout(() => {
         document.getElementById('notificationModal').style.display = 'none';
-    }, 3000);
+    }, 5000);
     
-    // 在地圖上高亮標記
+    // 5. 在地圖上高亮標記
     if (marker.leafletMarker) {
         marker.leafletMarker.openPopup();
+        // 將地圖中心移到標記位置
+        map.setView([marker.lat, marker.lng], Math.max(map.getZoom(), 15));
+    }
+    
+    // 6. 音效提醒 (如果可能)
+    try {
+        // 創建簡單的音效
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+        gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+        
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 0.5);
+    } catch (error) {
+        // 音效失敗不影響其他功能
+        console.log('Audio notification failed:', error);
     }
 }
 
@@ -1187,23 +1332,58 @@ function updateMapMarkers() {
         }
     });
     
-    // 根據當前選擇顯示標記
-    let displayMarkers = [];
-    
-    if (currentGroup && currentSubgroup) {
-        // 顯示選中子群組的標記
-        displayMarkers = markers.filter(m => m.groupId === currentGroup.id && m.subgroupId === currentSubgroup.id);
-    } else if (currentGroup) {
-        // 顯示選中群組的所有標記（包括子群組的標記）
-        displayMarkers = markers.filter(m => m.groupId === currentGroup.id);
-    } else {
-        // 顯示所有標記
-        displayMarkers = markers;
-    }
-    
-    displayMarkers.forEach(marker => {
+    // 根據過濾條件重新添加標記
+    const filteredMarkers = getFilteredMarkers();
+    filteredMarkers.forEach(marker => {
         addMarkerToMap(marker);
     });
+}
+
+// 根據當前過濾條件獲取要顯示的標記
+function getFilteredMarkers() {
+    if (!currentFilter) {
+        // 沒有過濾條件時，使用原有的邏輯
+        if (currentGroup && currentSubgroup) {
+            // 顯示選中子群組的標記
+            return markers.filter(m => m.groupId === currentGroup.id && m.subgroupId === currentSubgroup.id);
+        } else if (currentGroup) {
+            // 顯示選中群組的所有標記（包括子群組的標記）
+            return markers.filter(m => m.groupId === currentGroup.id);
+        } else {
+            // 顯示所有標記
+            return markers;
+        }
+    }
+    
+    switch (currentFilter.type) {
+        case 'marker':
+            return markers.filter(marker => marker.id === currentFilter.id);
+        case 'group':
+            return markers.filter(marker => marker.groupId === currentFilter.id);
+        case 'subgroup':
+            return markers.filter(marker => marker.subgroupId === currentFilter.id);
+        default:
+            return markers;
+    }
+}
+
+// 設定過濾條件
+function setFilter(type, id) {
+    currentFilter = { type, id };
+    updateMapMarkers();
+    updateMarkersList(); // 更新標記列表以反映過濾狀態
+}
+
+// 清除過濾條件
+function clearFilter() {
+    currentFilter = null;
+    updateMapMarkers();
+    updateMarkersList();
+}
+
+// 只顯示指定標記
+function showOnlyThisMarker(markerId) {
+    setFilter('marker', markerId);
 }
 
 function focusMarker(markerId) {
@@ -1225,6 +1405,23 @@ function showNotification(message, type = 'success') {
     setTimeout(() => {
         notification.remove();
     }, 3000);
+}
+
+function testNotification() {
+    // 創建測試標記
+    const testMarker = {
+        id: 'test-marker',
+        name: '測試標記',
+        description: '這是一個測試通知的標記',
+        lat: currentPosition ? currentPosition.lat : 25.0330,
+        lng: currentPosition ? currentPosition.lng : 121.5654
+    };
+    
+    // 測試距離提醒
+    showLocationAlert(testMarker, 50);
+    
+    // 顯示測試訊息
+    showNotification('🔔 測試通知已發送！請檢查您的瀏覽器通知', 'info');
 }
 
 // 資料持久化
@@ -1342,3 +1539,4 @@ window.deleteGroup = deleteGroup;
 window.deleteSubgroup = deleteSubgroup;
 window.focusMarker = focusMarker;
 window.setTrackingTarget = setTrackingTarget;
+window.showOnlyThisMarker = showOnlyThisMarker;
