@@ -277,22 +277,40 @@ body {
     border-radius: 16px;
     border: 1px solid rgba(255, 255, 255, 0.3);
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    position: relative;
+    overflow: hidden;
+}
+
+.group-item::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+    transition: left 0.5s ease;
 }
 
 .group-item:hover {
     background: rgba(0, 122, 255, 0.08);
     border-color: rgba(0, 122, 255, 0.2);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 16px rgba(0, 122, 255, 0.15);
+    transform: translateY(-3px) scale(1.02);
+    box-shadow: 0 8px 25px rgba(0, 122, 255, 0.15);
+}
+
+.group-item:hover::before {
+    left: 100%;
 }
 
 .group-item:active {
     background: rgba(0, 122, 255, 0.15);
     border-color: rgba(0, 122, 255, 0.4);
-    transform: translateY(-1px);
-    box-shadow: 0 2px 8px rgba(0, 122, 255, 0.25);
+    transform: translateY(-1px) scale(0.98);
+    box-shadow: 0 4px 15px rgba(0, 122, 255, 0.25);
+    transition: all 0.1s ease;
 }
 
 .group-item.active {
@@ -1390,21 +1408,154 @@ form input:focus, form textarea:focus, form select:focus {
     width: 24px;
     height: 24px;
     border: none;
-    border-radius: 6px;
+    border-radius: 50%;
     background: #48bb78;
     color: white;
     font-size: 16px;
     font-weight: bold;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
     display: flex;
     align-items: center;
     justify-content: center;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(72, 187, 120, 0.3);
+}
+
+.add-btn::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.3) 0%, transparent 70%);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    transition: all 0.3s ease;
 }
 
 .add-btn:hover {
     background: #38a169;
-    transform: scale(1.05);
+    transform: scale(1.2) rotate(90deg);
+    box-shadow: 0 4px 20px rgba(56, 161, 105, 0.4);
+    border-radius: 8px;
+}
+
+.add-btn:hover::before {
+    width: 100%;
+    height: 100%;
+}
+
+.add-btn:active {
+    transform: scale(0.9) rotate(180deg);
+    transition: all 0.1s ease;
+}
+
+/* 隨機顏色類別 */
+.add-btn.color-red {
+    background: #e53e3e;
+    box-shadow: 0 2px 8px rgba(229, 62, 62, 0.3);
+}
+
+.add-btn.color-red:hover {
+    background: #c53030;
+    box-shadow: 0 4px 20px rgba(197, 48, 48, 0.4);
+}
+
+.add-btn.color-blue {
+    background: #3182ce;
+    box-shadow: 0 2px 8px rgba(49, 130, 206, 0.3);
+}
+
+.add-btn.color-blue:hover {
+    background: #2c5282;
+    box-shadow: 0 4px 20px rgba(44, 82, 130, 0.4);
+}
+
+.add-btn.color-purple {
+    background: #805ad5;
+    box-shadow: 0 2px 8px rgba(128, 90, 213, 0.3);
+}
+
+.add-btn.color-purple:hover {
+    background: #6b46c1;
+    box-shadow: 0 4px 20px rgba(107, 70, 193, 0.4);
+}
+
+.add-btn.color-orange {
+    background: #dd6b20;
+    box-shadow: 0 2px 8px rgba(221, 107, 32, 0.3);
+}
+
+.add-btn.color-orange:hover {
+    background: #c05621;
+    box-shadow: 0 4px 20px rgba(192, 86, 33, 0.4);
+}
+
+.add-btn.color-pink {
+    background: #d53f8c;
+    box-shadow: 0 2px 8px rgba(213, 63, 140, 0.3);
+}
+
+.add-btn.color-pink:hover {
+    background: #b83280;
+    box-shadow: 0 4px 20px rgba(184, 50, 128, 0.4);
+}
+
+/* 組別內的新增群組按鈕樣式 */
+.group-actions button {
+    padding: 6px 12px;
+    margin: 0 4px;
+    border: none;
+    border-radius: 20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 2px 10px rgba(102, 126, 234, 0.3);
+}
+
+.group-actions button::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.6s ease;
+}
+
+.group-actions button:hover {
+    transform: translateY(-2px) scale(1.05);
+    box-shadow: 0 4px 20px rgba(102, 126, 234, 0.4);
+    background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
+}
+
+.group-actions button:hover::before {
+    left: 100%;
+}
+
+.group-actions button:active {
+    transform: translateY(0) scale(0.95);
+    transition: all 0.1s ease;
+}
+
+/* 刪除按鈕特殊樣式 */
+.group-actions button:last-child {
+    background: linear-gradient(135deg, #fc8181 0%, #f56565 100%);
+    box-shadow: 0 2px 10px rgba(252, 129, 129, 0.3);
+}
+
+.group-actions button:last-child:hover {
+    background: linear-gradient(135deg, #f56565 0%, #e53e3e 100%);
+    box-shadow: 0 4px 20px rgba(245, 101, 101, 0.4);
 }
 
 /* 輸入框樣式 */

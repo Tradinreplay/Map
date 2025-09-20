@@ -298,6 +298,9 @@ function initEventListeners() {
     // 新增組別按鈕
     document.getElementById('addGroupBtn').addEventListener('click', addGroup);
     
+    // 為新增組別按鈕添加隨機顏色
+    applyRandomColorToAddBtn();
+    
     // 顯示所有標記按鈕
     document.getElementById('showAllMarkersBtn').addEventListener('click', function() {
         clearFilter();
@@ -1572,6 +1575,9 @@ function updateGroupsList() {
         
         groupsList.appendChild(groupDiv);
     });
+    
+    // 為新生成的組別按鈕添加隨機顏色動畫
+    addRandomColorAnimationToGroupButtons();
 }
 
 function updateMarkersList() {
@@ -2382,4 +2388,40 @@ function loadSettingsOnInit() {
     } catch (error) {
         console.error('Error loading settings on init:', error);
     }
+}
+
+// 隨機顏色功能
+function applyRandomColorToAddBtn() {
+    const colors = ['red', 'blue', 'purple', 'orange', 'pink'];
+    const randomColor = colors[Math.floor(Math.random() * colors.length)];
+    const addBtn = document.getElementById('addGroupBtn');
+    
+    // 移除所有顏色類別
+    colors.forEach(color => {
+        addBtn.classList.remove(`color-${color}`);
+    });
+    
+    // 添加隨機顏色類別
+    addBtn.classList.add(`color-${randomColor}`);
+}
+
+// 為組別內的按鈕添加隨機顏色動畫
+function addRandomColorAnimationToGroupButtons() {
+    const groupButtons = document.querySelectorAll('.group-actions button');
+    groupButtons.forEach((button, index) => {
+        // 為每個按鈕添加延遲動畫
+        button.style.animationDelay = `${index * 0.1}s`;
+        
+        // 添加點擊時的隨機顏色變化
+        button.addEventListener('click', function() {
+            const colors = ['#667eea', '#f093fb', '#4facfe', '#43e97b', '#fa709a'];
+            const randomColor = colors[Math.floor(Math.random() * colors.length)];
+            
+            // 創建臨時的顏色變化效果
+            this.style.background = randomColor;
+            setTimeout(() => {
+                this.style.background = '';
+            }, 300);
+        });
+    });
 }
