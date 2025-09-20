@@ -1,0 +1,727 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif;
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    color: #1d1d1f;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+.container {
+    display: flex;
+    height: 100vh;
+}
+
+/* 側邊欄樣式 - iOS風格 */
+.sidebar {
+    width: 350px;
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    color: #1d1d1f;
+    padding: 20px;
+    overflow-y: auto;
+    box-shadow: 
+        0 8px 32px rgba(0, 0, 0, 0.1),
+        0 0 0 1px rgba(255, 255, 255, 0.2);
+    border-right: 1px solid rgba(255, 255, 255, 0.3);
+    position: relative;
+}
+
+.sidebar h1 {
+    font-size: 24px;
+    margin-bottom: 30px;
+    text-align: center;
+    text-shadow: 
+        0 0 10px #00ffff,
+        0 0 20px #00ffff,
+        0 0 30px #00ffff;
+    color: #ffffff;
+    font-weight: bold;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    animation: cyberpunk-glow 2s ease-in-out infinite alternate;
+}
+
+.sidebar h2 {
+    font-size: 22px;
+    font-weight: 600;
+    margin: 20px 0 15px 0;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    color: #1d1d1f;
+    letter-spacing: -0.5px;
+    position: relative;
+}
+
+/* 組別管理 */
+.group-controls {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.group-controls input {
+    flex: 1;
+    padding: 8px 12px;
+    border: 2px solid #00ffff;
+    border-radius: 0;
+    font-size: 14px;
+    background: rgba(0, 0, 0, 0.8);
+    color: #00ffff;
+    box-shadow: 
+        inset 0 0 10px rgba(0, 255, 255, 0.2),
+        0 0 5px rgba(0, 255, 255, 0.3);
+    transition: all 0.3s ease;
+}
+
+.group-controls input:focus {
+    outline: none;
+    box-shadow: 
+        inset 0 0 10px rgba(0, 255, 255, 0.4),
+        0 0 15px rgba(0, 255, 255, 0.6);
+    text-shadow: 0 0 5px #00ffff;
+}
+
+.group-controls input::placeholder {
+    color: rgba(0, 255, 255, 0.6);
+}
+
+.group-controls button, #addGroupBtn {
+    background: rgba(0, 122, 255, 1);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 500;
+    padding: 12px 20px;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 8px rgba(0, 122, 255, 0.3);
+}
+
+.group-controls button:hover, #addGroupBtn:hover {
+    background: rgba(0, 122, 255, 0.8);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 122, 255, 0.4);
+}
+
+.group-controls button:active, #addGroupBtn:active {
+    transform: translateY(0) scale(0.98);
+    box-shadow: 0 1px 4px rgba(0, 122, 255, 0.4);
+}
+
+.groups-list, .markers-list {
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.group-item, .marker-item {
+    background: rgba(255, 255, 255, 0.6);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    margin: 8px 0;
+    padding: 16px;
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.group-item:hover, .marker-item:hover {
+    background: rgba(255, 255, 255, 0.8);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
+.group-item.active {
+    background: rgba(0, 122, 255, 0.1);
+    border-color: rgba(0, 122, 255, 0.3);
+    box-shadow: 0 4px 16px rgba(0, 122, 255, 0.2);
+}
+
+.subgroup-item {
+    background: rgba(255, 255, 255, 0.4);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    margin: 5px 0 5px 20px;
+    padding: 12px;
+    border-radius: 12px;
+    font-size: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+.group-actions, .subgroup-actions {
+    display: flex;
+    gap: 5px;
+    margin-top: 8px;
+}
+
+.group-actions button, .subgroup-actions button {
+    padding: 6px 12px;
+    font-size: 12px;
+    background: rgba(0, 122, 255, 0.1);
+    color: #007AFF;
+    border: 1px solid rgba(0, 122, 255, 0.3);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-weight: 500;
+}
+
+.group-actions button:hover, .subgroup-actions button:hover {
+    background: rgba(0, 122, 255, 0.2);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 122, 255, 0.2);
+}
+
+.group-actions button:active, .subgroup-actions button:active {
+    transform: translateY(0);
+    background: rgba(0, 122, 255, 0.3);
+}
+
+/* 通知設定 */
+.notification-settings label {
+    display: flex;
+    align-items: center;
+    margin: 10px 0;
+    cursor: pointer;
+}
+
+.notification-settings input[type="checkbox"] {
+    margin-right: 10px;
+    transform: scale(1.2);
+}
+
+.distance-setting {
+    margin-top: 15px;
+}
+
+.distance-setting label {
+    display: block;
+    margin-bottom: 5px;
+}
+
+.distance-setting input {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid rgba(0, 0, 0, 0.2);
+    border-radius: 12px;
+    font-size: 14px;
+    background: rgba(255, 255, 255, 0.8);
+    color: #333;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    transition: all 0.2s ease;
+}
+
+.distance-setting input:focus {
+    outline: none;
+    border-color: #007AFF;
+    box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
+}
+
+/* 當前位置 */
+.location-info {
+    margin-top: 20px;
+}
+
+#currentLocation {
+    background: rgba(255, 255, 255, 0.6);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    padding: 16px;
+    border-radius: 12px;
+    margin: 10px 0;
+    font-size: 14px;
+    word-break: break-all;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: #333;
+     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+#centerMapBtn {
+    width: 100%;
+    padding: 16px;
+    background: #007AFF;
+    color: white;
+    border: none;
+    border-radius: 16px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 16px rgba(0, 122, 255, 0.3);
+}
+
+#centerMapBtn:hover {
+    background: #0056CC;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 122, 255, 0.4);
+}
+
+#centerMapBtn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(0, 122, 255, 0.3);
+}
+
+/* 地圖容器 */
+.map-container {
+    flex: 1;
+    position: relative;
+}
+
+#map {
+    height: 100%;
+    width: 100%;
+}
+
+/* 浮動控制面板 */
+.floating-controls {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.control-btn {
+    padding: 12px 16px;
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 16px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #333;
+}
+
+.control-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+    background: rgba(255, 255, 255, 0.95);
+}
+
+.control-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.control-btn.active {
+    background: rgba(0, 122, 255, 0.9);
+    color: white;
+    box-shadow: 0 4px 16px rgba(0, 122, 255, 0.3);
+}
+
+.control-btn span {
+    font-size: 16px;
+}
+
+/* 彈窗樣式 */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 2000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+    backdrop-filter: blur(5px);
+}
+
+.modal-content {
+    background-color: white;
+    margin: 5% auto;
+    padding: 30px;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 500px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    animation: modalSlideIn 0.3s ease;
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-50px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.close {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: color 0.3s ease;
+}
+
+.close:hover {
+    color: #333;
+}
+
+/* 表單樣式 */
+form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+form label {
+    font-weight: 500;
+    color: #333;
+}
+
+form input, form textarea, form select {
+    padding: 12px;
+    border: 2px solid #e1e1e1;
+    border-radius: 8px;
+    font-size: 14px;
+    transition: border-color 0.3s ease;
+}
+
+form input:focus, form textarea:focus, form select:focus {
+    outline: none;
+    border-color: #667eea;
+}
+
+.form-buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.form-buttons button {
+    flex: 1;
+    padding: 12px;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.form-buttons button[type="submit"] {
+    background: #007AFF;
+    color: white;
+}
+
+.form-buttons button[type="submit"]:hover {
+    background: #0056CC;
+}
+
+#deleteMarkerBtn {
+    background: #FF3B30;
+    color: white;
+}
+
+#deleteMarkerBtn:hover {
+    background: #D70015;
+}
+
+.form-buttons .cancel {
+    background: #F2F2F7;
+    color: #007AFF;
+}
+
+.form-buttons .cancel:hover {
+    background: #E5E5EA;
+}
+
+/* 響應式設計 */
+@media (max-width: 768px) {
+    .container {
+        flex-direction: column;
+    }
+    
+    .sidebar {
+        width: 100%;
+        height: 40vh;
+        order: 2;
+    }
+    
+    .map-container {
+        height: 60vh;
+        order: 1;
+    }
+    
+    .floating-controls {
+        top: 10px;
+        right: 10px;
+    }
+    
+    .control-btn {
+        padding: 10px 12px;
+        font-size: 12px;
+    }
+}
+
+/* 當前位置標記樣式 */
+.current-location-marker {
+    background: transparent !important;
+    border: none !important;
+}
+
+.location-pulse {
+    position: relative;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.location-dot {
+    width: 16px;
+    height: 16px;
+    background: #4285f4;
+    border: 3px solid white;
+    border-radius: 50%;
+    box-shadow: 0 2px 8px rgba(66, 133, 244, 0.4);
+    position: relative;
+    z-index: 2;
+}
+
+.location-pulse::before {
+    content: '';
+    position: absolute;
+    width: 30px;
+    height: 30px;
+    background: rgba(66, 133, 244, 0.3);
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+    z-index: 1;
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(0.8);
+        opacity: 1;
+    }
+    100% {
+        transform: scale(2);
+        opacity: 0;
+    }
+}
+
+/* 當前位置彈出視窗樣式 */
+.current-location-popup {
+    text-align: center;
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+.current-location-popup strong {
+    color: #4285f4;
+    font-size: 16px;
+}
+
+.current-location-popup small {
+    color: #666;
+    font-style: italic;
+}
+
+/* 初始設定彈窗樣式 */
+.setup-content {
+    padding: 20px 0;
+}
+
+.setup-section {
+    margin-bottom: 25px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #eee;
+}
+
+.setup-section:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+.setup-section h3 {
+    color: #2c3e50;
+    margin-bottom: 10px;
+    font-size: 16px;
+}
+
+.setup-section p {
+    color: #666;
+    margin-bottom: 15px;
+    line-height: 1.5;
+}
+
+.setup-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
+
+.setup-item label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 500;
+    color: #555;
+}
+
+.setup-item input {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-weight: 500;
+    color: #555;
+}
+
+.checkbox-label input[type="checkbox"] {
+    width: auto;
+    margin: 0;
+}
+
+.setup-buttons {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid #eee;
+}
+
+.primary-btn {
+    background: #3498db;
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background 0.3s;
+}
+
+.primary-btn:hover {
+    background: #2980b9;
+}
+
+.secondary-btn {
+    background: #95a5a6;
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background 0.3s;
+    margin-top: 10px;
+}
+
+.secondary-btn:hover {
+    background: #7f8c8d;
+}
+
+#defaultGroupSelect {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    margin-bottom: 10px;
+    font-size: 14px;
+}
+
+.interval-setting {
+    margin-top: 15px;
+}
+
+.interval-setting label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 500;
+    color: #555;
+}
+
+.interval-setting input {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+/* 自定義滾動條 */
+.sidebar::-webkit-scrollbar, .groups-list::-webkit-scrollbar, .markers-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.sidebar::-webkit-scrollbar-track, .groups-list::-webkit-scrollbar-track, .markers-list::-webkit-scrollbar-track {
+    background: rgba(255,255,255,0.1);
+    border-radius: 3px;
+}
+
+.sidebar::-webkit-scrollbar-thumb, .groups-list::-webkit-scrollbar-thumb, .markers-list::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.3);
+    border-radius: 3px;
+}
+
+.sidebar::-webkit-scrollbar-thumb:hover, .groups-list::-webkit-scrollbar-thumb:hover, .markers-list::-webkit-scrollbar-thumb:hover {
+    background: rgba(255,255,255,0.5);
+}
+
+/* 通知樣式 */
+.notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: #48bb78;
+    color: white;
+    padding: 15px 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    z-index: 3000;
+    animation: slideInRight 0.3s ease;
+}
+
+.notification.error {
+    background: #e53e3e;
+}
+
+.notification.warning {
+    background: #ed8936;
+}
+
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
