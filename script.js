@@ -1715,7 +1715,9 @@ function saveData() {
         lat: marker.lat,
         lng: marker.lng,
         groupId: marker.groupId,
-        subgroupId: marker.subgroupId
+        subgroupId: marker.subgroupId,
+        color: marker.color,
+        icon: marker.icon
         // 不包含 leafletMarker 屬性
     }));
     
@@ -1769,7 +1771,9 @@ function loadData() {
                     markerData.lat,
                     markerData.lng,
                     markerData.groupId,
-                    markerData.subgroupId
+                    markerData.subgroupId,
+                    markerData.color || 'red',
+                    markerData.icon || '📍'
                 )
             );
             
