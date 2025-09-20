@@ -122,7 +122,7 @@
                     <input type="text" id="markerName" required>
                     
                     <label for="markerDescription">描述:</label>
-                    <textarea id="markerDescription" rows="3"></textarea>
+                    <textarea id="markerDescription" rows="2"></textarea>
                     
                     <label for="markerGroup">所屬組別:</label>
                     <select id="markerGroup"></select>
@@ -131,52 +131,40 @@
                     <select id="markerSubgroup"></select>
                     
                     <div class="marker-customization">
-                        <label for="markerColor">標示點顏色:</label>
-                        <div class="color-options">
-                            <input type="radio" id="color-red" name="markerColor" value="red" checked>
-                            <label for="color-red" class="color-option red"></label>
+                        <div class="customization-row">
+                            <div class="customization-group">
+                                <label for="markerColor">顏色:</label>
+                                <div class="color-options">
+                                    <input type="radio" id="color-red" name="markerColor" value="red" checked>
+                                    <label for="color-red" class="color-option red"></label>
+                                    
+                                    <input type="radio" id="color-blue" name="markerColor" value="blue">
+                                    <label for="color-blue" class="color-option blue"></label>
+                                    
+                                    <input type="radio" id="color-green" name="markerColor" value="green">
+                                    <label for="color-green" class="color-option green"></label>
+                                    
+                                    <input type="radio" id="color-orange" name="markerColor" value="orange">
+                                    <label for="color-orange" class="color-option orange"></label>
+                                </div>
+                            </div>
                             
-                            <input type="radio" id="color-blue" name="markerColor" value="blue">
-                            <label for="color-blue" class="color-option blue"></label>
-                            
-                            <input type="radio" id="color-green" name="markerColor" value="green">
-                            <label for="color-green" class="color-option green"></label>
-                            
-                            <input type="radio" id="color-orange" name="markerColor" value="orange">
-                            <label for="color-orange" class="color-option orange"></label>
-                            
-                            <input type="radio" id="color-purple" name="markerColor" value="purple">
-                            <label for="color-purple" class="color-option purple"></label>
-                            
-                            <input type="radio" id="color-yellow" name="markerColor" value="yellow">
-                            <label for="color-yellow" class="color-option yellow"></label>
-                        </div>
-                        
-                        <label for="markerIcon">標示點圖案:</label>
-                        <div class="icon-options">
-                            <input type="radio" id="icon-default" name="markerIcon" value="📍" checked>
-                            <label for="icon-default" class="icon-option">📍</label>
-                            
-                            <input type="radio" id="icon-star" name="markerIcon" value="⭐">
-                            <label for="icon-star" class="icon-option">⭐</label>
-                            
-                            <input type="radio" id="icon-home" name="markerIcon" value="🏠">
-                            <label for="icon-home" class="icon-option">🏠</label>
-                            
-                            <input type="radio" id="icon-food" name="markerIcon" value="🍽️">
-                            <label for="icon-food" class="icon-option">🍽️</label>
-                            
-                            <input type="radio" id="icon-shop" name="markerIcon" value="🛒">
-                            <label for="icon-shop" class="icon-option">🛒</label>
-                            
-                            <input type="radio" id="icon-car" name="markerIcon" value="🚗">
-                            <label for="icon-car" class="icon-option">🚗</label>
-                            
-                            <input type="radio" id="icon-heart" name="markerIcon" value="❤️">
-                            <label for="icon-heart" class="icon-option">❤️</label>
-                            
-                            <input type="radio" id="icon-work" name="markerIcon" value="💼">
-                            <label for="icon-work" class="icon-option">💼</label>
+                            <div class="customization-group">
+                                <label for="markerIcon">圖案:</label>
+                                <div class="icon-options">
+                                    <input type="radio" id="icon-default" name="markerIcon" value="📍" checked>
+                                    <label for="icon-default" class="icon-option">📍</label>
+                                    
+                                    <input type="radio" id="icon-speaker" name="markerIcon" value="📢">
+                                    <label for="icon-speaker" class="icon-option">📢</label>
+                                    
+                                    <input type="radio" id="icon-phone" name="markerIcon" value="📞">
+                                    <label for="icon-phone" class="icon-option">📞</label>
+                                    
+                                    <input type="radio" id="icon-radio" name="markerIcon" value="📻">
+                                    <label for="icon-radio" class="icon-option">📻</label>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     

@@ -462,12 +462,13 @@ body {
 
 .modal-content {
     background-color: white;
-    margin: 5% auto;
-    padding: 30px;
-    border-radius: 12px;
-    width: 90%;
-    max-width: 500px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    margin: 2vh auto;
+    padding: clamp(12px, 3vw, 20px);
+    border-radius: 10px;
+    width: clamp(280px, 85vw, 480px);
+    max-height: 88vh;
+    overflow-y: auto;
+    box-shadow: 0 6px 24px rgba(0,0,0,0.1);
     animation: modalSlideIn 0.3s ease;
 }
 
@@ -503,38 +504,53 @@ form {
 }
 
 form label {
+    display: block;
+    margin-bottom: 6px;
     font-weight: 500;
     color: #333;
+    font-size: 13px;
 }
 
 form input, form textarea, form select {
-    padding: 12px;
-    border: 2px solid #e1e1e1;
-    border-radius: 8px;
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
     font-size: 14px;
+    margin-bottom: 12px;
+    box-sizing: border-box;
     transition: border-color 0.3s ease;
+}
+
+form textarea {
+    resize: vertical;
+    min-height: 50px;
+    max-height: 100px;
+    overflow-y: auto;
 }
 
 form input:focus, form textarea:focus, form select:focus {
     outline: none;
-    border-color: #667eea;
+    border-color: #007bff;
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
 }
 
 .form-buttons {
     display: flex;
     gap: 10px;
-    margin-top: 20px;
+    margin-top: 16px;
 }
 
 .form-buttons button {
     flex: 1;
-    padding: 12px;
+    padding: 8px 16px;
     border: none;
-    border-radius: 8px;
-    font-size: 14px;
+    border-radius: 5px;
+    font-size: 13px;
     font-weight: 500;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: all 0.2s ease;
+    min-width: 70px;
 }
 
 .form-buttons button[type="submit"] {
@@ -675,10 +691,10 @@ form input:focus, form textarea:focus, form select:focus {
     
     /* 模態框平板端優化 */
     .modal-content {
-        margin: 5% auto;
-        padding: 20px;
-        width: 90%;
-        max-height: 85vh;
+        margin: 3vh auto;
+        padding: clamp(12px, 3vw, 20px);
+        width: clamp(280px, 92vw, 500px);
+        max-height: 88vh;
         overflow-y: auto;
     }
     
@@ -791,10 +807,10 @@ form input:focus, form textarea:focus, form select:focus {
     
     /* 模態框手機端優化 */
     .modal-content {
-        margin: 2% auto;
-        padding: 16px;
-        width: 95%;
-        max-height: 90vh;
+        margin: 1vh auto;
+        padding: clamp(10px, 2.5vw, 16px);
+        width: clamp(260px, 95vw, 450px);
+        max-height: 92vh;
         overflow-y: auto;
     }
     
@@ -932,9 +948,9 @@ form input:focus, form textarea:focus, form select:focus {
     
     /* 超小型手機模態框優化 */
     .modal-content {
-        margin: 1% auto;
-        padding: 12px;
-        width: 98%;
+        margin: 0.5vh auto;
+        padding: clamp(8px, 2vw, 12px);
+        width: clamp(240px, 98vw, 360px);
         max-height: 95vh;
     }
     
@@ -1440,30 +1456,41 @@ input:checked + .slider:before {
 
 /* 標示點自定義樣式 */
 .marker-customization {
-    margin: 16px 0;
-    padding: 16px;
+    margin: 12px 0;
+    padding: 12px;
     background: rgba(248, 250, 252, 0.8);
-    border-radius: 8px;
+    border-radius: 6px;
     border: 1px solid rgba(226, 232, 240, 0.6);
 }
 
-.marker-customization label {
+.customization-row {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+}
+
+.customization-group {
+    flex: 1;
+}
+
+.customization-group label {
     display: block;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
     font-weight: 500;
     color: #374151;
+    font-size: 13px;
 }
 
 .color-options, .icon-options {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
-    margin-bottom: 16px;
+    gap: 6px;
+    margin-bottom: 0;
 }
 
 .color-option, .icon-option {
-    width: 36px;
-    height: 36px;
+    width: 28px;
+    height: 28px;
     border-radius: 50%;
     border: 2px solid transparent;
     cursor: pointer;
@@ -1471,7 +1498,7 @@ input:checked + .slider:before {
     align-items: center;
     justify-content: center;
     transition: all 0.2s ease;
-    font-size: 18px;
+    font-size: 14px;
 }
 
 .color-option {

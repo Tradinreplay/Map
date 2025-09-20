@@ -1747,11 +1747,44 @@ function saveCurrentSettings() {
         const currentAlertDistance = parseInt(document.getElementById('alertDistance').value);
         const currentAlertInterval = parseInt(document.getElementById('alertInterval').value);
         
-        // 建立設定物件
+        // 準備標註點資料（不包含markers屬性的簡化版本）
+        const markersToSave = markers.map(marker => ({
+            id: marker.id,
+            name: marker.name,
+            description: marker.description,
+            lat: marker.lat,
+            lng: marker.lng,
+            groupId: marker.groupId,
+            subgroupId: marker.subgroupId,
+            color: marker.color,
+            icon: marker.icon
+        }));
+        
+        // 準備群組資料（不包含markers屬性）
+        const groupsToSave = groups.map(group => ({
+            id: group.id,
+            name: group.name,
+            subgroups: group.subgroups.map(subgroup => ({
+                id: subgroup.id,
+                name: subgroup.name,
+                groupId: subgroup.groupId
+            }))
+        }));
+        
+        // 建立完整設定物件
         const settings = {
+            // 位置提醒設定
             enableNotifications: enableNotifications,
             alertDistance: currentAlertDistance,
             alertInterval: currentAlertInterval,
+            
+            // 標註點和群組資料
+            markers: markersToSave,
+            groups: groupsToSave,
+            currentGroup: currentGroup,
+            currentSubgroup: currentSubgroup,
+            
+            // 儲存時間戳
             savedAt: new Date().toISOString()
         };
         
@@ -1763,7 +1796,9 @@ function saveCurrentSettings() {
         alertInterval = currentAlertInterval;
         
         const savedDate = new Date(settings.savedAt).toLocaleString('zh-TW');
-        showNotification(`設定已儲存 (${savedDate})`, 'success');
+        const markerCount = markersToSave.length;
+        const groupCount = groupsToSave.length;
+        showNotification(`設定已儲存 (${savedDate})\n包含 ${markerCount} 個標註點，${groupCount} 個群組`, 'success');
         
         console.log('Settings saved:', settings);
         return true;
@@ -1784,17 +1819,85 @@ function loadSavedSettings() {
         
         const settings = JSON.parse(savedSettings);
         
-        // 應用設定到UI
-        document.getElementById('enableNotifications').checked = settings.enableNotifications;
-        document.getElementById('alertDistance').value = settings.alertDistance;
-        document.getElementById('alertInterval').value = settings.alertInterval;
+        // 應用位置提醒設定到UI
+        if (settings.enableNotifications !== undefined) {
+            document.getElementById('enableNotifications').checked = settings.enableNotifications;
+        }
+        if (settings.alertDistance !== undefined) {
+            document.getElementById('alertDistance').value = settings.alertDistance;
+            alertDistance = settings.alertDistance;
+        }
+        if (settings.alertInterval !== undefined) {
+            document.getElementById('alertInterval').value = settings.alertInterval;
+            alertInterval = settings.alertInterval;
+        }
         
-        // 更新全域變數
-        alertDistance = settings.alertDistance;
-        alertInterval = settings.alertInterval;
+        // 載入標註點和群組資料（如果存在）
+        if (settings.markers && settings.groups) {
+            // 清除現有資料
+            markers = [];
+            groups = [];
+            
+            // 重建群組結構
+            groups = settings.groups.map(groupData => {
+                const group = new Group(groupData.id, groupData.name);
+                groupData.subgroups.forEach(subgroupData => {
+                    const subgroup = new Subgroup(subgroupData.id, subgroupData.name, subgroupData.groupId);
+                    group.addSubgroup(subgroup);
+                });
+                return group;
+            });
+            
+            // 重建標註點
+            markers = settings.markers.map(markerData => 
+                new Marker(
+                    markerData.id,
+                    markerData.name,
+                    markerData.description,
+                    markerData.lat,
+                    markerData.lng,
+                    markerData.groupId,
+                    markerData.subgroupId,
+                    markerData.color || 'red',
+                    markerData.icon || '📍'
+                )
+            );
+            
+            // 將標註點加入對應的群組和子群組
+            markers.forEach(marker => {
+                const group = groups.find(g => g.id === marker.groupId);
+                if (group) {
+                    group.addMarker(marker);
+                    if (marker.subgroupId) {
+                        const subgroup = group.subgroups.find(sg => sg.id === marker.subgroupId);
+                        if (subgroup) {
+                            subgroup.addMarker(marker);
+                        }
+                    }
+                }
+            });
+            
+            // 恢復當前選擇的群組和子群組
+            currentGroup = settings.currentGroup;
+            currentSubgroup = settings.currentSubgroup;
+            
+            // 更新UI
+            updateGroupsList();
+            updateMarkersList();
+            
+            // 清除地圖上的現有標記並重新顯示
+            updateMapMarkers();
+        }
         
         const savedDate = new Date(settings.savedAt).toLocaleString('zh-TW');
-        showNotification(`已載入設定 (儲存於: ${savedDate})`, 'success');
+        const markerCount = settings.markers ? settings.markers.length : 0;
+        const groupCount = settings.groups ? settings.groups.length : 0;
+        
+        if (markerCount > 0 || groupCount > 0) {
+            showNotification(`已載入設定 (儲存於: ${savedDate})\n包含 ${markerCount} 個標註點，${groupCount} 個群組`, 'success');
+        } else {
+            showNotification(`已載入設定 (儲存於: ${savedDate})`, 'success');
+        }
         
         console.log('Settings loaded:', settings);
         return true;
@@ -1807,7 +1910,13 @@ function loadSavedSettings() {
 
 function resetToDefaultSettings() {
     try {
-        // 重置為預設值
+        // 確認是否要清除所有資料
+        const confirmReset = confirm('重置設定將會清除所有標註點和群組資料，確定要繼續嗎？');
+        if (!confirmReset) {
+            return;
+        }
+        
+        // 重置位置提醒設定為預設值
         document.getElementById('enableNotifications').checked = true;
         document.getElementById('alertDistance').value = 100;
         document.getElementById('alertInterval').value = 30;
@@ -1816,8 +1925,38 @@ function resetToDefaultSettings() {
         alertDistance = 100;
         alertInterval = 30;
         
-        showNotification('已重置為預設設定', 'success');
-        console.log('Settings reset to defaults');
+        // 清除標註點和群組資料
+        markers = [];
+        groups = [];
+        currentGroup = null;
+        currentSubgroup = null;
+        
+        // 停止所有提醒
+        lastAlerts.clear();
+        lastAlertTimes.clear();
+        alertTimers.forEach(timer => clearInterval(timer));
+        alertTimers.clear();
+        markersInRange.clear();
+        
+        // 停止追蹤
+        trackingTarget = null;
+        if (isTracking) {
+            stopTracking();
+        }
+        
+        // 清除過濾器
+        currentFilter = null;
+        
+        // 更新UI
+        updateGroupsList();
+        updateMarkersList();
+        updateMapMarkers();
+        
+        // 清除儲存的設定
+        localStorage.removeItem('userSettings');
+        
+        showNotification('已重置為預設設定，所有標註點和群組已清除', 'success');
+        console.log('Settings and data reset to defaults');
     } catch (error) {
         console.error('Error resetting settings:', error);
         showNotification('重置設定時發生錯誤', 'error');
