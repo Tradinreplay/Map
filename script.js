@@ -2015,6 +2015,237 @@ function resetToDefaultSettings() {
     }
 }
 
+// 匯出標註點資料
+function exportMarkerData() {
+    try {
+        // 準備匯出資料，包含標註點、群組和設定
+        const markersToExport = markers.map(marker => ({
+            id: marker.id,
+            name: marker.name,
+            description: marker.description,
+            lat: marker.lat,
+            lng: marker.lng,
+            groupId: marker.groupId,
+            subgroupId: marker.subgroupId,
+            color: marker.color || 'red',
+            icon: marker.icon || '📍'
+        }));
+        
+        const groupsToExport = groups.map(group => ({
+            id: group.id,
+            name: group.name,
+            subgroups: group.subgroups.map(subgroup => ({
+                id: subgroup.id,
+                name: subgroup.name,
+                groupId: subgroup.groupId
+            }))
+        }));
+        
+        const exportData = {
+            version: '1.0',
+            exportDate: new Date().toISOString(),
+            markers: markersToExport,
+            groups: groupsToExport,
+            settings: {
+                alertDistance: alertDistance,
+                alertInterval: alertInterval,
+                enableNotifications: document.getElementById('enableNotifications').checked
+            },
+            currentGroup: currentGroup,
+            currentSubgroup: currentSubgroup
+        };
+        
+        // 建立下載連結
+        const dataStr = JSON.stringify(exportData, null, 2);
+        const dataBlob = new Blob([dataStr], { type: 'application/json' });
+        const url = URL.createObjectURL(dataBlob);
+        
+        // 建立下載檔案名稱
+        const now = new Date();
+        const dateStr = now.toISOString().split('T')[0];
+        const timeStr = now.toTimeString().split(' ')[0].replace(/:/g, '-');
+        const filename = `地圖標註資料_${dateStr}_${timeStr}.json`;
+        
+        // 觸發下載
+        const downloadLink = document.createElement('a');
+        downloadLink.href = url;
+        downloadLink.download = filename;
+        document.body.appendChild(downloadLink);
+        downloadLink.click();
+        document.body.removeChild(downloadLink);
+        
+        // 清理URL物件
+        URL.revokeObjectURL(url);
+        
+        const markerCount = markersToExport.length;
+        const groupCount = groupsToExport.length;
+        showNotification(`資料匯出成功！\n包含 ${markerCount} 個標註點，${groupCount} 個群組`, 'success');
+        
+        console.log('Data exported successfully:', exportData);
+    } catch (error) {
+        console.error('Error exporting data:', error);
+        showNotification('匯出資料時發生錯誤', 'error');
+    }
+}
+
+// 匯入標註點資料
+function importMarkerData(file) {
+    try {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const importData = JSON.parse(e.target.result);
+                
+                // 驗證資料格式
+                if (!importData.markers || !importData.groups) {
+                    throw new Error('無效的資料格式');
+                }
+                
+                // 詢問使用者是否要覆蓋現有資料
+                const hasExistingData = markers.length > 0 || groups.length > 0;
+                let shouldProceed = true;
+                
+                if (hasExistingData) {
+                    shouldProceed = confirm(
+                        `即將匯入 ${importData.markers.length} 個標註點和 ${importData.groups.length} 個群組。\n\n` +
+                        '這將會覆蓋目前所有的標註點和群組資料。\n\n' +
+                        '確定要繼續嗎？'
+                    );
+                }
+                
+                if (!shouldProceed) {
+                    return;
+                }
+                
+                // 清除現有資料
+                clearAllData();
+                
+                // 重建群組
+                groups = importData.groups.map(groupData => {
+                    const group = new Group(groupData.id, groupData.name);
+                    groupData.subgroups.forEach(subgroupData => {
+                        const subgroup = new Subgroup(subgroupData.id, subgroupData.name, subgroupData.groupId);
+                        group.addSubgroup(subgroup);
+                    });
+                    return group;
+                });
+                
+                // 重建標註點
+                markers = importData.markers.map(markerData => 
+                    new Marker(
+                        markerData.id,
+                        markerData.name,
+                        markerData.description,
+                        markerData.lat,
+                        markerData.lng,
+                        markerData.groupId,
+                        markerData.subgroupId,
+                        markerData.color || 'red',
+                        markerData.icon || '📍'
+                    )
+                );
+                
+                // 將標註點加入對應的群組和子群組
+                markers.forEach(marker => {
+                    const group = groups.find(g => g.id === marker.groupId);
+                    if (group) {
+                        group.addMarker(marker);
+                        if (marker.subgroupId) {
+                            const subgroup = group.subgroups.find(sg => sg.id === marker.subgroupId);
+                            if (subgroup) {
+                                subgroup.addMarker(marker);
+                            }
+                        }
+                    }
+                });
+                
+                // 恢復設定（如果有的話）
+                if (importData.settings) {
+                    alertDistance = importData.settings.alertDistance || 100;
+                    alertInterval = importData.settings.alertInterval || 30;
+                    
+                    // 更新UI設定
+                    document.getElementById('alertDistance').value = alertDistance;
+                    document.getElementById('alertInterval').value = alertInterval;
+                    if (importData.settings.enableNotifications !== undefined) {
+                        document.getElementById('enableNotifications').checked = importData.settings.enableNotifications;
+                    }
+                }
+                
+                // 恢復當前選擇的群組和子群組
+                currentGroup = importData.currentGroup;
+                currentSubgroup = importData.currentSubgroup;
+                
+                // 更新UI
+                updateGroupsList();
+                updateMarkersList();
+                updateMapMarkers();
+                
+                // 儲存到localStorage
+                saveData();
+                
+                const markerCount = importData.markers.length;
+                const groupCount = importData.groups.length;
+                const importDate = importData.exportDate ? 
+                    new Date(importData.exportDate).toLocaleString('zh-TW') : '未知';
+                
+                showNotification(
+                    `資料匯入成功！\n` +
+                    `包含 ${markerCount} 個標註點，${groupCount} 個群組\n` +
+                    `(匯出時間: ${importDate})`, 
+                    'success'
+                );
+                
+                console.log('Data imported successfully:', importData);
+                
+            } catch (parseError) {
+                console.error('Error parsing imported data:', parseError);
+                showNotification('匯入的檔案格式不正確', 'error');
+            }
+        };
+        
+        reader.readAsText(file);
+        
+        // 清空檔案輸入，允許重複選擇同一檔案
+        document.getElementById('importFileInput').value = '';
+        
+    } catch (error) {
+        console.error('Error importing data:', error);
+        showNotification('匯入資料時發生錯誤', 'error');
+    }
+}
+
+// 清除所有資料的輔助函數
+function clearAllData() {
+    // 清除地圖上的標記
+    markers.forEach(marker => {
+        if (marker.leafletMarker) {
+            map.removeLayer(marker.leafletMarker);
+        }
+    });
+    
+    // 清空陣列
+    markers = [];
+    groups = [];
+    currentGroup = null;
+    currentSubgroup = null;
+    
+    // 清除提醒相關的資料
+    lastAlerts.clear();
+    lastAlertTimes.clear();
+    alertTimers.forEach(timer => clearInterval(timer));
+    alertTimers.clear();
+    markersInRange.clear();
+    
+    // 停止追蹤
+    if (trackingTarget) {
+        stopTracking();
+    }
+    
+    // 清除過濾器
+    clearFilter();
+}
+
 function initSettingsButtons() {
     // 儲存設定按鈕
     const saveBtn = document.getElementById('saveSettingsBtn');
@@ -2034,6 +2265,28 @@ function initSettingsButtons() {
         resetBtn.addEventListener('click', function() {
             if (confirm('確定要重置所有設定為預設值嗎？')) {
                 resetToDefaultSettings();
+            }
+        });
+    }
+    
+    // 匯出資料按鈕
+    const exportBtn = document.getElementById('exportDataBtn');
+    if (exportBtn) {
+        exportBtn.addEventListener('click', exportMarkerData);
+    }
+    
+    // 匯入資料按鈕
+    const importBtn = document.getElementById('importDataBtn');
+    const importFileInput = document.getElementById('importFileInput');
+    if (importBtn && importFileInput) {
+        importBtn.addEventListener('click', function() {
+            importFileInput.click();
+        });
+        
+        importFileInput.addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                importMarkerData(file);
             }
         });
     }

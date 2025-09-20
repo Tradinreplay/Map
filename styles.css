@@ -228,6 +228,40 @@ body {
     box-shadow: 0 2px 8px rgba(239, 68, 68, 0.2) !important;
 }
 
+/* 資料匯出匯入按鈕樣式 */
+.data-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(226, 232, 240, 0.6);
+}
+
+.export-btn {
+    background: rgba(168, 85, 247, 0.1) !important;
+    color: #a855f7 !important;
+    border-color: rgba(168, 85, 247, 0.2) !important;
+}
+
+.export-btn:hover {
+    background: rgba(168, 85, 247, 0.15) !important;
+    border-color: rgba(168, 85, 247, 0.3) !important;
+    box-shadow: 0 2px 8px rgba(168, 85, 247, 0.2) !important;
+}
+
+.import-btn {
+    background: rgba(245, 158, 11, 0.1) !important;
+    color: #f59e0b !important;
+    border-color: rgba(245, 158, 11, 0.2) !important;
+}
+
+.import-btn:hover {
+    background: rgba(245, 158, 11, 0.15) !important;
+    border-color: rgba(245, 158, 11, 0.3) !important;
+    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.2) !important;
+}
+
 .groups-list, .markers-list {
     max-height: 200px;
     overflow-y: auto;
