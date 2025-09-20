@@ -83,6 +83,15 @@ function initializeApp() {
     updateGroupsList();
     updateMarkersList();
     
+    // 初始化Service Worker消息監聽
+    initServiceWorkerMessaging();
+    
+    // 初始化設定按鈕
+    initSettingsButtons();
+    
+    // 載入已儲存的設定
+    loadSettingsOnInit();
+    
     // 檢查是否是第一次使用
     const hasSeenSetup = localStorage.getItem('hasSeenSetup');
     if (!hasSeenSetup) {
@@ -90,6 +99,76 @@ function initializeApp() {
     } else {
         requestLocationPermission();
         requestNotificationPermission();
+    }
+}
+
+// 初始化Service Worker消息傳遞
+function initServiceWorkerMessaging() {
+    if ('serviceWorker' in navigator) {
+        // 監聽來自Service Worker的消息
+        navigator.serviceWorker.addEventListener('message', function(event) {
+            console.log('Received message from Service Worker:', event.data);
+            
+            if (event.data && event.data.type === 'FOCUS_MARKER') {
+                const markerId = event.data.markerId;
+                focusMarker(markerId);
+            }
+            
+            if (event.data && event.data.type === 'BACKGROUND_LOCATION_CHECK') {
+                // 執行背景位置檢查
+                if (isTracking && currentPosition) {
+                    checkProximityAlerts();
+                }
+            }
+        });
+        
+        // 定期向Service Worker發送保持活躍信號
+        setInterval(() => {
+            if (navigator.serviceWorker.controller) {
+                navigator.serviceWorker.controller.postMessage({
+                    type: 'KEEP_ALIVE',
+                    timestamp: Date.now()
+                });
+            }
+        }, 25000); // 每25秒發送一次
+        
+        // 當頁面即將關閉時，嘗試註冊背景同步
+        window.addEventListener('beforeunload', function() {
+            if (navigator.serviceWorker.controller && 'sync' in window.ServiceWorkerRegistration.prototype) {
+                navigator.serviceWorker.ready.then(function(registration) {
+                    return registration.sync.register('location-check');
+                }).catch(function(error) {
+                    console.log('Background sync registration failed:', error);
+                });
+            }
+        });
+        
+        // 當頁面變為隱藏時，增加保持活躍頻率
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden) {
+                console.log('Page hidden, increasing Service Worker keep-alive frequency');
+                // 頁面隱藏時，更頻繁地發送保持活躍信號
+                const hiddenInterval = setInterval(() => {
+                    if (navigator.serviceWorker.controller) {
+                        navigator.serviceWorker.controller.postMessage({
+                            type: 'KEEP_ALIVE',
+                            timestamp: Date.now(),
+                            hidden: true
+                        });
+                    }
+                }, 10000); // 每10秒發送一次
+                
+                // 當頁面重新可見時，清除高頻率間隔
+                const visibilityHandler = function() {
+                    if (!document.hidden) {
+                        console.log('Page visible, reducing Service Worker keep-alive frequency');
+                        clearInterval(hiddenInterval);
+                        document.removeEventListener('visibilitychange', visibilityHandler);
+                    }
+                };
+                document.addEventListener('visibilitychange', visibilityHandler);
+            }
+        });
     }
 }
 
@@ -1216,24 +1295,44 @@ function showLocationAlert(marker, distance) {
     
     // 嘗試多種通知方式以確保手機瀏覽器能收到通知
     
-    // 1. Service Worker 通知 (最適合手機)
+    // 1. 增強的 Service Worker 通知 (最適合背景運作)
     if ('serviceWorker' in navigator && Notification.permission === 'granted') {
         navigator.serviceWorker.ready.then(function(registration) {
-            registration.showNotification('位置提醒', {
-                body: message,
-                icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="red"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>',
-                badge: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="red"><circle cx="12" cy="12" r="10"/></svg>',
-                vibrate: [200, 100, 200, 100, 200],
-                tag: 'location-alert-' + marker.id,
-                requireInteraction: true,
-                silent: false,
-                actions: [
-                    {
-                        action: 'view',
-                        title: '查看位置'
+            // 使用新的消息傳遞方式
+            if (registration.active) {
+                registration.active.postMessage({
+                    type: 'LOCATION_ALERT',
+                    title: '位置提醒',
+                    body: message,
+                    data: {
+                        markerId: marker.id,
+                        markerName: marker.name,
+                        distance: Math.round(distance),
+                        lat: marker.lat,
+                        lng: marker.lng,
+                        tag: 'location-alert-' + marker.id,
+                        timestamp: Date.now()
                     }
-                ]
-            });
+                });
+            } else {
+                // 降級到直接通知
+                registration.showNotification('位置提醒', {
+                    body: message,
+                    icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="red"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>',
+                    badge: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="red"><circle cx="12" cy="12" r="10"/></svg>',
+                    vibrate: [200, 100, 200, 100, 200],
+                    tag: 'location-alert-' + marker.id,
+                    requireInteraction: true,
+                    silent: false,
+                    data: { markerId: marker.id },
+                    actions: [
+                        {
+                            action: 'view',
+                            title: '查看位置'
+                        }
+                    ]
+                });
+            }
         }).catch(function(error) {
             console.log('Service Worker notification failed:', error);
             // 降級到普通通知
@@ -1640,3 +1739,152 @@ window.deleteSubgroup = deleteSubgroup;
 window.focusMarker = focusMarker;
 window.setTrackingTarget = setTrackingTarget;
 window.showOnlyThisMarker = showOnlyThisMarker;
+
+function saveCurrentSettings() {
+    try {
+        // 獲取當前設定值
+        const enableNotifications = document.getElementById('enableNotifications').checked;
+        const currentAlertDistance = parseInt(document.getElementById('alertDistance').value);
+        const currentAlertInterval = parseInt(document.getElementById('alertInterval').value);
+        
+        // 建立設定物件
+        const settings = {
+            enableNotifications: enableNotifications,
+            alertDistance: currentAlertDistance,
+            alertInterval: currentAlertInterval,
+            savedAt: new Date().toISOString()
+        };
+        
+        // 保存到localStorage
+        localStorage.setItem('userSettings', JSON.stringify(settings));
+        
+        // 更新全域變數
+        alertDistance = currentAlertDistance;
+        alertInterval = currentAlertInterval;
+        
+        const savedDate = new Date(settings.savedAt).toLocaleString('zh-TW');
+        showNotification(`設定已儲存 (${savedDate})`, 'success');
+        
+        console.log('Settings saved:', settings);
+        return true;
+    } catch (error) {
+        console.error('Error saving settings:', error);
+        showNotification('儲存設定時發生錯誤', 'error');
+        return false;
+    }
+}
+
+function loadSavedSettings() {
+    try {
+        const savedSettings = localStorage.getItem('userSettings');
+        if (!savedSettings) {
+            showNotification('沒有找到已儲存的設定', 'info');
+            return false;
+        }
+        
+        const settings = JSON.parse(savedSettings);
+        
+        // 應用設定到UI
+        document.getElementById('enableNotifications').checked = settings.enableNotifications;
+        document.getElementById('alertDistance').value = settings.alertDistance;
+        document.getElementById('alertInterval').value = settings.alertInterval;
+        
+        // 更新全域變數
+        alertDistance = settings.alertDistance;
+        alertInterval = settings.alertInterval;
+        
+        const savedDate = new Date(settings.savedAt).toLocaleString('zh-TW');
+        showNotification(`已載入設定 (儲存於: ${savedDate})`, 'success');
+        
+        console.log('Settings loaded:', settings);
+        return true;
+    } catch (error) {
+        console.error('Error loading settings:', error);
+        showNotification('載入設定時發生錯誤', 'error');
+        return false;
+    }
+}
+
+function resetToDefaultSettings() {
+    try {
+        // 重置為預設值
+        document.getElementById('enableNotifications').checked = true;
+        document.getElementById('alertDistance').value = 100;
+        document.getElementById('alertInterval').value = 30;
+        
+        // 更新全域變數
+        alertDistance = 100;
+        alertInterval = 30;
+        
+        showNotification('已重置為預設設定', 'success');
+        console.log('Settings reset to defaults');
+    } catch (error) {
+        console.error('Error resetting settings:', error);
+        showNotification('重置設定時發生錯誤', 'error');
+    }
+}
+
+function initSettingsButtons() {
+    // 儲存設定按鈕
+    const saveBtn = document.getElementById('saveSettingsBtn');
+    if (saveBtn) {
+        saveBtn.addEventListener('click', saveCurrentSettings);
+    }
+    
+    // 載入設定按鈕
+    const loadBtn = document.getElementById('loadSettingsBtn');
+    if (loadBtn) {
+        loadBtn.addEventListener('click', loadSavedSettings);
+    }
+    
+    // 重置設定按鈕
+    const resetBtn = document.getElementById('resetSettingsBtn');
+    if (resetBtn) {
+        resetBtn.addEventListener('click', function() {
+            if (confirm('確定要重置所有設定為預設值嗎？')) {
+                resetToDefaultSettings();
+            }
+        });
+    }
+    
+    // 監聽設定變更以即時更新全域變數
+    const alertDistanceInput = document.getElementById('alertDistance');
+    const alertIntervalInput = document.getElementById('alertInterval');
+    
+    if (alertDistanceInput) {
+        alertDistanceInput.addEventListener('change', function() {
+            alertDistance = parseInt(this.value);
+            console.log('Alert distance updated:', alertDistance);
+        });
+    }
+    
+    if (alertIntervalInput) {
+        alertIntervalInput.addEventListener('change', function() {
+            alertInterval = parseInt(this.value);
+            console.log('Alert interval updated:', alertInterval);
+        });
+    }
+}
+
+// 在應用初始化時載入已儲存的設定
+function loadSettingsOnInit() {
+    try {
+        const savedSettings = localStorage.getItem('userSettings');
+        if (savedSettings) {
+            const settings = JSON.parse(savedSettings);
+            
+            // 應用設定到UI
+            document.getElementById('enableNotifications').checked = settings.enableNotifications;
+            document.getElementById('alertDistance').value = settings.alertDistance;
+            document.getElementById('alertInterval').value = settings.alertInterval;
+            
+            // 更新全域變數
+            alertDistance = settings.alertDistance;
+            alertInterval = settings.alertInterval;
+            
+            console.log('Settings loaded on init:', settings);
+        }
+    } catch (error) {
+        console.error('Error loading settings on init:', error);
+    }
+}

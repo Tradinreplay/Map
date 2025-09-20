@@ -154,6 +154,80 @@ body {
     box-shadow: 0 4px 12px rgba(255, 149, 0, 0.4) !important;
 }
 
+/* 設定按鈕樣式 */
+.settings-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(226, 232, 240, 0.6);
+}
+
+.settings-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    border: none;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: rgba(99, 102, 241, 0.1);
+    color: #6366f1;
+    border: 1px solid rgba(99, 102, 241, 0.2);
+}
+
+.settings-btn:hover {
+    background: rgba(99, 102, 241, 0.15);
+    border-color: rgba(99, 102, 241, 0.3);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.2);
+}
+
+.settings-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 4px rgba(99, 102, 241, 0.2);
+}
+
+.save-btn {
+    background: rgba(34, 197, 94, 0.1) !important;
+    color: #22c55e !important;
+    border-color: rgba(34, 197, 94, 0.2) !important;
+}
+
+.save-btn:hover {
+    background: rgba(34, 197, 94, 0.15) !important;
+    border-color: rgba(34, 197, 94, 0.3) !important;
+    box-shadow: 0 2px 8px rgba(34, 197, 94, 0.2) !important;
+}
+
+.load-btn {
+    background: rgba(59, 130, 246, 0.1) !important;
+    color: #3b82f6 !important;
+    border-color: rgba(59, 130, 246, 0.2) !important;
+}
+
+.load-btn:hover {
+    background: rgba(59, 130, 246, 0.15) !important;
+    border-color: rgba(59, 130, 246, 0.3) !important;
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.2) !important;
+}
+
+.reset-btn {
+    background: rgba(239, 68, 68, 0.1) !important;
+    color: #ef4444 !important;
+    border-color: rgba(239, 68, 68, 0.2) !important;
+}
+
+.reset-btn:hover {
+    background: rgba(239, 68, 68, 0.15) !important;
+    border-color: rgba(239, 68, 68, 0.3) !important;
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.2) !important;
+}
+
 .groups-list, .markers-list {
     max-height: 200px;
     overflow-y: auto;
@@ -490,7 +564,48 @@ form input:focus, form textarea:focus, form select:focus {
     background: #E5E5EA;
 }
 
-/* 響應式設計 */
+/* 響應式設計 - 增強版 */
+/* 大型平板 (1024px - 1200px) */
+@media (max-width: 1200px) and (min-width: 1025px) {
+    .sidebar {
+        width: 280px;
+        padding: 14px;
+    }
+    
+    .sidebar h1 {
+        font-size: 17px;
+    }
+    
+    .compact-input {
+        font-size: 13px;
+        padding: 9px 11px;
+    }
+}
+
+/* 中型平板 (768px - 1024px) */
+@media (max-width: 1024px) and (min-width: 769px) {
+    .sidebar {
+        width: 260px;
+        padding: 12px;
+    }
+    
+    .sidebar h1 {
+        font-size: 16px;
+    }
+    
+    .icon-btn {
+        width: 34px;
+        height: 34px;
+        font-size: 13px;
+    }
+    
+    .compact-input {
+        font-size: 12px;
+        padding: 8px 10px;
+    }
+}
+
+/* 小型平板和大型手機 (768px以下) */
 @media (max-width: 768px) {
     .container {
         flex-direction: column;
@@ -503,6 +618,8 @@ form input:focus, form textarea:focus, form select:focus {
         order: 2;
         overflow-y: auto;
         padding: 16px;
+        border-right: none;
+        border-top: 1px solid rgba(226, 232, 240, 0.8);
     }
     
     .sidebar-header {
@@ -515,6 +632,7 @@ form input:focus, form textarea:focus, form select:focus {
     
     .quick-actions {
         gap: 8px;
+        flex-wrap: wrap;
     }
     
     .icon-btn {
@@ -541,6 +659,7 @@ form input:focus, form textarea:focus, form select:focus {
         top: 8px;
         right: 8px;
         gap: 6px;
+        flex-wrap: wrap;
     }
     
     .control-btn {
@@ -553,12 +672,32 @@ form input:focus, form textarea:focus, form select:focus {
     .control-btn span {
         font-size: 12px;
     }
+    
+    /* 表單元素優化 */
+    .form-group {
+        margin-bottom: 12px;
+    }
+    
+    .form-group label {
+        font-size: 13px;
+        margin-bottom: 6px;
+    }
+    
+    .color-pattern-grid {
+        gap: 8px;
+    }
+    
+    .color-option, .pattern-option {
+        width: 32px;
+        height: 32px;
+    }
 }
 
+/* 小型手機 (480px以下) */
 @media (max-width: 480px) {
     .sidebar {
         padding: 12px;
-        max-height: 40vh;
+        max-height: 42vh;
     }
     
     .sidebar h1 {
@@ -590,6 +729,80 @@ form input:focus, form textarea:focus, form select:focus {
     .floating-controls {
         top: 6px;
         right: 6px;
+        flex-direction: column;
+        align-items: flex-end;
+    }
+    
+    /* 表單元素進一步優化 */
+    .form-group {
+        margin-bottom: 10px;
+    }
+    
+    .form-group label {
+        font-size: 12px;
+        margin-bottom: 4px;
+    }
+    
+    .color-pattern-grid {
+        gap: 6px;
+        grid-template-columns: repeat(auto-fit, minmax(28px, 1fr));
+    }
+    
+    .color-option, .pattern-option {
+        width: 28px;
+        height: 28px;
+    }
+    
+    .section-header {
+        font-size: 13px;
+        padding: 8px 0;
+    }
+    
+    .quick-actions {
+        gap: 6px;
+    }
+}
+
+/* 超小型手機 (360px以下) */
+@media (max-width: 360px) {
+    .sidebar {
+        padding: 10px;
+        max-height: 40vh;
+    }
+    
+    .sidebar h1 {
+        font-size: 15px;
+    }
+    
+    .icon-btn {
+        width: 30px;
+        height: 30px;
+        font-size: 11px;
+    }
+    
+    .compact-input {
+        font-size: 12px;
+        padding: 7px 9px;
+    }
+    
+    .add-btn {
+        padding: 7px 10px;
+        font-size: 11px;
+    }
+    
+    .control-btn {
+        padding: 5px 7px;
+        font-size: 10px;
+        min-width: 70px;
+    }
+    
+    .color-option, .pattern-option {
+        width: 26px;
+        height: 26px;
+    }
+    
+    .form-group label {
+        font-size: 11px;
     }
 }
 
