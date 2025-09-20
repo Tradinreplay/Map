@@ -1087,9 +1087,9 @@ function setTrackingTarget(markerId) {
         trackingTarget = marker;
         showNotification(`已設定 "${marker.name}" 為追蹤目標`);
         
-        // 如果正在追蹤位置，立即檢查新目標的距離
+        // 如果正在追蹤位置，開始距離檢查定時器
         if (isTracking && currentPosition) {
-            checkProximityAlerts();
+            startProximityCheck();
         }
     }
 }
@@ -1173,7 +1173,7 @@ function startTracking() {
                 
                 updateLocationDisplay();
                 updateCurrentLocationMarker();
-                checkProximityAlerts();
+                // 移除頻繁的距離檢查，改為只在定時器中按間隔檢查
                 
                 // 如果精度較差，顯示警告
                 if (position.coords.accuracy > 50) {
@@ -1203,6 +1203,11 @@ function startTracking() {
             }
         );
         
+        // 如果有追蹤目標，開始距離檢查定時器
+        if (trackingTarget) {
+            startProximityCheck();
+        }
+        
         showNotification('位置追蹤已啟動');
     } else {
         showNotification('您的瀏覽器不支援位置追蹤', 'error');
@@ -1213,6 +1218,9 @@ function stopTracking() {
     if (watchId !== null) {
         navigator.geolocation.clearWatch(watchId);
         watchId = null;
+        
+        // 停止距離檢查定時器
+        stopProximityCheck();
         
         // 清除所有提醒定時器
         alertTimers.forEach((timer, markerId) => {
@@ -1259,7 +1267,34 @@ function calculateDistance(lat1, lng1, lat2, lng2) {
     return R * c; // 距離（公尺）
 }
 
-// 接近提醒檢查
+// 距離檢查定時器
+let proximityCheckTimer = null;
+
+// 開始距離檢查定時器
+function startProximityCheck() {
+    // 清除現有定時器
+    if (proximityCheckTimer) {
+        clearInterval(proximityCheckTimer);
+    }
+    
+    // 設定定時器，每10秒檢查一次距離（僅用於判斷進入/離開範圍）
+    proximityCheckTimer = setInterval(() => {
+        checkProximityAlerts();
+    }, 10000); // 每10秒檢查一次
+    
+    // 立即執行一次檢查
+    checkProximityAlerts();
+}
+
+// 停止距離檢查定時器
+function stopProximityCheck() {
+    if (proximityCheckTimer) {
+        clearInterval(proximityCheckTimer);
+        proximityCheckTimer = null;
+    }
+}
+
+// 接近提醒檢查（僅用於判斷進入/離開範圍）
 function checkProximityAlerts() {
     if (!currentPosition || !document.getElementById('enableNotifications').checked || !trackingTarget) {
         return;
