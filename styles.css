@@ -463,12 +463,12 @@ body {
 .modal-content {
     background-color: white;
     margin: 2vh auto;
-    padding: clamp(12px, 3vw, 20px);
-    border-radius: 10px;
-    width: clamp(280px, 85vw, 480px);
+    padding: clamp(10px, 2.4vw, 16px);
+    border-radius: 8px;
+    width: clamp(224px, 68vw, 384px);
     max-height: 88vh;
     overflow-y: auto;
-    box-shadow: 0 6px 24px rgba(0,0,0,0.1);
+    box-shadow: 0 5px 19px rgba(0,0,0,0.1);
     animation: modalSlideIn 0.3s ease;
 }
 
@@ -505,27 +505,27 @@ form {
 
 form label {
     display: block;
-    margin-bottom: 6px;
+    margin-bottom: 5px;
     font-weight: 500;
     color: #333;
-    font-size: 13px;
+    font-size: 10px;
 }
 
 form input, form textarea, form select {
     width: 100%;
-    padding: 10px;
+    padding: 8px;
     border: 1px solid #ddd;
-    border-radius: 5px;
-    font-size: 14px;
-    margin-bottom: 12px;
+    border-radius: 4px;
+    font-size: 11px;
+    margin-bottom: 10px;
     box-sizing: border-box;
     transition: border-color 0.3s ease;
 }
 
 form textarea {
     resize: vertical;
-    min-height: 50px;
-    max-height: 100px;
+    min-height: 40px;
+    max-height: 80px;
     overflow-y: auto;
 }
 
@@ -537,20 +537,20 @@ form input:focus, form textarea:focus, form select:focus {
 
 .form-buttons {
     display: flex;
-    gap: 10px;
-    margin-top: 16px;
+    gap: 8px;
+    margin-top: 13px;
 }
 
 .form-buttons button {
     flex: 1;
-    padding: 8px 16px;
+    padding: 6px 13px;
     border: none;
-    border-radius: 5px;
-    font-size: 13px;
+    border-radius: 4px;
+    font-size: 10px;
     font-weight: 500;
     cursor: pointer;
     transition: all 0.2s ease;
-    min-width: 70px;
+    min-width: 56px;
 }
 
 .form-buttons button[type="submit"] {
@@ -692,8 +692,8 @@ form input:focus, form textarea:focus, form select:focus {
     /* 模態框平板端優化 */
     .modal-content {
         margin: 3vh auto;
-        padding: clamp(12px, 3vw, 20px);
-        width: clamp(280px, 92vw, 500px);
+        padding: clamp(10px, 2.4vw, 16px);
+        width: clamp(224px, 74vw, 400px);
         max-height: 88vh;
         overflow-y: auto;
     }
@@ -808,8 +808,8 @@ form input:focus, form textarea:focus, form select:focus {
     /* 模態框手機端優化 */
     .modal-content {
         margin: 1vh auto;
-        padding: clamp(10px, 2.5vw, 16px);
-        width: clamp(260px, 95vw, 450px);
+        padding: clamp(8px, 2vw, 13px);
+        width: clamp(208px, 76vw, 360px);
         max-height: 92vh;
         overflow-y: auto;
     }
@@ -949,8 +949,8 @@ form input:focus, form textarea:focus, form select:focus {
     /* 超小型手機模態框優化 */
     .modal-content {
         margin: 0.5vh auto;
-        padding: clamp(8px, 2vw, 12px);
-        width: clamp(240px, 98vw, 360px);
+        padding: clamp(6px, 1.6vw, 10px);
+        width: clamp(192px, 78vw, 288px);
         max-height: 95vh;
     }
     
@@ -1456,16 +1456,16 @@ input:checked + .slider:before {
 
 /* 標示點自定義樣式 */
 .marker-customization {
-    margin: 12px 0;
-    padding: 12px;
+    margin: 10px 0;
+    padding: 10px;
     background: rgba(248, 250, 252, 0.8);
-    border-radius: 6px;
+    border-radius: 5px;
     border: 1px solid rgba(226, 232, 240, 0.6);
 }
 
 .customization-row {
     display: flex;
-    gap: 16px;
+    gap: 13px;
     align-items: flex-start;
 }
 
@@ -1475,10 +1475,10 @@ input:checked + .slider:before {
 
 .customization-group label {
     display: block;
-    margin-bottom: 6px;
+    margin-bottom: 5px;
     font-weight: 500;
     color: #374151;
-    font-size: 13px;
+    font-size: 10px;
 }
 
 .color-options, .icon-options {
@@ -1489,8 +1489,8 @@ input:checked + .slider:before {
 }
 
 .color-option, .icon-option {
-    width: 28px;
-    height: 28px;
+    width: 22px;
+    height: 22px;
     border-radius: 50%;
     border: 2px solid transparent;
     cursor: pointer;
@@ -1498,7 +1498,7 @@ input:checked + .slider:before {
     align-items: center;
     justify-content: center;
     transition: all 0.2s ease;
-    font-size: 14px;
+    font-size: 11px;
 }
 
 .color-option {

@@ -143,10 +143,13 @@ function initServiceWorkerMessaging() {
             }
         });
         
-        // 當頁面變為隱藏時，增加保持活躍頻率
+        // 當頁面變為隱藏時，增加保持活躍頻率並啟動後台位置檢查
+        let backgroundCheckInterval = null;
+        
         document.addEventListener('visibilitychange', function() {
             if (document.hidden) {
                 console.log('Page hidden, increasing Service Worker keep-alive frequency');
+                
                 // 頁面隱藏時，更頻繁地發送保持活躍信號
                 const hiddenInterval = setInterval(() => {
                     if (navigator.serviceWorker.controller) {
@@ -158,11 +161,54 @@ function initServiceWorkerMessaging() {
                     }
                 }, 10000); // 每10秒發送一次
                 
+                // 啟動後台位置檢查機制
+                if (isTracking && currentPosition && trackingTarget) {
+                    // 清除可能存在的舊間隔
+                    if (backgroundCheckInterval) {
+                        clearInterval(backgroundCheckInterval);
+                    }
+                    
+                    // 設定後台檢查間隔，頻率較低以節省電池
+                    backgroundCheckInterval = setInterval(() => {
+                        if (!document.hidden) {
+                            clearInterval(backgroundCheckInterval);
+                            backgroundCheckInterval = null;
+                            return;
+                        }
+                        
+                        // 在後台模式下進行位置檢查
+                        console.log('後台位置檢查');
+                        checkProximityAlerts();
+                        
+                        // 向Service Worker發送後台位置檢查信號
+                        if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+                            navigator.serviceWorker.controller.postMessage({
+                                type: 'BACKGROUND_LOCATION_CHECK',
+                                timestamp: Date.now(),
+                                trackingTarget: trackingTarget ? {
+                                    id: trackingTarget.id,
+                                    name: trackingTarget.name,
+                                    lat: trackingTarget.lat,
+                                    lng: trackingTarget.lng
+                                } : null,
+                                currentPosition: currentPosition
+                            });
+                        }
+                    }, 15000); // 每15秒檢查一次，平衡效能和電池消耗
+                }
+                
                 // 當頁面重新可見時，清除高頻率間隔
                 const visibilityHandler = function() {
                     if (!document.hidden) {
                         console.log('Page visible, reducing Service Worker keep-alive frequency');
                         clearInterval(hiddenInterval);
+                        
+                        // 清除後台檢查間隔
+                        if (backgroundCheckInterval) {
+                            clearInterval(backgroundCheckInterval);
+                            backgroundCheckInterval = null;
+                        }
+                        
                         document.removeEventListener('visibilitychange', visibilityHandler);
                     }
                 };
@@ -1260,6 +1306,17 @@ function startRepeatedAlert(markerId, marker) {
             return;
         }
         
+        // 檢查是否已經過了足夠的間隔時間
+        const lastAlertTime = lastAlertTimes.get(markerId) || 0;
+        const currentTime = Date.now();
+        const timeSinceLastAlert = (currentTime - lastAlertTime) / 1000; // 轉換為秒
+        
+        // 如果距離上次通知時間不足設定的間隔，跳過此次通知
+        if (timeSinceLastAlert < alertInterval) {
+            console.log(`跳過通知 ${marker.name}，距離上次通知僅 ${Math.round(timeSinceLastAlert)} 秒`);
+            return;
+        }
+        
         // 重新計算距離，確保仍在範圍內
         const distance = calculateDistance(
             currentPosition.lat, currentPosition.lng,
@@ -1268,12 +1325,12 @@ function startRepeatedAlert(markerId, marker) {
         
         if (distance <= alertDistance) {
             showLocationAlert(marker, distance);
-            lastAlertTimes.set(markerId, Date.now());
+            lastAlertTimes.set(markerId, currentTime);
         } else {
             // 如果已經離開範圍，停止定時器
             stopRepeatedAlert(markerId);
         }
-    }, alertInterval * 1000);
+    }, Math.min(alertInterval * 1000, 10000)); // 最多每10秒檢查一次，但通知仍遵循設定間隔
     
     alertTimers.set(markerId, timer);
 }

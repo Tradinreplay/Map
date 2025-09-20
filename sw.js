@@ -66,7 +66,41 @@ self.addEventListener('message', function(event) {
         // 保持Service Worker活躍
         console.log('Service Worker keep alive signal received');
     }
+    
+    if (event.data && event.data.type === 'BACKGROUND_LOCATION_CHECK') {
+        // 處理後台位置檢查
+        console.log('Service Worker background location check:', event.data);
+        
+        // 如果有追蹤目標和當前位置，進行距離計算
+        if (event.data.trackingTarget && event.data.currentPosition) {
+            const target = event.data.trackingTarget;
+            const current = event.data.currentPosition;
+            
+            // 計算距離（使用 Haversine 公式）
+            const distance = calculateDistance(
+                current.lat, current.lng,
+                target.lat, target.lng
+            );
+            
+            // 如果在提醒範圍內，顯示通知
+            if (distance <= 100) { // 預設100公尺範圍
+                showLocationNotification(target, distance);
+            }
+        }
+    }
 });
+
+// 距離計算函數（Haversine 公式）
+function calculateDistance(lat1, lng1, lat2, lng2) {
+    const R = 6371000; // 地球半徑（公尺）
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLng/2) * Math.sin(dLng/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+}
 
 // Push event for notifications
 self.addEventListener('push', function(event) {
@@ -89,18 +123,45 @@ self.addEventListener('push', function(event) {
     );
 });
 
+// 通知去重緩存
+const notificationCache = new Map();
+const NOTIFICATION_COOLDOWN = 30000; // 30秒冷卻時間
+
 // 顯示位置通知的統一函數
 function showLocationNotification(title, body, data = {}) {
+    const notificationKey = data.markerId || 'default';
+    const currentTime = Date.now();
+    
+    // 檢查通知冷卻時間，防止重複通知
+    const lastNotificationTime = notificationCache.get(notificationKey);
+    if (lastNotificationTime && (currentTime - lastNotificationTime) < NOTIFICATION_COOLDOWN) {
+        console.log(`通知被跳過，標記點 ${notificationKey} 仍在冷卻期內`);
+        return Promise.resolve();
+    }
+    
+    // 更新通知時間
+    notificationCache.set(notificationKey, currentTime);
+    
+    // 清理過期的緩存項目
+    for (const [key, time] of notificationCache.entries()) {
+        if (currentTime - time > NOTIFICATION_COOLDOWN * 2) {
+            notificationCache.delete(key);
+        }
+    }
+    
     const options = {
         body: body,
         icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23ff4444"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>',
         badge: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23ff4444"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>',
         vibrate: [200, 100, 200, 100, 200],
-        tag: data.tag || 'location-alert',
+        tag: data.tag || `location-alert-${notificationKey}`,
         requireInteraction: true,
         silent: false,
-        timestamp: Date.now(),
-        data: data,
+        timestamp: currentTime,
+        data: {
+            ...data,
+            notificationTime: currentTime
+        },
         actions: [
             {
                 action: 'view',
@@ -115,6 +176,7 @@ function showLocationNotification(title, body, data = {}) {
         ]
     };
     
+    console.log(`顯示通知：${title} - ${body}`);
     return self.registration.showNotification(title, options);
 }
 
