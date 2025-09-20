@@ -1284,12 +1284,15 @@ function checkProximityAlerts() {
             
             // 設定定時器進行重複通知
             startRepeatedAlert(trackingTarget.id, trackingTarget);
+            console.log(`標註點 "${trackingTarget.name}" 進入範圍 (${Math.round(distance)}m)，開始定時通知`);
         }
+        // 如果已經在範圍內，不做任何操作，讓定時器處理後續通知
     } else {
         // 如果追蹤目標離開範圍
         if (markersInRange.has(trackingTarget.id)) {
             markersInRange.delete(trackingTarget.id);
             stopRepeatedAlert(trackingTarget.id);
+            console.log(`標註點 "${trackingTarget.name}" 離開範圍 (${Math.round(distance)}m)，停止通知`);
         }
     }
 }
@@ -1299,21 +1302,10 @@ function startRepeatedAlert(markerId, marker) {
     // 清除可能存在的舊定時器
     stopRepeatedAlert(markerId);
     
-    // 設定新的定時器
+    // 設定新的定時器，直接按照設定的間隔時間進行通知
     const timer = setInterval(() => {
         if (!currentPosition || !document.getElementById('enableNotifications').checked) {
             stopRepeatedAlert(markerId);
-            return;
-        }
-        
-        // 檢查是否已經過了足夠的間隔時間
-        const lastAlertTime = lastAlertTimes.get(markerId) || 0;
-        const currentTime = Date.now();
-        const timeSinceLastAlert = (currentTime - lastAlertTime) / 1000; // 轉換為秒
-        
-        // 如果距離上次通知時間不足設定的間隔，跳過此次通知
-        if (timeSinceLastAlert < alertInterval) {
-            console.log(`跳過通知 ${marker.name}，距離上次通知僅 ${Math.round(timeSinceLastAlert)} 秒`);
             return;
         }
         
@@ -1324,13 +1316,16 @@ function startRepeatedAlert(markerId, marker) {
         );
         
         if (distance <= alertDistance) {
+            // 在範圍內，按照設定間隔發送通知（不再檢查上次通知時間）
             showLocationAlert(marker, distance);
-            lastAlertTimes.set(markerId, currentTime);
+            lastAlertTimes.set(markerId, Date.now());
+            console.log(`按間隔通知 ${marker.name}，距離 ${Math.round(distance)} 公尺`);
         } else {
             // 如果已經離開範圍，停止定時器
+            console.log(`${marker.name} 已離開範圍，停止通知`);
             stopRepeatedAlert(markerId);
         }
-    }, Math.min(alertInterval * 1000, 10000)); // 最多每10秒檢查一次，但通知仍遵循設定間隔
+    }, alertInterval * 1000); // 直接使用設定的間隔時間
     
     alertTimers.set(markerId, timer);
 }
