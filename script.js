@@ -105,11 +105,13 @@ function initMap() {
     const defaultLat = 25.0330;
     const defaultLng = 121.5654;
     
-    map = L.map('map').setView([defaultLat, defaultLng], 13);
+    map = L.map('map').setView([defaultLat, defaultLng], 16);
     
     // 添加地圖圖層
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors'
+        attribution: '© OpenStreetMap contributors',
+        maxZoom: 20,
+        minZoom: 8
     }).addTo(map);
     
     // 地圖點擊事件
@@ -304,7 +306,7 @@ function requestLocationPermission() {
                 };
                 updateLocationDisplay();
                 updateCurrentLocationMarker();
-                map.setView([currentPosition.lat, currentPosition.lng], 15);
+                map.setView([currentPosition.lat, currentPosition.lng], 18);
                 
                 // 顯示定位精度信息
                 if (position.coords.accuracy) {
@@ -341,7 +343,7 @@ function requestLocationPermission() {
                         // 設定為台北市中心作為預設位置
                         const defaultLat = 25.0330;
                         const defaultLng = 121.5654;
-                        map.setView([defaultLat, defaultLng], 13);
+                        map.setView([defaultLat, defaultLng], 16);
                         showNotification('已設定為台北市中心。您可以點擊地圖來添加標記。', 'info');
                     }
                 }, 2000);
@@ -1105,7 +1107,7 @@ function stopTracking() {
 
 function centerMapToCurrentLocation() {
     if (currentPosition) {
-        map.setView([currentPosition.lat, currentPosition.lng], 15);
+        map.setView([currentPosition.lat, currentPosition.lng], 18);
         updateCurrentLocationMarker();
         // 顯示當前位置標記的彈出視窗
         if (currentLocationMarker) {
@@ -1258,7 +1260,7 @@ function showLocationAlert(marker, distance) {
                     window.focus();
                     if (marker.leafletMarker) {
                         marker.leafletMarker.openPopup();
-                        map.setView([marker.lat, marker.lng], 16);
+                        map.setView([marker.lat, marker.lng], 18);
                     }
                     notification.close();
                 };
@@ -1286,7 +1288,7 @@ function showLocationAlert(marker, distance) {
     if (marker.leafletMarker) {
         marker.leafletMarker.openPopup();
         // 將地圖中心移到標記位置
-        map.setView([marker.lat, marker.lng], Math.max(map.getZoom(), 15));
+        map.setView([marker.lat, marker.lng], Math.max(map.getZoom(), 18));
     }
     
     // 6. 音效提醒 (如果可能)
@@ -1487,7 +1489,7 @@ function showOnlyThisMarker(markerId) {
 function focusMarker(markerId) {
     const marker = markers.find(m => m.id === markerId);
     if (marker && marker.leafletMarker) {
-        map.setView([marker.lat, marker.lng], 16);
+        map.setView([marker.lat, marker.lng], 18);
         marker.leafletMarker.openPopup();
     }
 }
