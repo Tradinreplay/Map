@@ -11,48 +11,61 @@
     <div class="container">
         <!-- 側邊欄 -->
         <div class="sidebar">
-            <h1>地圖標註系統</h1>
+            <div class="sidebar-header">
+                <h1>🗺️ 地圖標註</h1>
+                <div class="quick-actions">
+                    <button id="centerMapBtn" class="icon-btn" title="回到當前位置">📍</button>
+                    <button id="testNotificationBtn" class="icon-btn" title="測試通知">🔔</button>
+                    <button id="showAllMarkersBtn" class="icon-btn" title="顯示所有標記">👁️</button>
+                </div>
+            </div>
             
             <!-- 組別管理 -->
-            <div class="group-management">
-                <h2>組別管理</h2>
-                <div class="group-controls">
-                    <input type="text" id="groupNameInput" placeholder="輸入組別名稱">
-                    <button id="addGroupBtn">新增組別</button>
-                    <button id="showAllMarkersBtn" class="reset-btn">顯示所有標記</button>
+            <div class="section group-section">
+                <div class="section-header">
+                    <h3>📁 組別</h3>
+                    <button id="addGroupBtn" class="add-btn">+</button>
                 </div>
+                <input type="text" id="groupNameInput" placeholder="新組別名稱" class="compact-input">
                 <div id="groupsList" class="groups-list"></div>
             </div>
 
             <!-- 標註點列表 -->
-            <div class="markers-section">
-                <h2>標註點</h2>
+            <div class="section markers-section">
+                <div class="section-header">
+                    <h3>📍 標註點</h3>
+                </div>
                 <div id="markersList" class="markers-list"></div>
             </div>
 
-            <!-- 位置提醒設定 -->
-            <div class="notification-settings">
-                <h2>提醒設定</h2>
-                <label>
-                    <input type="checkbox" id="enableNotifications" checked>
-                    啟用位置提醒
-                </label>
-                <div class="distance-setting">
-                    <label for="alertDistance">提醒距離 (公尺):</label>
-                    <input type="number" id="alertDistance" value="100" min="10" max="1000">
+            <!-- 設定區域 -->
+            <div class="section settings-section collapsed">
+                <div class="section-header clickable" onclick="toggleSection('settings')">
+                    <h3>⚙️ 設定</h3>
+                    <span class="toggle-icon">▼</span>
                 </div>
-                <div class="interval-setting">
-                    <label for="alertInterval">提醒間隔 (秒):</label>
-                    <input type="number" id="alertInterval" value="30" min="5" max="300">
+                <div class="section-content">
+                    <div class="setting-row">
+                        <label class="switch">
+                            <input type="checkbox" id="enableNotifications" checked>
+                            <span class="slider"></span>
+                        </label>
+                        <span>位置提醒</span>
+                    </div>
+                    <div class="setting-row">
+                        <label>距離</label>
+                        <input type="number" id="alertDistance" value="100" min="10" max="1000" class="compact-input">
+                        <span class="unit">m</span>
+                    </div>
+                    <div class="setting-row">
+                        <label>間隔</label>
+                        <input type="number" id="alertInterval" value="30" min="5" max="300" class="compact-input">
+                        <span class="unit">s</span>
+                    </div>
+                    <div class="location-display">
+                        <div id="currentLocation">定位中...</div>
+                    </div>
                 </div>
-            </div>
-
-            <!-- 當前位置資訊 -->
-            <div class="location-info">
-                <h2>當前位置</h2>
-                <div id="currentLocation">定位中...</div>
-                <button id="centerMapBtn">回到當前位置</button>
-                <button id="testNotificationBtn" style="margin-top: 10px; background: #ff6b35; color: white;">🔔 測試通知</button>
             </div>
         </div>
 
