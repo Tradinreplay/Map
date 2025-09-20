@@ -62,7 +62,7 @@ class Subgroup {
 }
 
 class Marker {
-    constructor(id, name, description, lat, lng, groupId, subgroupId = null) {
+    constructor(id, name, description, lat, lng, groupId, subgroupId = null, color = 'red', icon = '📍') {
         this.id = id;
         this.name = name;
         this.description = description;
@@ -70,6 +70,8 @@ class Marker {
         this.lng = lng;
         this.groupId = groupId;
         this.subgroupId = subgroupId;
+        this.color = color;
+        this.icon = icon;
         this.leafletMarker = null;
     }
 }
@@ -129,6 +131,38 @@ function createCurrentLocationIcon() {
         `,
         iconSize: [30, 30],
         iconAnchor: [15, 15]
+    });
+}
+
+// 創建自定義標示點圖示
+function createCustomMarkerIcon(color, icon) {
+    const colorMap = {
+        red: '#ef4444',
+        blue: '#3b82f6',
+        green: '#10b981',
+        orange: '#f97316',
+        purple: '#8b5cf6',
+        yellow: '#eab308'
+    };
+    
+    const bgColor = colorMap[color] || colorMap.red;
+    
+    return L.divIcon({
+        html: `<div style="
+            background-color: ${bgColor}; 
+            width: 24px; 
+            height: 24px; 
+            border-radius: 50%; 
+            border: 2px solid white; 
+            box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+        ">${icon}</div>`,
+        iconSize: [24, 24],
+        iconAnchor: [12, 12],
+        className: 'custom-marker-icon',
     });
 }
 
@@ -239,6 +273,23 @@ window.resetSetup = function() {
     localStorage.removeItem('hasSeenSetup');
     location.reload();
 };
+
+// 切換設定區域顯示/隱藏
+window.toggleSection = function(sectionName) {
+    const section = document.querySelector(`.${sectionName}-section`);
+    const content = section.querySelector('.section-content');
+    const icon = section.querySelector('.toggle-icon');
+    
+    if (section.classList.contains('collapsed')) {
+        section.classList.remove('collapsed');
+        content.style.display = 'block';
+        icon.textContent = '▲';
+    } else {
+        section.classList.add('collapsed');
+        content.style.display = 'none';
+        icon.textContent = '▼';
+    }
+};
 }
 
 // 請求位置權限
@@ -263,18 +314,37 @@ function requestLocationPermission() {
             function(error) {
                 console.error('無法獲取位置:', error);
                 let errorMessage = '無法獲取您的位置';
+                let detailedMessage = '';
+                
                 switch(error.code) {
                     case error.PERMISSION_DENIED:
-                        errorMessage = '位置權限被拒絕，請允許位置存取';
+                        errorMessage = '位置權限被拒絕';
+                        detailedMessage = '請點擊瀏覽器地址欄的鎖頭圖標，將位置權限設為"允許"，然後重新整理頁面';
                         break;
                     case error.POSITION_UNAVAILABLE:
                         errorMessage = '位置信息不可用';
+                        detailedMessage = '請確認設備的位置服務已開啟，並檢查網路連線';
                         break;
                     case error.TIMEOUT:
                         errorMessage = '定位請求超時';
+                        detailedMessage = '定位時間過長，請檢查網路連線或稍後再試';
                         break;
+                    default:
+                        detailedMessage = '請檢查瀏覽器權限設定和設備位置服務';
                 }
-                showNotification(errorMessage, 'error');
+                
+                showNotification(errorMessage + '。' + detailedMessage, 'error');
+                
+                // 提供手動設定位置的選項
+                setTimeout(() => {
+                    if (confirm('無法自動獲取位置。是否要手動設定地圖中心位置？')) {
+                        // 設定為台北市中心作為預設位置
+                        const defaultLat = 25.0330;
+                        const defaultLng = 121.5654;
+                        map.setView([defaultLat, defaultLng], 13);
+                        showNotification('已設定為台北市中心。您可以點擊地圖來添加標記。', 'info');
+                    }
+                }, 2000);
             },
             {
                 enableHighAccuracy: true,
@@ -645,6 +715,14 @@ function showMarkerModal(lat, lng, existingMarker = null) {
         groupSelect.value = existingMarker.groupId;
         updateSubgroupOptions(existingMarker.groupId);
         subgroupSelect.value = existingMarker.subgroupId || '';
+        
+        // 設定顏色和圖案
+        const colorRadio = document.querySelector(`input[name="markerColor"][value="${existingMarker.color || 'red'}"]`);
+        if (colorRadio) colorRadio.checked = true;
+        
+        const iconRadio = document.querySelector(`input[name="markerIcon"][value="${existingMarker.icon || '📍'}"]`);
+        if (iconRadio) iconRadio.checked = true;
+        
         document.getElementById('deleteMarkerBtn').style.display = 'block';
         
         form.dataset.markerId = existingMarker.id;
@@ -699,6 +777,8 @@ function saveMarker(e) {
     const description = document.getElementById('markerDescription').value.trim();
     const groupId = document.getElementById('markerGroup').value;
     const subgroupId = document.getElementById('markerSubgroup').value || null;
+    const color = document.querySelector('input[name="markerColor"]:checked').value;
+    const icon = document.querySelector('input[name="markerIcon"]:checked').value;
     
     if (!name) {
         showNotification('請填寫標記名稱', 'warning');
@@ -747,6 +827,8 @@ function saveMarker(e) {
             marker.description = description;
             marker.groupId = groupId;
             marker.subgroupId = subgroupId;
+            marker.color = color;
+            marker.icon = icon;
             
             // 添加到新的組別/群組
             group.addMarker(marker);
@@ -759,11 +841,23 @@ function saveMarker(e) {
             
             // 更新地圖標記
             if (marker.leafletMarker) {
-                marker.leafletMarker.getPopup().setContent(`
+                // 移除舊標記
+                map.removeLayer(marker.leafletMarker);
+                
+                // 創建新標記
+                marker.leafletMarker = L.marker([marker.lat, marker.lng], {
+                    icon: createCustomMarkerIcon(marker.color, marker.icon)
+                }).addTo(map);
+                
+                marker.leafletMarker.bindPopup(`
                     <strong>${marker.name}</strong><br>
                     ${marker.description}<br>
                     <button onclick="editMarker('${marker.id}')">編輯</button>
                 `);
+                
+                marker.leafletMarker.on('click', function() {
+                    selectGroup(marker.groupId, marker.subgroupId);
+                });
             }
         }
     } else {
@@ -778,7 +872,9 @@ function saveMarker(e) {
             lat,
             lng,
             group.id,
-            subgroupId
+            subgroupId,
+            color,
+            icon
         );
         
         markers.push(marker);
@@ -826,7 +922,9 @@ function addMarkerToMap(marker) {
         marker.leafletMarker = null;
     }
     
-    const leafletMarker = L.marker([marker.lat, marker.lng]).addTo(map);
+    // 創建自定義圖標
+    const customIcon = createCustomMarkerIcon(marker.color || 'red', marker.icon || '📍');
+    const leafletMarker = L.marker([marker.lat, marker.lng], { icon: customIcon }).addTo(map);
     
     leafletMarker.bindPopup(`
         <strong>${marker.name}</strong><br>

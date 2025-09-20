@@ -18,35 +18,62 @@ body {
     height: 100vh;
 }
 
-/* 側邊欄樣式 - iOS風格 */
+/* 側邊欄樣式 - 簡潔現代風格 */
 .sidebar {
-    width: 350px;
-    background: rgba(255, 255, 255, 0.8);
+    width: 320px;
+    background: rgba(255, 255, 255, 0.95);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
-    color: #1d1d1f;
-    padding: 20px;
+    color: #2d3748;
+    padding: 16px;
     overflow-y: auto;
     box-shadow: 
-        0 8px 32px rgba(0, 0, 0, 0.1),
+        0 4px 20px rgba(0, 0, 0, 0.08),
         0 0 0 1px rgba(255, 255, 255, 0.2);
-    border-right: 1px solid rgba(255, 255, 255, 0.3);
+    border-right: 1px solid rgba(226, 232, 240, 0.8);
     position: relative;
 }
 
+/* 側邊欄標題區域 */
+.sidebar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(226, 232, 240, 0.6);
+}
+
 .sidebar h1 {
-    font-size: 24px;
-    margin-bottom: 30px;
-    text-align: center;
-    text-shadow: 
-        0 0 10px #00ffff,
-        0 0 20px #00ffff,
-        0 0 30px #00ffff;
-    color: #ffffff;
-    font-weight: bold;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    animation: cyberpunk-glow 2s ease-in-out infinite alternate;
+    font-size: 18px;
+    font-weight: 600;
+    color: #2d3748;
+    margin: 0;
+}
+
+.quick-actions {
+    display: flex;
+    gap: 6px;
+}
+
+.icon-btn {
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: 8px;
+    background: rgba(99, 102, 241, 0.1);
+    color: #6366f1;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.icon-btn:hover {
+    background: rgba(99, 102, 241, 0.2);
+    transform: translateY(-1px);
 }
 
 .sidebar h2 {
@@ -296,51 +323,54 @@ body {
 /* 浮動控制面板 */
 .floating-controls {
     position: absolute;
-    top: 20px;
-    right: 20px;
+    top: 16px;
+    right: 16px;
     z-index: 1000;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 8px;
 }
 
 .control-btn {
-    padding: 12px 16px;
-    background: rgba(255, 255, 255, 0.9);
+    padding: 10px 14px;
+    background: rgba(255, 255, 255, 0.95);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    border-radius: 16px;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(226, 232, 240, 0.6);
+    border-radius: 12px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
     cursor: pointer;
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 500;
     transition: all 0.2s ease;
     display: flex;
     align-items: center;
-    gap: 8px;
-    color: #333;
+    gap: 6px;
+    color: #4a5568;
+    min-width: 120px;
 }
 
 .control-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
-    background: rgba(255, 255, 255, 0.95);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+    background: rgba(255, 255, 255, 1);
+    border-color: rgba(99, 102, 241, 0.3);
 }
 
 .control-btn:active {
     transform: translateY(0);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 1px 6px rgba(0, 0, 0, 0.08);
 }
 
 .control-btn.active {
-    background: rgba(0, 122, 255, 0.9);
+    background: rgba(99, 102, 241, 0.9);
     color: white;
-    box-shadow: 0 4px 16px rgba(0, 122, 255, 0.3);
+    box-shadow: 0 2px 12px rgba(99, 102, 241, 0.3);
+    border-color: rgba(99, 102, 241, 0.8);
 }
 
 .control-btn span {
-    font-size: 16px;
+    font-size: 14px;
 }
 
 /* 彈窗樣式 */
@@ -468,23 +498,98 @@ form input:focus, form textarea:focus, form select:focus {
     
     .sidebar {
         width: 100%;
-        height: 40vh;
+        height: auto;
+        max-height: 45vh;
         order: 2;
+        overflow-y: auto;
+        padding: 16px;
+    }
+    
+    .sidebar-header {
+        padding: 12px 0;
+    }
+    
+    .sidebar h1 {
+        font-size: 18px;
+    }
+    
+    .quick-actions {
+        gap: 8px;
+    }
+    
+    .icon-btn {
+        width: 36px;
+        height: 36px;
+        font-size: 14px;
+    }
+    
+    .section {
+        margin-bottom: 16px;
+    }
+    
+    .section-header {
+        padding: 10px 0;
+        font-size: 14px;
     }
     
     .map-container {
-        height: 60vh;
+        height: 55vh;
         order: 1;
     }
     
     .floating-controls {
-        top: 10px;
-        right: 10px;
+        top: 8px;
+        right: 8px;
+        gap: 6px;
     }
     
     .control-btn {
-        padding: 10px 12px;
+        padding: 8px 10px;
         font-size: 12px;
+        min-width: 100px;
+        gap: 4px;
+    }
+    
+    .control-btn span {
+        font-size: 12px;
+    }
+}
+
+@media (max-width: 480px) {
+    .sidebar {
+        padding: 12px;
+        max-height: 40vh;
+    }
+    
+    .sidebar h1 {
+        font-size: 16px;
+    }
+    
+    .icon-btn {
+        width: 32px;
+        height: 32px;
+        font-size: 12px;
+    }
+    
+    .compact-input {
+        font-size: 13px;
+        padding: 8px 10px;
+    }
+    
+    .add-btn {
+        padding: 8px 12px;
+        font-size: 12px;
+    }
+    
+    .control-btn {
+        padding: 6px 8px;
+        font-size: 11px;
+        min-width: 80px;
+    }
+    
+    .floating-controls {
+        top: 6px;
+        right: 6px;
     }
 }
 
@@ -703,6 +808,176 @@ form input:focus, form textarea:focus, form select:focus {
     background: rgba(255,255,255,0.5);
 }
 
+/* 區塊樣式 */
+.section {
+    margin-bottom: 16px;
+    background: rgba(248, 250, 252, 0.8);
+    border-radius: 12px;
+    border: 1px solid rgba(226, 232, 240, 0.6);
+    overflow: hidden;
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: rgba(255, 255, 255, 0.5);
+    border-bottom: 1px solid rgba(226, 232, 240, 0.4);
+}
+
+.section-header.clickable {
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.section-header.clickable:hover {
+    background: rgba(255, 255, 255, 0.8);
+}
+
+.section-header h3 {
+    font-size: 14px;
+    font-weight: 600;
+    color: #4a5568;
+    margin: 0;
+}
+
+.section-content {
+    padding: 12px 16px;
+}
+
+.section.collapsed .section-content {
+    display: none;
+}
+
+.toggle-icon {
+    font-size: 12px;
+    color: #718096;
+    transition: transform 0.2s ease;
+}
+
+.add-btn {
+    width: 24px;
+    height: 24px;
+    border: none;
+    border-radius: 6px;
+    background: #48bb78;
+    color: white;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.add-btn:hover {
+    background: #38a169;
+    transform: scale(1.05);
+}
+
+/* 輸入框樣式 */
+.compact-input {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid rgba(226, 232, 240, 0.8);
+    border-radius: 8px;
+    font-size: 14px;
+    background: rgba(255, 255, 255, 0.9);
+    transition: all 0.2s ease;
+    margin-bottom: 8px;
+}
+
+.compact-input:focus {
+    outline: none;
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+/* 設定行樣式 */
+.setting-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.setting-row label {
+    font-size: 13px;
+    color: #4a5568;
+    min-width: 40px;
+}
+
+.setting-row .compact-input {
+    flex: 1;
+    margin-bottom: 0;
+}
+
+.setting-row .unit {
+    font-size: 12px;
+    color: #718096;
+    min-width: 20px;
+}
+
+/* 開關樣式 */
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 44px;
+    height: 24px;
+    margin: 0;
+}
+
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #cbd5e0;
+    transition: 0.3s;
+    border-radius: 24px;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: 0.3s;
+    border-radius: 50%;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+input:checked + .slider {
+    background-color: #48bb78;
+}
+
+input:checked + .slider:before {
+    transform: translateX(20px);
+}
+
+/* 位置顯示 */
+.location-display {
+    margin-top: 8px;
+    padding: 8px 12px;
+    background: rgba(237, 242, 247, 0.8);
+    border-radius: 8px;
+    font-size: 12px;
+    color: #4a5568;
+}
+
 /* 通知樣式 */
 .notification {
     position: fixed;
@@ -738,4 +1013,74 @@ form input:focus, form textarea:focus, form select:focus {
         transform: translateX(0);
         opacity: 1;
     }
+}
+
+/* 標示點自定義樣式 */
+.marker-customization {
+    margin: 16px 0;
+    padding: 16px;
+    background: rgba(248, 250, 252, 0.8);
+    border-radius: 8px;
+    border: 1px solid rgba(226, 232, 240, 0.6);
+}
+
+.marker-customization label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: #374151;
+}
+
+.color-options, .icon-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.color-option, .icon-option {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    font-size: 18px;
+}
+
+.color-option {
+    background: #e5e7eb;
+}
+
+.color-option.red { background: #ef4444; }
+.color-option.blue { background: #3b82f6; }
+.color-option.green { background: #10b981; }
+.color-option.orange { background: #f97316; }
+.color-option.purple { background: #8b5cf6; }
+.color-option.yellow { background: #eab308; }
+
+.icon-option {
+    background: rgba(255, 255, 255, 0.9);
+    border: 2px solid #e5e7eb;
+}
+
+.color-options input[type="radio"],
+.icon-options input[type="radio"] {
+    display: none;
+}
+
+.color-options input[type="radio"]:checked + .color-option,
+.icon-options input[type="radio"]:checked + .icon-option {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+    transform: scale(1.1);
+}
+
+.color-option:hover,
+.icon-option:hover {
+    transform: scale(1.05);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }

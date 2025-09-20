@@ -102,24 +102,74 @@
             <span class="close">&times;</span>
             <h2>標註點詳情</h2>
             <form id="markerForm">
-                <label for="markerName">名稱:</label>
-                <input type="text" id="markerName" required>
-                
-                <label for="markerDescription">描述:</label>
-                <textarea id="markerDescription" rows="3"></textarea>
-                
-                <label for="markerGroup">所屬組別:</label>
-                <select id="markerGroup"></select>
-                
-                <label for="markerSubgroup">所屬群組:</label>
-                <select id="markerSubgroup"></select>
-                
-                <div class="form-buttons">
-                    <button type="submit">保存</button>
-                    <button type="button" id="deleteMarkerBtn">刪除</button>
-                    <button type="button" class="cancel">取消</button>
-                </div>
-            </form>
+                    <label for="markerName">名稱:</label>
+                    <input type="text" id="markerName" required>
+                    
+                    <label for="markerDescription">描述:</label>
+                    <textarea id="markerDescription" rows="3"></textarea>
+                    
+                    <label for="markerGroup">所屬組別:</label>
+                    <select id="markerGroup"></select>
+                    
+                    <label for="markerSubgroup">所屬群組:</label>
+                    <select id="markerSubgroup"></select>
+                    
+                    <div class="marker-customization">
+                        <label for="markerColor">標示點顏色:</label>
+                        <div class="color-options">
+                            <input type="radio" id="color-red" name="markerColor" value="red" checked>
+                            <label for="color-red" class="color-option red"></label>
+                            
+                            <input type="radio" id="color-blue" name="markerColor" value="blue">
+                            <label for="color-blue" class="color-option blue"></label>
+                            
+                            <input type="radio" id="color-green" name="markerColor" value="green">
+                            <label for="color-green" class="color-option green"></label>
+                            
+                            <input type="radio" id="color-orange" name="markerColor" value="orange">
+                            <label for="color-orange" class="color-option orange"></label>
+                            
+                            <input type="radio" id="color-purple" name="markerColor" value="purple">
+                            <label for="color-purple" class="color-option purple"></label>
+                            
+                            <input type="radio" id="color-yellow" name="markerColor" value="yellow">
+                            <label for="color-yellow" class="color-option yellow"></label>
+                        </div>
+                        
+                        <label for="markerIcon">標示點圖案:</label>
+                        <div class="icon-options">
+                            <input type="radio" id="icon-default" name="markerIcon" value="📍" checked>
+                            <label for="icon-default" class="icon-option">📍</label>
+                            
+                            <input type="radio" id="icon-star" name="markerIcon" value="⭐">
+                            <label for="icon-star" class="icon-option">⭐</label>
+                            
+                            <input type="radio" id="icon-home" name="markerIcon" value="🏠">
+                            <label for="icon-home" class="icon-option">🏠</label>
+                            
+                            <input type="radio" id="icon-food" name="markerIcon" value="🍽️">
+                            <label for="icon-food" class="icon-option">🍽️</label>
+                            
+                            <input type="radio" id="icon-shop" name="markerIcon" value="🛒">
+                            <label for="icon-shop" class="icon-option">🛒</label>
+                            
+                            <input type="radio" id="icon-car" name="markerIcon" value="🚗">
+                            <label for="icon-car" class="icon-option">🚗</label>
+                            
+                            <input type="radio" id="icon-heart" name="markerIcon" value="❤️">
+                            <label for="icon-heart" class="icon-option">❤️</label>
+                            
+                            <input type="radio" id="icon-work" name="markerIcon" value="💼">
+                            <label for="icon-work" class="icon-option">💼</label>
+                        </div>
+                    </div>
+                    
+                    <div class="modal-buttons">
+                        <button type="submit">保存</button>
+                        <button type="button" id="deleteMarkerBtn">刪除</button>
+                        <button type="button" onclick="closeModal('markerModal')">取消</button>
+                    </div>
+                </form>
         </div>
     </div>
 
