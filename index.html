@@ -187,6 +187,21 @@
                     <label for="markerDescription">描述:</label>
                     <textarea id="markerDescription" rows="2"></textarea>
                     
+                    <div class="image-upload-section">
+                        <label for="markerImages">圖片 (最多3張):</label>
+                        <div class="image-upload-container">
+                            <input type="file" id="markerImages" accept="image/*" multiple style="display: none;">
+                            <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display: none;">
+                            <div class="upload-buttons">
+                                <button type="button" id="uploadImageBtn" class="upload-btn">📁 選擇檔案</button>
+                                <button type="button" id="cameraBtn" class="upload-btn camera-btn">📷 拍照</button>
+                            </div>
+                            <div id="imagePreviewContainer" class="image-preview-container">
+                                <!-- 動態生成的圖片預覽將顯示在這裡 -->
+                            </div>
+                        </div>
+                    </div>
+                    
                     <label for="markerGroup">所屬組別:</label>
                     <select id="markerGroup"></select>
                     
@@ -313,6 +328,24 @@
                     <button type="button" class="cancel">取消</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- 圖片預覽模態框 -->
+    <div id="imagePreviewModal" class="modal image-modal">
+        <div class="modal-content image-modal-content">
+            <span class="close image-modal-close">&times;</span>
+            <div class="image-modal-header">
+                <h3 id="imageModalTitle">圖片預覽</h3>
+                <div class="image-navigation">
+                    <button id="prevImageBtn" class="nav-btn">‹</button>
+                    <span id="imageCounter">1 / 1</span>
+                    <button id="nextImageBtn" class="nav-btn">›</button>
+                </div>
+            </div>
+            <div class="image-modal-body">
+                <img id="modalPreviewImg" src="" alt="預覽圖片">
+            </div>
         </div>
     </div>
 

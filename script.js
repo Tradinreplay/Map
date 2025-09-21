@@ -70,7 +70,7 @@ class Subgroup {
 }
 
 class Marker {
-    constructor(id, name, description, lat, lng, groupId, subgroupId = null, color = 'red', icon = '📍') {
+    constructor(id, name, description, lat, lng, groupId, subgroupId = null, color = 'red', icon = '📍', imageData = null) {
         this.id = id;
         this.name = name;
         this.description = description;
@@ -80,6 +80,7 @@ class Marker {
         this.subgroupId = subgroupId;
         this.color = color;
         this.icon = icon;
+        this.imageData = imageData; // base64編碼的圖片數據
         this.leafletMarker = null;
     }
 }
@@ -539,6 +540,18 @@ function initEventListeners() {
     document.getElementById('markerForm').addEventListener('submit', saveMarker);
     document.getElementById('deleteMarkerBtn').addEventListener('click', deleteCurrentMarker);
     
+    // 圖片上傳相關事件
+    document.getElementById('uploadImageBtn').addEventListener('click', function() {
+        document.getElementById('markerImages').click();
+    });
+    
+    document.getElementById('cameraBtn').addEventListener('click', function() {
+        document.getElementById('cameraInput').click();
+    });
+    
+    document.getElementById('markerImages').addEventListener('change', handleImageUpload);
+    document.getElementById('cameraInput').addEventListener('change', handleImageUpload);
+    
     // 初始設定相關事件
     document.getElementById('startUsingBtn').addEventListener('click', handleInitialSetup);
     document.getElementById('skipSetupBtn').addEventListener('click', skipInitialSetup);
@@ -571,7 +584,295 @@ document.getElementById('createGroupForm').addEventListener('submit', handleCrea
         saveData();
     });
     
+}
 
+// 圖片處理相關函數
+// 圖片壓縮函數
+function compressImage(file, maxSizeKB = 50) {
+    return new Promise((resolve) => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        const img = new Image();
+        
+        img.onload = function() {
+            // 計算壓縮後的尺寸
+            let { width, height } = img;
+            const maxDimension = 800; // 最大尺寸
+            
+            if (width > height && width > maxDimension) {
+                height = (height * maxDimension) / width;
+                width = maxDimension;
+            } else if (height > maxDimension) {
+                width = (width * maxDimension) / height;
+                height = maxDimension;
+            }
+            
+            canvas.width = width;
+            canvas.height = height;
+            
+            // 繪製圖片到canvas
+            ctx.drawImage(img, 0, 0, width, height);
+            
+            // 嘗試不同的質量設置來達到目標文件大小
+            let quality = 0.8;
+            let compressedDataUrl;
+            
+            const tryCompress = () => {
+                compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
+                const sizeKB = Math.round((compressedDataUrl.length * 3) / 4 / 1024);
+                
+                if (sizeKB > maxSizeKB && quality > 0.1) {
+                    quality -= 0.1;
+                    tryCompress();
+                } else {
+                    resolve(compressedDataUrl);
+                }
+            };
+            
+            tryCompress();
+        };
+        
+        // 如果是文件對象，轉換為DataURL
+        if (file instanceof File) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        } else {
+            // 如果已經是DataURL
+            img.src = file;
+        }
+    });
+}
+
+function handleImageUpload(event) {
+    const files = Array.from(event.target.files);
+    if (!files.length) return;
+    
+    // 檢查圖片數量限制
+    const form = document.getElementById('markerForm');
+    const existingImages = JSON.parse(form.dataset.imageData || '[]');
+    const totalImages = existingImages.length + files.length;
+    
+    if (totalImages > 3) {
+        showNotification('最多只能上傳3張圖片', 'warning');
+        return;
+    }
+    
+    // 處理每個文件
+    let processedCount = 0;
+    const newImages = [];
+    
+    files.forEach(file => {
+        // 檢查文件類型
+        if (!file.type.startsWith('image/')) {
+            showNotification('請選擇圖片文件', 'warning');
+            return;
+        }
+        
+        // 檢查文件大小（限制為5MB）
+        const maxSize = 5 * 1024 * 1024; // 5MB
+        if (file.size > maxSize) {
+            showNotification('圖片文件過大，請選擇小於5MB的圖片', 'warning');
+            return;
+        }
+        
+        // 使用壓縮功能處理圖片
+        compressImage(file).then(compressedDataUrl => {
+            newImages.push(compressedDataUrl);
+            processedCount++;
+            
+            // 當所有圖片都處理完成時，更新預覽
+            if (processedCount === files.length) {
+                const allImages = [...existingImages, ...newImages];
+                displayMultipleImagePreviews(allImages);
+                showNotification(`已上傳 ${files.length} 張圖片並自動壓縮`, 'success');
+            }
+        }).catch(error => {
+            console.error('圖片壓縮失敗:', error);
+            showNotification('圖片處理失敗', 'error');
+        });
+    });
+}
+
+function displayMultipleImagePreviews(imagesArray) {
+    const previewContainer = document.getElementById('imagePreviewContainer');
+    const form = document.getElementById('markerForm');
+    
+    // 清空現有預覽
+    previewContainer.innerHTML = '';
+    
+    // 存儲圖片數據到表單
+    form.dataset.imageData = JSON.stringify(imagesArray);
+    
+    // 為每張圖片創建預覽元素
+    imagesArray.forEach((imageData, index) => {
+        const imagePreview = document.createElement('div');
+        imagePreview.className = 'image-preview';
+        imagePreview.dataset.index = index;
+        
+        const img = document.createElement('img');
+        img.src = imageData;
+        img.alt = `圖片 ${index + 1}`;
+        
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'remove-image-btn';
+        removeBtn.innerHTML = '×';
+        removeBtn.title = '刪除圖片';
+        removeBtn.onclick = (e) => {
+            e.stopPropagation();
+            removeImageAtIndex(index);
+        };
+        
+        // 添加點擊預覽功能
+        imagePreview.onclick = () => {
+            openImageModal(imagesArray, index);
+        };
+        
+        imagePreview.appendChild(img);
+        imagePreview.appendChild(removeBtn);
+        previewContainer.appendChild(imagePreview);
+    });
+}
+
+function removeImageAtIndex(index) {
+    const form = document.getElementById('markerForm');
+    const imagesArray = JSON.parse(form.dataset.imageData || '[]');
+    
+    // 移除指定索引的圖片
+    imagesArray.splice(index, 1);
+    
+    // 更新預覽
+    displayMultipleImagePreviews(imagesArray);
+    
+    // 清空文件輸入
+    document.getElementById('markerImages').value = '';
+}
+
+function removeAllMarkerImages() {
+    const previewContainer = document.getElementById('imagePreviewContainer');
+    const fileInput = document.getElementById('markerImages');
+    const form = document.getElementById('markerForm');
+    
+    // 清除預覽
+    previewContainer.innerHTML = '';
+    
+    // 清除文件輸入
+    fileInput.value = '';
+    
+    // 清除表單數據
+    delete form.dataset.imageData;
+}
+
+function resetImageUpload() {
+    removeAllMarkerImages();
+}
+
+// 圖片模態框預覽功能
+function openImageModal(imagesArray, startIndex = 0) {
+    const modal = document.getElementById('imagePreviewModal');
+    const modalImg = document.getElementById('modalPreviewImg');
+    const imageCounter = document.getElementById('imageCounter');
+    const prevBtn = document.getElementById('prevImageBtn');
+    const nextBtn = document.getElementById('nextImageBtn');
+    
+    let currentIndex = startIndex;
+    
+    function updateModalImage() {
+        modalImg.src = imagesArray[currentIndex];
+        imageCounter.textContent = `${currentIndex + 1} / ${imagesArray.length}`;
+        
+        // 更新按鈕狀態
+        prevBtn.disabled = currentIndex === 0;
+        nextBtn.disabled = currentIndex === imagesArray.length - 1;
+    }
+    
+    function showPrevImage() {
+        if (currentIndex > 0) {
+            currentIndex--;
+            updateModalImage();
+        }
+    }
+    
+    function showNextImage() {
+        if (currentIndex < imagesArray.length - 1) {
+            currentIndex++;
+            updateModalImage();
+        }
+    }
+    
+    // 設置事件監聽器
+    prevBtn.onclick = showPrevImage;
+    nextBtn.onclick = showNextImage;
+    
+    // 鍵盤導航
+    function handleKeyPress(e) {
+        if (e.key === 'ArrowLeft') showPrevImage();
+        if (e.key === 'ArrowRight') showNextImage();
+        if (e.key === 'Escape') closeImageModal();
+    }
+    
+    document.addEventListener('keydown', handleKeyPress);
+    
+    // 點擊背景關閉模態框
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) {
+            closeImageModal();
+        }
+    });
+    
+    // 關閉模態框時清理事件監聽器
+    const originalCloseModal = closeImageModal;
+    window.closeImageModal = function() {
+        document.removeEventListener('keydown', handleKeyPress);
+        originalCloseModal();
+    };
+    
+    // 初始化並顯示模態框
+    updateModalImage();
+    modal.style.display = 'flex';
+    
+    // 如果處於全螢幕模式，確保modal在正確的容器中
+    if (isFullscreen) {
+        const fullscreenContainer = document.querySelector('.map-container.fullscreen');
+        if (fullscreenContainer) {
+            // 強制將modal移到全螢幕容器中
+            fullscreenContainer.appendChild(modal);
+            
+            // 確保modal的樣式正確
+            setTimeout(() => {
+                modal.style.position = 'fixed';
+                modal.style.zIndex = '10002';
+                modal.style.left = '0';
+                modal.style.top = '0';
+                modal.style.width = '100vw';
+                modal.style.height = '100vh';
+            }, 10);
+        }
+    }
+}
+
+function closeImageModal() {
+    const modal = document.getElementById('imagePreviewModal');
+    
+    // 如果在全屏模式下，將模態框移回原來的位置
+    if (isFullscreen) {
+        const fullscreenContainer = document.querySelector('.fullscreen');
+        if (fullscreenContainer && fullscreenContainer.contains(modal)) {
+            document.body.appendChild(modal);
+            // 重置樣式
+            modal.style.zIndex = '';
+            modal.style.position = '';
+            modal.style.top = '';
+            modal.style.left = '';
+            modal.style.width = '';
+            modal.style.height = '';
+        }
+    }
+    
+    modal.style.display = 'none';
+}
 
 // 添加重置功能（用於測試）
 window.resetSetup = function() {
@@ -856,7 +1157,6 @@ function handleFullscreenChange() {
         // 用戶通過ESC或其他方式退出了全螢幕
         exitFullscreen();
     }
-}
 }
 
 // 定位點功能
@@ -1624,12 +1924,39 @@ function showMarkerModal(lat, lng, existingMarker = null) {
         const iconRadio = document.querySelector(`input[name="markerIcon"][value="${existingMarker.icon || '📍'}"]`);
         if (iconRadio) iconRadio.checked = true;
         
+        // 處理圖片顯示
+        if (existingMarker.imageData) {
+            let imageData = existingMarker.imageData;
+            
+            // 如果是字符串，嘗試解析為數組
+            if (typeof imageData === 'string') {
+                try {
+                    imageData = JSON.parse(imageData);
+                } catch (e) {
+                    // 如果解析失敗，轉換為數組格式
+                    imageData = [imageData];
+                }
+            }
+            
+            // 確保是數組格式
+            if (!Array.isArray(imageData)) {
+                imageData = [imageData];
+            }
+            
+            // 設置表單數據並顯示預覽
+            form.dataset.imageData = JSON.stringify(imageData);
+            displayMultipleImagePreviews(imageData);
+        } else {
+            resetImageUpload();
+        }
+        
         document.getElementById('deleteMarkerBtn').style.display = 'block';
         
         form.dataset.markerId = existingMarker.id;
     } else {
         // 新增標記
         form.reset();
+        resetImageUpload();
         document.getElementById('deleteMarkerBtn').style.display = 'none';
         
         // 如果有選定的組別，自動設定為默認值
@@ -1701,6 +2028,17 @@ function saveMarker(e) {
     const subgroupId = document.getElementById('markerSubgroup').value || null;
     const color = document.querySelector('input[name="markerColor"]:checked').value;
     const icon = document.querySelector('input[name="markerIcon"]:checked').value;
+    // 获取图片数据，支持多张图片
+    let imageData = form.dataset.imageData || null;
+    if (imageData) {
+        try {
+            // 尝试解析为数组
+            imageData = JSON.parse(imageData);
+        } catch (e) {
+            // 如果解析失败，保持原始格式（兼容旧数据）
+            console.log('Image data is not JSON format, keeping as string');
+        }
+    }
     
     if (!name) {
         showNotification('請填寫標記名稱', 'warning');
@@ -1751,6 +2089,7 @@ function saveMarker(e) {
             marker.subgroupId = subgroupId;
             marker.color = color;
             marker.icon = icon;
+            marker.imageData = imageData;
             
             // 添加到新的組別/群組
             group.addMarker(marker);
@@ -1784,7 +2123,8 @@ function saveMarker(e) {
             group.id,
             subgroupId,
             color,
-            icon
+            icon,
+            imageData
         );
         
         markers.push(marker);
@@ -1947,10 +2287,46 @@ function updateMarkerPopup(marker) {
         ? `<button onclick="clearTrackingTarget()" style="padding: 4px 8px; font-size: 12px; background-color: #ef4444; color: white;">取消追蹤</button>`
         : `<button onclick="setTrackingTarget('${marker.id}')" style="padding: 4px 8px; font-size: 12px;">追蹤</button>`;
     
+    // 多張圖片顯示
+    let imageDisplay = '';
+    if (marker.imageData) {
+        try {
+            // 嘗試解析為數組（新格式）
+            const imagesArray = Array.isArray(marker.imageData) ? marker.imageData : JSON.parse(marker.imageData);
+            if (imagesArray.length > 0) {
+                const imageElements = imagesArray.map((imageData, index) => 
+                    `<img src="${imageData}" 
+                         style="max-width: 80px; max-height: 80px; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin: 2px; cursor: pointer; object-fit: cover;" 
+                         alt="圖片 ${index + 1}"
+                         onclick="openImageModal(${JSON.stringify(imagesArray).replace(/"/g, '&quot;')}, ${index})">`
+                ).join('');
+                
+                imageDisplay = `<div style="margin-bottom: 8px; text-align: center;">
+                    <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 4px;">
+                        ${imageElements}
+                    </div>
+                    <div style="font-size: 11px; color: #888; margin-top: 4px;">點擊圖片預覽 (${imagesArray.length}/3)</div>
+                </div>`;
+            }
+        } catch (e) {
+            // 如果解析失敗，當作舊格式（單張圖片）處理
+            if (typeof marker.imageData === 'string' && marker.imageData.startsWith('data:image/')) {
+                imageDisplay = `<div style="margin-bottom: 8px; text-align: center;">
+                    <img src="${marker.imageData}" 
+                         style="max-width: 200px; max-height: 150px; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); cursor: pointer;" 
+                         alt="標註點圖片"
+                         onclick="openImageModal(['${marker.imageData}'], 0)">
+                    <div style="font-size: 11px; color: #888; margin-top: 4px;">點擊圖片預覽</div>
+                </div>`;
+            }
+        }
+    }
+    
     const popupContent = `
         <div style="text-align: center; min-width: 200px;">
             <div style="font-size: 18px; margin-bottom: 8px;">${marker.icon} <strong>${marker.name}</strong></div>
             ${marker.description ? `<div style="font-size: 14px; color: #333; margin-bottom: 8px; text-align: left; padding: 0 10px;">${marker.description}</div>` : ''}
+            ${imageDisplay}
             ${distanceDisplay}
             <div style="font-size: 12px; color: #666; margin-bottom: 8px;">群組: ${groupName}</div>
             <div style="font-size: 12px; color: #666; margin-bottom: 12px;">子群組: ${subgroupName}</div>
@@ -2753,7 +3129,8 @@ function saveData() {
         groupId: marker.groupId,
         subgroupId: marker.subgroupId,
         color: marker.color,
-        icon: marker.icon
+        icon: marker.icon,
+        imageData: marker.imageData
         // 不包含 leafletMarker 屬性
     }));
     
@@ -2814,7 +3191,8 @@ function loadData() {
                     markerData.groupId,
                     markerData.subgroupId,
                     markerData.color || 'red',
-                    markerData.icon || '📍'
+                    markerData.icon || '📍',
+                    markerData.imageData || null
                 )
             );
             
