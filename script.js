@@ -793,6 +793,45 @@ function initDragFunctionality() {
     // 為每個按鈕添加拖曳功能
     makeDraggable(fullscreenBtn);
     makeDraggable(locationBtn);
+    
+    // 為手機添加額外的觸控事件處理
+    addMobileTouchSupport(fullscreenBtn, 'handleFullscreenClick');
+    addMobileTouchSupport(locationBtn, 'handleLocationClick');
+}
+
+// 為手機添加觸控事件支持
+function addMobileTouchSupport(element, functionName) {
+    let touchStartTime = 0;
+    let touchMoved = false;
+    
+    element.addEventListener('touchstart', function(e) {
+        touchStartTime = Date.now();
+        touchMoved = false;
+    }, { passive: true });
+    
+    element.addEventListener('touchmove', function(e) {
+        touchMoved = true;
+    }, { passive: true });
+    
+    element.addEventListener('touchend', function(e) {
+        const touchDuration = Date.now() - touchStartTime;
+        
+        // 如果是短時間觸控且沒有移動，且沒有被拖曳功能標記為已拖曳
+        if (touchDuration < 500 && !touchMoved && !element.hasDragged) {
+            // 延遲一點執行，確保拖曳檢查完成
+            setTimeout(() => {
+                if (!element.hasDragged) {
+                    console.log('Mobile touch click for:', element.id);
+                    // 直接調用對應的函數
+                    if (functionName === 'handleFullscreenClick' && typeof window.handleFullscreenClick === 'function') {
+                        window.handleFullscreenClick();
+                    } else if (functionName === 'handleLocationClick' && typeof window.handleLocationClick === 'function') {
+                        window.handleLocationClick();
+                    }
+                }
+            }, 20);
+        }
+    }, { passive: true });
 }
 
 function makeDraggable(element) {
@@ -838,7 +877,10 @@ function makeDraggable(element) {
         currentX = rect.left - initialX;
         currentY = rect.top - initialY;
         
-        e.preventDefault();
+        // 只在滑鼠事件時preventDefault，觸控事件延遲處理
+        if (e.type !== 'touchstart') {
+            e.preventDefault();
+        }
     }
     
     function drag(e) {
@@ -861,11 +903,13 @@ function makeDraggable(element) {
             isDragging = true;
             element.hasDragged = true;
             element.classList.add('dragging');
+            // 現在才阻止默認行為，確保真正開始拖曳
             e.preventDefault();
         }
         
         if (!isDragging) return;
         
+        // 只在真正拖曳時阻止默認行為
         e.preventDefault();
         
         const newX = initialX + currentX + deltaX;
