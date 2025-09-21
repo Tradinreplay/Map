@@ -1741,7 +1741,11 @@ function updateMarkerPopup(marker) {
             distanceColor = '#4CAF50'; // 綠色 - 較遠距離
         }
         
-        distanceDisplay = `<div style="font-size: 13px; color: ${distanceColor}; margin-bottom: 8px; font-weight: 500;">📍 距離: ${distanceText}</div>`;
+        // 檢查是否為當前追蹤目標，如果是則添加閃爍效果
+        const isTrackingTarget = trackingTarget && trackingTarget.id === marker.id;
+        const blinkClass = isTrackingTarget ? ' tracking-distance-blink' : '';
+        
+        distanceDisplay = `<div class="distance-display${blinkClass}" style="font-size: 13px; color: ${distanceColor}; margin-bottom: 8px; font-weight: 500;">📍 距離: ${distanceText}</div>`;
     }
     
     // 檢查是否為當前追蹤目標
