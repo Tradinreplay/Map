@@ -512,30 +512,93 @@ body {
     background: rgba(255, 255, 255, 0.95) !important;
     backdrop-filter: blur(20px) !important;
     -webkit-backdrop-filter: blur(20px) !important;
-    border-radius: 12px !important;
+    border-radius: 8px !important;
     border: 1px solid rgba(255, 255, 255, 0.3) !important;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1) !important;
-    padding: 8px !important;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08) !important;
+    padding: 4px !important;
+    font-size: 12px !important;
 }
 
 .leaflet-control-layers-toggle {
     background-color: transparent !important;
-    border-radius: 8px !important;
-    width: 36px !important;
-    height: 36px !important;
+    border-radius: 6px !important;
+    width: 28px !important;
+    height: 28px !important;
+    background-size: 14px 14px !important;
 }
 
 .leaflet-control-layers-list {
-    padding: 8px !important;
+    padding: 6px !important;
     margin: 0 !important;
+    min-width: 120px !important;
 }
 
 .leaflet-control-layers label {
-    font-size: 14px !important;
-    margin: 4px 0 !important;
+    font-size: 11px !important;
+    margin: 2px 0 !important;
     display: flex !important;
     align-items: center !important;
-    gap: 8px !important;
+    gap: 6px !important;
+    line-height: 1.2 !important;
+}
+
+.leaflet-control-layers input {
+    margin: 0 !important;
+    transform: scale(0.8) !important;
+}
+
+/* 側邊欄最小化功能 */
+.sidebar.minimized {
+    width: 0;
+    min-width: 0;
+    overflow: hidden;
+    padding: 0;
+    border-right: none;
+}
+
+.minimize-btn {
+    background: rgba(255, 59, 48, 0.1) !important;
+    color: #FF3B30 !important;
+    border: 1px solid rgba(255, 59, 48, 0.3) !important;
+}
+
+.minimize-btn:hover {
+    background: rgba(255, 59, 48, 0.2) !important;
+    transform: translateY(-1px) scale(1.05);
+}
+
+.expand-sidebar-btn {
+    position: absolute;
+    top: 16px;
+    left: 16px;
+    width: 40px;
+    height: 40px;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 12px;
+    color: #007AFF;
+    font-size: 16px;
+    cursor: pointer;
+    z-index: 1001;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.expand-sidebar-btn:hover {
+    background: rgba(0, 122, 255, 0.1);
+    border-color: rgba(0, 122, 255, 0.3);
+    transform: translateY(-2px) scale(1.05);
+    box-shadow: 0 6px 25px rgba(0, 122, 255, 0.15);
+}
+
+.expand-sidebar-btn:active {
+    transform: translateY(-1px) scale(0.98);
+    box-shadow: 0 4px 15px rgba(0, 122, 255, 0.25);
 }
 
 /* 浮動控制面板 */

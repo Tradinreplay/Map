@@ -17,6 +17,7 @@
                     <button id="centerMapBtn" class="icon-btn" title="回到當前位置">📍</button>
                     <button id="testNotificationBtn" class="icon-btn" title="測試通知">🔔</button>
                     <button id="showAllMarkersBtn" class="icon-btn" title="顯示所有標記">👁️</button>
+                    <button id="minimizeSidebarBtn" class="icon-btn minimize-btn" title="最小化側邊欄">◀</button>
                 </div>
             </div>
             
@@ -101,6 +102,9 @@
         <!-- 地圖容器 -->
         <div class="map-container">
             <div id="map"></div>
+            
+            <!-- 展開側邊欄按鈕 (最小化時顯示) -->
+            <button id="expandSidebarBtn" class="expand-sidebar-btn" title="展開側邊欄" style="display: none;">▶</button>
             
             <!-- 浮動控制面板 -->
             <div class="floating-controls">

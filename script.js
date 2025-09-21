@@ -92,6 +92,9 @@ function initializeApp() {
     // 載入已儲存的設定
     loadSettingsOnInit();
     
+    // 載入側邊欄最小化狀態
+    loadSidebarState();
+    
     // 檢查是否是第一次使用
     const hasSeenSetup = localStorage.getItem('hasSeenSetup');
     if (!hasSeenSetup) {
@@ -427,7 +430,11 @@ function initEventListeners() {
 document.getElementById('createGroupForm').addEventListener('submit', handleCreateGroup);
 
 // 測試通知按鈕
-document.getElementById('testNotificationBtn').addEventListener('click', testNotification);
+    document.getElementById('testNotificationBtn').addEventListener('click', testNotification);
+    
+    // 側邊欄最小化功能
+    document.getElementById('minimizeSidebarBtn').addEventListener('click', minimizeSidebar);
+    document.getElementById('expandSidebarBtn').addEventListener('click', expandSidebar);
 
 // 添加重置功能（用於測試）
 window.resetSetup = function() {
@@ -451,6 +458,56 @@ window.toggleSection = function(sectionName) {
         icon.textContent = '▼';
     }
 };
+
+// 最小化側邊欄
+function minimizeSidebar() {
+    const sidebar = document.querySelector('.sidebar');
+    const expandBtn = document.getElementById('expandSidebarBtn');
+    
+    sidebar.classList.add('minimized');
+    expandBtn.style.display = 'flex';
+    
+    // 儲存最小化狀態
+    localStorage.setItem('sidebarMinimized', 'true');
+    
+    // 觸發地圖重新調整大小
+    setTimeout(() => {
+        if (map) {
+            map.invalidateSize();
+        }
+    }, 300);
+}
+
+// 展開側邊欄
+function expandSidebar() {
+    const sidebar = document.querySelector('.sidebar');
+    const expandBtn = document.getElementById('expandSidebarBtn');
+    
+    sidebar.classList.remove('minimized');
+    expandBtn.style.display = 'none';
+    
+    // 儲存展開狀態
+    localStorage.setItem('sidebarMinimized', 'false');
+    
+    // 觸發地圖重新調整大小
+    setTimeout(() => {
+        if (map) {
+            map.invalidateSize();
+        }
+    }, 300);
+}
+
+// 載入側邊欄狀態
+function loadSidebarState() {
+    const isMinimized = localStorage.getItem('sidebarMinimized') === 'true';
+    if (isMinimized) {
+        const sidebar = document.querySelector('.sidebar');
+        const expandBtn = document.getElementById('expandSidebarBtn');
+        
+        sidebar.classList.add('minimized');
+        expandBtn.style.display = 'flex';
+    }
+}
 }
 
 // 請求位置權限
