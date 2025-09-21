@@ -76,8 +76,12 @@ class Marker {
     }
 }
 
+// 初始化控制按鈕
+
+
 // 初始化應用程式
 function initializeApp() {
+    console.log('=== 應用程式初始化開始 - 版本 2024.01.20 ===');
     initMap();
     loadData();
     updateGroupsList();
@@ -89,21 +93,12 @@ function initializeApp() {
     // 初始化設定按鈕
     initSettingsButtons();
     
-    // 載入已儲存的設定
-    loadSettingsOnInit();
-    
-    // 載入側邊欄最小化狀態
-    loadSidebarState();
-    
     // 檢查是否是第一次使用
     const hasSeenSetup = localStorage.getItem('hasSeenSetup');
     if (!hasSeenSetup) {
         showInitialSetup();
     } else {
-        requestLocationPermission();
         requestNotificationPermission();
-        // 自動獲取當前位置
-        autoGetCurrentLocation();
     }
 }
 
@@ -158,6 +153,12 @@ function autoGetCurrentLocation() {
                 }
                 
                 showNotification(errorMessage, 'warning');
+                
+                // 立即設定為預設位置（台北市中心）
+                const defaultLat = 25.0330;
+                const defaultLng = 121.5654;
+                map.setView([defaultLat, defaultLng], 16);
+                showNotification('已自動設定為台北市中心。您可以點擊地圖來添加標記。', 'info');
             },
             {
                 enableHighAccuracy: true,
@@ -286,11 +287,7 @@ function initServiceWorkerMessaging() {
     }
 }
 
-// 初始化
-document.addEventListener('DOMContentLoaded', function() {
-    initEventListeners();
-    initializeApp();
-});
+
 
 // 初始化地圖
 function initMap() {
@@ -500,15 +497,6 @@ document.getElementById('createGroupForm').addEventListener('submit', handleCrea
     // 側邊欄最小化功能
     document.getElementById('minimizeSidebarBtn').addEventListener('click', minimizeSidebar);
     document.getElementById('expandSidebarBtn').addEventListener('click', expandSidebar);
-    
-    // 全螢幕功能
-    document.getElementById('fullscreenBtn').addEventListener('click', toggleFullscreen);
-    
-    // 定位點功能
-    document.getElementById('locationBtn').addEventListener('click', getCurrentLocation);
-    
-    // 拖曳功能
-    initDragFunctionality();
 
 // 添加重置功能（用於測試）
 window.resetSetup = function() {
@@ -678,6 +666,23 @@ function handleCSSFullscreen() {
     mapContainer.style.zIndex = '9999';
 }
 
+// 按鈕點擊處理函數
+function handleFullscreenClick() {
+    console.log('Fullscreen button clicked');
+    toggleFullscreen();
+}
+
+function handleLocationClick() {
+    console.log('Location button clicked');
+    getCurrentLocation();
+}
+
+// 初始化控制按鈕
+function initControlButtons() {
+    // 拖曳功能
+    initDragFunctionality();
+}
+
 // 監聽全螢幕狀態變化
 document.addEventListener('fullscreenchange', handleFullscreenChange);
 document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
@@ -810,27 +815,13 @@ function makeDraggable(element) {
         
         isDragging = false;
         
-        // 延遲判斷是否為拖曳
-        setTimeout(() => {
-            if (Date.now() - dragStartTime > 150) { // 150ms後才算拖曳
-                isDragging = true;
-                element.classList.add('dragging');
-                
-                // 設置初始偏移
-                const rect = element.getBoundingClientRect();
-                currentX = rect.left - initialX;
-                currentY = rect.top - initialY;
-                
-                e.preventDefault();
-            }
-        }, 150);
+        // 設置初始偏移
+        const rect = element.getBoundingClientRect();
+        currentX = rect.left - initialX;
+        currentY = rect.top - initialY;
     }
     
     function drag(e) {
-        if (!isDragging) return;
-        
-        e.preventDefault();
-        
         let clientX, clientY;
         if (e.type === 'touchmove') {
             clientX = e.touches[0].clientX;
@@ -840,9 +831,21 @@ function makeDraggable(element) {
             clientY = e.clientY;
         }
         
-        // 計算新位置
+        // 計算移動距離
         const deltaX = clientX - startX;
         const deltaY = clientY - startY;
+        const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+        
+        // 如果移動距離超過5像素，開始拖曳
+        if (!isDragging && distance > 5) {
+            isDragging = true;
+            element.classList.add('dragging');
+            e.preventDefault();
+        }
+        
+        if (!isDragging) return;
+        
+        e.preventDefault();
         
         const newX = initialX + currentX + deltaX;
         const newY = initialY + currentY + deltaY;
@@ -883,8 +886,8 @@ function makeDraggable(element) {
     
     // 阻止拖曳時觸發點擊事件
     element.addEventListener('click', function(e) {
-        const clickTime = Date.now();
-        if (clickTime - dragStartTime > 200 || element.classList.contains('dragging')) {
+        // 只有在真正發生拖曳時才阻止點擊
+        if (element.classList.contains('dragging')) {
             e.preventDefault();
             e.stopPropagation();
             return false;
@@ -915,9 +918,20 @@ function loadButtonPositions() {
 
 // 請求位置權限
 function requestLocationPermission() {
+    console.log('開始請求位置權限...');
+    
+    // 檢查是否為HTTPS或localhost
+    const isSecure = location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+    if (!isSecure) {
+        console.warn('警告：非安全連線可能影響定位功能');
+        showNotification('提示：建議使用HTTPS以獲得更好的定位體驗', 'warning');
+    }
+    
     if ('geolocation' in navigator) {
+        console.log('瀏覽器支援地理位置功能，正在請求位置...');
         navigator.geolocation.getCurrentPosition(
             function(position) {
+                console.log('定位成功！', position);
                 currentPosition = {
                     lat: position.coords.latitude,
                     lng: position.coords.longitude,
@@ -930,10 +944,13 @@ function requestLocationPermission() {
                 // 顯示定位精度信息
                 if (position.coords.accuracy) {
                     showNotification(`定位成功，精度: ${Math.round(position.coords.accuracy)}公尺`, 'success');
+                } else {
+                    showNotification('定位成功！', 'success');
                 }
             },
             function(error) {
                 console.error('無法獲取位置:', error);
+                console.log('錯誤詳情 - 代碼:', error.code, '訊息:', error.message);
                 let errorMessage = '無法獲取您的位置';
                 let detailedMessage = '';
                 
@@ -954,18 +971,13 @@ function requestLocationPermission() {
                         detailedMessage = '請檢查瀏覽器權限設定和設備位置服務';
                 }
                 
-                showNotification(errorMessage + '。' + detailedMessage, 'error');
+                showNotification(errorMessage + '。' + detailedMessage, 'warning');
                 
-                // 提供手動設定位置的選項
-                setTimeout(() => {
-                    if (confirm('無法自動獲取位置。是否要手動設定地圖中心位置？')) {
-                        // 設定為台北市中心作為預設位置
-                        const defaultLat = 25.0330;
-                        const defaultLng = 121.5654;
-                        map.setView([defaultLat, defaultLng], 16);
-                        showNotification('已設定為台北市中心。您可以點擊地圖來添加標記。', 'info');
-                    }
-                }, 2000);
+                // 立即設定為預設位置（台北市中心）
+                const defaultLat = 25.0330;
+                const defaultLng = 121.5654;
+                map.setView([defaultLat, defaultLng], 16);
+                showNotification('已自動設定為台北市中心。您可以點擊地圖來添加標記。', 'info');
             },
             {
                 enableHighAccuracy: true,
@@ -1077,12 +1089,8 @@ function handleInitialSetup() {
     // 關閉彈窗
     document.getElementById('initialSetupModal').style.display = 'none';
     
-    // 請求權限
+    // 請求權限（位置權限已在initializeApp中調用）
     const permissionPromises = [];
-    
-    if (enableLocation) {
-        permissionPromises.push(requestLocationPermission());
-    }
     
     if (enableNotifications) {
         permissionPromises.push(requestNotificationPermission());
@@ -1094,11 +1102,6 @@ function handleInitialSetup() {
             showNotification('🎉 所有權限設定完成！您現在可以接收位置提醒了', 'success');
         } else if (enableLocation) {
             showNotification('✅ 位置權限已設定，您可以開始使用地圖功能', 'success');
-        }
-        
-        // 如果啟用了位置權限，自動獲取當前位置
-        if (enableLocation) {
-            autoGetCurrentLocation();
         }
     }).catch((error) => {
         console.log('Permission setup error:', error);
@@ -3009,3 +3012,59 @@ function addRandomColorAnimationToGroupButtons() {
         });
     });
 }
+
+// 初始化 - 在所有函數定義之後
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOMContentLoaded event fired');
+    
+    initEventListeners();
+    initializeApp();
+    
+    // 初始化拖曳功能
+    console.log('Initializing drag functionality...');
+    try {
+        initDragFunctionality();
+        console.log('Drag functionality initialized');
+    } catch (error) {
+        console.error('Error initializing drag functionality:', error);
+    }
+    
+    // 延遲執行其他初始化函數
+    setTimeout(() => {
+        // 載入設定
+        try {
+            console.log('Calling loadSettingsOnInit...');
+            if (typeof loadSettingsOnInit === 'function') {
+                loadSettingsOnInit();
+            } else {
+                console.warn('loadSettingsOnInit function not found');
+            }
+        } catch (error) {
+            console.error('Error loading settings:', error);
+        }
+        
+        // 載入側邊欄狀態
+        try {
+            console.log('Calling loadSidebarState...');
+            if (typeof loadSidebarState === 'function') {
+                loadSidebarState();
+            } else {
+                console.warn('loadSidebarState function not found');
+            }
+        } catch (error) {
+            console.error('Error loading sidebar state:', error);
+        }
+        
+        // 請求定位權限
+        try {
+            console.log('Calling requestLocationPermission...');
+            if (typeof requestLocationPermission === 'function') {
+                requestLocationPermission();
+            } else {
+                console.warn('requestLocationPermission function not found');
+            }
+        } catch (error) {
+            console.error('Error requesting location permission:', error);
+        }
+    }, 100);
+});
