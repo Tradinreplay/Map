@@ -435,6 +435,9 @@ document.getElementById('createGroupForm').addEventListener('submit', handleCrea
     // 側邊欄最小化功能
     document.getElementById('minimizeSidebarBtn').addEventListener('click', minimizeSidebar);
     document.getElementById('expandSidebarBtn').addEventListener('click', expandSidebar);
+    
+    // 全螢幕功能
+    document.getElementById('fullscreenBtn').addEventListener('click', toggleFullscreen);
 
 // 添加重置功能（用於測試）
 window.resetSetup = function() {
@@ -506,6 +509,117 @@ function loadSidebarState() {
         
         sidebar.classList.add('minimized');
         expandBtn.style.display = 'flex';
+    }
+}
+
+// 全螢幕功能
+let isFullscreen = false;
+
+function toggleFullscreen() {
+    const mapContainer = document.querySelector('.map-container');
+    const fullscreenIcon = document.getElementById('fullscreenIcon');
+    
+    if (!isFullscreen) {
+        // 進入全螢幕模式
+        enterFullscreen(mapContainer);
+    } else {
+        // 退出全螢幕模式
+        exitFullscreen();
+    }
+}
+
+function enterFullscreen(element) {
+    const mapContainer = document.querySelector('.map-container');
+    const fullscreenIcon = document.getElementById('fullscreenIcon');
+    
+    // 添加全螢幕CSS類
+    mapContainer.classList.add('fullscreen');
+    
+    // 更新按鈕圖標
+    fullscreenIcon.textContent = '⛶';
+    
+    // 嘗試使用瀏覽器原生全螢幕API
+    if (element.requestFullscreen) {
+        element.requestFullscreen().catch(() => {
+            // 如果原生API失敗，使用CSS全螢幕
+            handleCSSFullscreen();
+        });
+    } else if (element.webkitRequestFullscreen) {
+        element.webkitRequestFullscreen().catch(() => {
+            handleCSSFullscreen();
+        });
+    } else if (element.msRequestFullscreen) {
+        element.msRequestFullscreen().catch(() => {
+            handleCSSFullscreen();
+        });
+    } else {
+        // 瀏覽器不支持原生全螢幕，使用CSS全螢幕
+        handleCSSFullscreen();
+    }
+    
+    isFullscreen = true;
+    
+    // 重新調整地圖大小
+    setTimeout(() => {
+        if (map) {
+            map.invalidateSize();
+        }
+    }, 100);
+}
+
+function exitFullscreen() {
+    const mapContainer = document.querySelector('.map-container');
+    const fullscreenIcon = document.getElementById('fullscreenIcon');
+    
+    // 移除全螢幕CSS類
+    mapContainer.classList.remove('fullscreen');
+    
+    // 更新按鈕圖標
+    fullscreenIcon.textContent = '⛶';
+    
+    // 嘗試退出瀏覽器原生全螢幕
+    if (document.exitFullscreen) {
+        document.exitFullscreen().catch(() => {});
+    } else if (document.webkitExitFullscreen) {
+        document.webkitExitFullscreen().catch(() => {});
+    } else if (document.msExitFullscreen) {
+        document.msExitFullscreen().catch(() => {});
+    }
+    
+    isFullscreen = false;
+    
+    // 重新調整地圖大小
+    setTimeout(() => {
+        if (map) {
+            map.invalidateSize();
+        }
+    }, 100);
+}
+
+function handleCSSFullscreen() {
+    // 純CSS全螢幕實現，適用於不支持原生API的情況
+    const mapContainer = document.querySelector('.map-container');
+    mapContainer.style.position = 'fixed';
+    mapContainer.style.top = '0';
+    mapContainer.style.left = '0';
+    mapContainer.style.width = '100vw';
+    mapContainer.style.height = '100vh';
+    mapContainer.style.zIndex = '9999';
+}
+
+// 監聽全螢幕狀態變化
+document.addEventListener('fullscreenchange', handleFullscreenChange);
+document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+document.addEventListener('msfullscreenchange', handleFullscreenChange);
+
+function handleFullscreenChange() {
+    const isCurrentlyFullscreen = !!(document.fullscreenElement || 
+                                    document.webkitFullscreenElement || 
+                                    document.msFullscreenElement);
+    
+    if (!isCurrentlyFullscreen && isFullscreen) {
+        // 用戶通過ESC或其他方式退出了全螢幕
+        exitFullscreen();
     }
 }
 }
@@ -1141,7 +1255,7 @@ function addMarkerToMap(marker) {
     leafletMarker.bindPopup(`
         <div style="text-align: center; min-width: 200px;">
             <div style="font-size: 18px; margin-bottom: 8px;">${marker.icon} <strong>${marker.name}</strong></div>
-            <div style="font-size: 12px; color: #666; margin-bottom: 8px;">編號: ${marker.id}</div>
+            ${marker.description ? `<div style="font-size: 14px; color: #333; margin-bottom: 8px; text-align: left; padding: 0 10px;">${marker.description}</div>` : ''}
             <div style="font-size: 12px; color: #666; margin-bottom: 8px;">群組: ${groupName}</div>
             <div style="font-size: 12px; color: #666; margin-bottom: 12px;">子群組: ${subgroupName}</div>
             <div style="display: flex; gap: 5px; justify-content: center; flex-wrap: wrap;">
