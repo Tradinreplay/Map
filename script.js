@@ -1549,6 +1549,9 @@ function setTrackingTarget(markerId) {
         trackingTarget = marker;
         showNotification(`已設定 "${marker.name}" 為追蹤目標`);
         
+        // 立即更新全螢幕追蹤顯示
+        updateFullscreenTrackingDisplay();
+        
         // 如果正在追蹤位置，開始距離檢查定時器
         if (isTracking && currentPosition) {
             startProximityCheck();
@@ -1695,6 +1698,9 @@ function stopTracking() {
         
         // 清除追蹤目標
         trackingTarget = null;
+        
+        // 更新全螢幕追蹤顯示（隱藏）
+        updateFullscreenTrackingDisplay();
         
         showNotification('位置追蹤已停止，所有提醒已取消');
     }
@@ -2008,6 +2014,68 @@ function updateLocationDisplay() {
             accuracyDiv.innerHTML = '📍 精度: --';
             accuracyDiv.className = 'accuracy-display';
         }
+    }
+    
+    // 更新全螢幕模式下的追蹤距離顯示
+    updateFullscreenTrackingDisplay();
+}
+
+// 更新全螢幕模式下的追蹤距離顯示
+function updateFullscreenTrackingDisplay() {
+    const fullscreenTrackingDiv = document.getElementById('fullscreenTrackingInfo');
+    const targetNameDiv = document.getElementById('fullscreenTargetName');
+    const targetDistanceDiv = document.getElementById('fullscreenTargetDistance');
+    
+    if (!fullscreenTrackingDiv || !targetNameDiv || !targetDistanceDiv) {
+        return;
+    }
+    
+    // 檢查是否有追蹤目標且當前位置可用
+    if (trackingTarget && currentPosition) {
+        const marker = markers.find(m => m.id === trackingTarget);
+        if (marker) {
+            // 計算距離
+            const distance = calculateDistance(
+                currentPosition.lat, 
+                currentPosition.lng, 
+                marker.lat, 
+                marker.lng
+            );
+            
+            // 更新目標名稱
+            targetNameDiv.textContent = marker.name;
+            
+            // 更新距離顯示
+            let distanceText = '';
+            let distanceClass = '';
+            
+            if (distance < 1000) {
+                distanceText = `${Math.round(distance)}公尺`;
+            } else {
+                distanceText = `${(distance / 1000).toFixed(1)}公里`;
+            }
+            
+            // 根據距離設置顏色
+            if (distance <= alertDistance) {
+                distanceClass = 'distance-close';
+            } else if (distance <= alertDistance * 2) {
+                distanceClass = 'distance-medium';
+            } else {
+                distanceClass = 'distance-far';
+            }
+            
+            targetDistanceDiv.textContent = distanceText;
+            targetDistanceDiv.className = `fullscreen-distance ${distanceClass}`;
+            
+            // 顯示追蹤信息
+            fullscreenTrackingDiv.style.display = 'block';
+        } else {
+            // 找不到標記，隱藏顯示
+            fullscreenTrackingDiv.style.display = 'none';
+        }
+    } else {
+        // 沒有追蹤目標或位置不可用，隱藏顯示
+        fullscreenTrackingDiv.style.display = 'none';
     }
 }
 
