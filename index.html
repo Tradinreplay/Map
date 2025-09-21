@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>地圖標註系統</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <!-- 側邊欄 -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h1>🗺️ 地圖標註</h1>
+                <div class="quick-actions">
+                    <button id="centerMapBtn" class="icon-btn" title="回到當前位置">📍</button>
+                    <button id="testNotificationBtn" class="icon-btn" title="測試通知">🔔</button>
+                    <button id="showAllMarkersBtn" class="icon-btn" title="顯示所有標記">👁️</button>
+                </div>
+            </div>
+            
+            <!-- 組別管理 -->
+            <div class="section group-section">
+                <div class="section-header">
+                    <h3>📁 組別</h3>
+                    <button id="addGroupBtn" class="add-btn">+</button>
+                </div>
+                <input type="text" id="groupNameInput" placeholder="新組別名稱" class="compact-input">
+                <div id="groupsList" class="groups-list"></div>
+            </div>
+
+            <!-- 標註點列表 -->
+            <div class="section markers-section">
+                <div class="section-header">
+                    <h3>📍 標註點</h3>
+                </div>
+                <div id="markersList" class="markers-list"></div>
+            </div>
+
+            <!-- 設定區域 -->
+            <div class="section settings-section collapsed">
+                <div class="section-header clickable" onclick="toggleSection('settings')">
+                    <h3>⚙️ 設定</h3>
+                    <span class="toggle-icon">▼</span>
+                </div>
+                <div class="section-content">
+                    <div class="setting-row">
+                        <label class="switch">
+                            <input type="checkbox" id="enableNotifications" checked>
+                            <span class="slider"></span>
+                        </label>
+                        <span>位置提醒</span>
+                    </div>
+                    <div class="setting-row">
+                        <label>距離</label>
+                        <input type="number" id="alertDistance" value="100" min="10" max="1000" class="compact-input">
+                        <span class="unit">m</span>
+                    </div>
+                    <div class="setting-row">
+                        <label>間隔</label>
+                        <input type="number" id="alertInterval" value="30" min="5" max="300" class="compact-input">
+                        <span class="unit">s</span>
+                    </div>
+                    <div class="location-display">
+                        <div id="currentLocation">定位中...</div>
+                        <div id="locationAccuracy" class="accuracy-display">精度: --</div>
+                    </div>
+                    
+                    <!-- 設定管理按鈕 -->
+                    <div class="settings-actions">
+                        <button id="saveSettingsBtn" class="settings-btn save-btn">
+                            <span>💾</span>
+                            儲存目前設定
+                        </button>
+                        <button id="loadSettingsBtn" class="settings-btn load-btn">
+                            <span>📂</span>
+                            載入已儲存設定
+                        </button>
+                        <button id="resetSettingsBtn" class="settings-btn reset-btn">
+                            <span>🔄</span>
+                            重置為預設值
+                        </button>
+                    </div>
+                    
+                    <!-- 資料匯出匯入按鈕 -->
+                    <div class="data-actions">
+                        <button id="exportDataBtn" class="settings-btn export-btn">
+                            <span>📤</span>
+                            匯出標註點
+                        </button>
+                        <button id="importDataBtn" class="settings-btn import-btn">
+                            <span>📥</span>
+                            匯入標註點
+                        </button>
+                        <input type="file" id="importFileInput" accept=".json" style="display: none;">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 地圖容器 -->
+        <div class="map-container">
+            <div id="map"></div>
+            
+            <!-- 全螢幕按鈕 -->
+            <button id="fullscreenBtn" class="fullscreen-btn" title="全螢幕顯示" onclick="handleFullscreenClick()">
+                <span id="fullscreenIcon">⛶</span>
+            </button>
+            
+            <!-- 定位點按鈕 -->
+            <button id="locationBtn" class="location-btn" title="定位到我的位置" onclick="handleLocationClick()">
+                <span id="locationIcon">📍</span>
+            </button>
+            
+            <!-- 浮動控制面板 -->
+            <div class="floating-controls">
+                <button id="addMarkerBtn" class="control-btn">
+                    <span>📍</span>
+                    標註模式
+                </button>
+                <button id="trackingBtn" class="control-btn">
+                    <span>📍</span>
+                    開始追蹤
+                </button>
+            </div>
+            
+            <!-- 全螢幕模式下的追蹤距離顯示 -->
+            <div id="fullscreenTrackingInfo" class="fullscreen-tracking-info" style="display: none;">
+                <div class="tracking-target-info">
+                    <span id="trackingTargetName">--</span>
+                </div>
+                <div class="tracking-distance-info">
+                    <span id="trackingDistanceValue">--</span>
+                    <span class="distance-unit">公尺</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 通知彈窗 -->
+    <div id="notificationModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>位置提醒</h2>
+            <p id="notificationMessage"></p>
+        </div>
+    </div>
+
+    <!-- 標註點詳情彈窗 -->
+    <div id="markerModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>標註點詳情</h2>
+            <form id="markerForm">
+                    <label for="markerName">名稱:</label>
+                    <input type="text" id="markerName" required>
+                    
+                    <label for="markerDescription">描述:</label>
+                    <textarea id="markerDescription" rows="2"></textarea>
+                    
+                    <label for="markerGroup">所屬組別:</label>
+                    <select id="markerGroup"></select>
+                    
+                    <label for="markerSubgroup">所屬群組:</label>
+                    <select id="markerSubgroup"></select>
+                    
+                    <div class="marker-customization">
+                        <div class="customization-row">
+                            <div class="customization-group">
+                                <label for="markerColor">顏色:</label>
+                                <div class="color-options">
+                                    <input type="radio" id="color-red" name="markerColor" value="red" checked>
+                                    <label for="color-red" class="color-option red"></label>
+                                    
+                                    <input type="radio" id="color-blue" name="markerColor" value="blue">
+                                    <label for="color-blue" class="color-option blue"></label>
+                                    
+                                    <input type="radio" id="color-green" name="markerColor" value="green">
+                                    <label for="color-green" class="color-option green"></label>
+                                    
+                                    <input type="radio" id="color-orange" name="markerColor" value="orange">
+                                    <label for="color-orange" class="color-option orange"></label>
+                                </div>
+                            </div>
+                            
+                            <div class="customization-group">
+                                <label for="markerIcon">圖案:</label>
+                                <div class="icon-options">
+                                    <input type="radio" id="icon-default" name="markerIcon" value="📍" checked>
+                                    <label for="icon-default" class="icon-option">📍</label>
+                                    
+                                    <input type="radio" id="icon-speaker" name="markerIcon" value="📢">
+                                    <label for="icon-speaker" class="icon-option">📢</label>
+                                    
+                                    <input type="radio" id="icon-phone" name="markerIcon" value="📞">
+                                    <label for="icon-phone" class="icon-option">📞</label>
+                                    
+                                    <input type="radio" id="icon-radio" name="markerIcon" value="📻">
+                                    <label for="icon-radio" class="icon-option">📻</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="modal-buttons">
+                        <button type="submit">保存</button>
+                        <button type="button" id="deleteMarkerBtn">刪除</button>
+                        <button type="button" onclick="closeModal('markerModal')">取消</button>
+                    </div>
+                </form>
+        </div>
+    </div>
+
+    <!-- 初始設定彈窗 -->
+    <div id="initialSetupModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>🎯 歡迎使用地圖標註系統</h2>
+            <div class="setup-content">
+                <div class="setup-section">
+                    <h3>選擇預設組別</h3>
+                    <p>選擇一個組別作為開始使用的預設組別，您可以隨時在左側面板切換。</p>
+                    <select id="defaultGroupSelect">
+                        <option value="">不選擇預設組別</option>
+                    </select>
+                    <button id="createFirstGroupBtn" class="secondary-btn">建立第一個組別</button>
+                </div>
+                
+                <div class="setup-section">
+                    <h3>提醒設定</h3>
+                    <div class="setup-grid">
+                        <div class="setup-item">
+                            <label for="setupAlertDistance">提醒距離 (公尺):</label>
+                            <input type="number" id="setupAlertDistance" value="100" min="10" max="1000">
+                        </div>
+                        <div class="setup-item">
+                            <label for="setupAlertInterval">提醒間隔 (秒):</label>
+                            <input type="number" id="setupAlertInterval" value="30" min="5" max="300">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="setup-section">
+                    <h3>權限設定</h3>
+                    <p>為了提供完整的位置提醒功能，我們需要以下權限：</p>
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="setupEnableLocation" checked>
+                        📍 啟用位置追蹤
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="setupEnableNotifications" checked>
+                        🔔 啟用通知提醒 (建議手機用戶開啟)
+                    </label>
+                    <div class="permission-note">
+                        <small>💡 手機用戶建議同時開啟兩項權限以獲得最佳體驗</small>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="setup-buttons">
+                <button id="startUsingBtn" class="primary-btn">開始使用</button>
+                <button id="skipSetupBtn" class="secondary-btn">跳過設定</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 建立組別彈窗 -->
+    <div id="createGroupModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>建立新組別</h2>
+            <form id="createGroupForm">
+                <label for="newGroupName">組別名稱:</label>
+                <input type="text" id="newGroupName" placeholder="例如：工作地點、休閒場所" required>
+                
+                <label for="newGroupDescription">組別描述 (可選):</label>
+                <textarea id="newGroupDescription" rows="2" placeholder="描述這個組別的用途"></textarea>
+                
+                <div class="form-buttons">
+                    <button type="submit">建立組別</button>
+                    <button type="button" class="cancel">取消</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="script.js?v=20240120-2"></script>
+    
+    <!-- Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(function(registration) {
+                        console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                    }, function(err) {
+                        console.log('ServiceWorker registration failed: ', err);
+                    });
+            });
+        }
+    </script>
+</body>
+</html>
