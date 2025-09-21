@@ -605,33 +605,70 @@ function enterFullscreen(element) {
     // 更新按鈕圖標 - 進入全螢幕時顯示退出圖標
     fullscreenIcon.textContent = '⛶';
     
-    // 嘗試使用瀏覽器原生全螢幕API
+    // 手機優先使用CSS全螢幕，因為原生API在手機上不穩定
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    
+    if (isMobile) {
+        console.log('Mobile device detected, using CSS fullscreen');
+        handleCSSFullscreen();
+        isFullscreen = true;
+        
+        // 重新調整地圖大小
+        setTimeout(() => {
+            if (map) {
+                map.invalidateSize();
+            }
+        }, 100);
+        return;
+    }
+    
+    // 桌面設備嘗試使用瀏覽器原生全螢幕API
+    let fullscreenPromise = null;
+    
     if (element.requestFullscreen) {
-        element.requestFullscreen().catch(() => {
-            // 如果原生API失敗，使用CSS全螢幕
-            handleCSSFullscreen();
-        });
+        fullscreenPromise = element.requestFullscreen();
     } else if (element.webkitRequestFullscreen) {
-        element.webkitRequestFullscreen().catch(() => {
-            handleCSSFullscreen();
-        });
+        fullscreenPromise = element.webkitRequestFullscreen();
     } else if (element.msRequestFullscreen) {
-        element.msRequestFullscreen().catch(() => {
+        fullscreenPromise = element.msRequestFullscreen();
+    }
+    
+    if (fullscreenPromise) {
+        fullscreenPromise.then(() => {
+            console.log('Native fullscreen successful');
+            isFullscreen = true;
+            
+            // 重新調整地圖大小
+            setTimeout(() => {
+                if (map) {
+                    map.invalidateSize();
+                }
+            }, 100);
+        }).catch((error) => {
+            console.log('Native fullscreen failed, using CSS fallback:', error);
             handleCSSFullscreen();
+            isFullscreen = true;
+            
+            // 重新調整地圖大小
+            setTimeout(() => {
+                if (map) {
+                    map.invalidateSize();
+                }
+            }, 100);
         });
     } else {
         // 瀏覽器不支持原生全螢幕，使用CSS全螢幕
+        console.log('Native fullscreen not supported, using CSS fallback');
         handleCSSFullscreen();
+        isFullscreen = true;
+        
+        // 重新調整地圖大小
+        setTimeout(() => {
+            if (map) {
+                map.invalidateSize();
+            }
+        }, 100);
     }
-    
-    isFullscreen = true;
-    
-    // 重新調整地圖大小
-    setTimeout(() => {
-        if (map) {
-            map.invalidateSize();
-        }
-    }, 100);
 }
 
 function exitFullscreen() {
@@ -645,6 +682,30 @@ function exitFullscreen() {
     
     // 更新按鈕圖標 - 退出全螢幕時顯示進入圖標
     fullscreenIcon.textContent = '⛶';
+    
+    // 恢復CSS樣式
+    mapContainer.style.position = '';
+    mapContainer.style.top = '';
+    mapContainer.style.left = '';
+    mapContainer.style.width = '';
+    mapContainer.style.height = '';
+    mapContainer.style.zIndex = '';
+    
+    // 手機專用恢復
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    if (isMobile) {
+        // 恢復滾動
+        document.body.style.overflow = '';
+        document.documentElement.style.overflow = '';
+        
+        // 恢復viewport設定
+        const viewport = document.querySelector('meta[name="viewport"]');
+        if (viewport) {
+            viewport.setAttribute('content', 'width=device-width, initial-scale=1.0, user-scalable=yes');
+        }
+        
+        console.log('Restored mobile-specific settings');
+    }
     
     // 嘗試退出瀏覽器原生全螢幕
     if (document.exitFullscreen) {
@@ -668,12 +729,37 @@ function exitFullscreen() {
 function handleCSSFullscreen() {
     // 純CSS全螢幕實現，適用於不支持原生API的情況
     const mapContainer = document.querySelector('.map-container');
+    
+    // 基本全螢幕樣式
     mapContainer.style.position = 'fixed';
     mapContainer.style.top = '0';
     mapContainer.style.left = '0';
     mapContainer.style.width = '100vw';
     mapContainer.style.height = '100vh';
     mapContainer.style.zIndex = '9999';
+    
+    // 手機專用優化
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    if (isMobile) {
+        // 隱藏手機瀏覽器的地址欄和工具欄
+        mapContainer.style.height = '100vh';
+        mapContainer.style.height = '100dvh'; // 動態視窗高度，更適合手機
+        
+        // 防止滾動
+        document.body.style.overflow = 'hidden';
+        document.documentElement.style.overflow = 'hidden';
+        
+        // 防止縮放
+        const viewport = document.querySelector('meta[name="viewport"]');
+        if (viewport) {
+            viewport.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
+        }
+        
+        // 強制重新計算佈局
+        mapContainer.offsetHeight;
+        
+        console.log('Applied mobile-specific CSS fullscreen optimizations');
+    }
 }
 
 // 按鈕點擊處理函數
@@ -803,35 +889,68 @@ function initDragFunctionality() {
 function addMobileTouchSupport(element, functionName) {
     let touchStartTime = 0;
     let touchMoved = false;
+    let touchStartX = 0;
+    let touchStartY = 0;
     
     element.addEventListener('touchstart', function(e) {
         touchStartTime = Date.now();
         touchMoved = false;
+        
+        if (e.touches && e.touches.length > 0) {
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+        }
+        
+        console.log('Touch start for:', element.id);
     }, { passive: true });
     
     element.addEventListener('touchmove', function(e) {
-        touchMoved = true;
+        if (e.touches && e.touches.length > 0) {
+            const moveX = Math.abs(e.touches[0].clientX - touchStartX);
+            const moveY = Math.abs(e.touches[0].clientY - touchStartY);
+            
+            // 只有移動超過5像素才算作移動
+            if (moveX > 5 || moveY > 5) {
+                touchMoved = true;
+            }
+        }
     }, { passive: true });
     
     element.addEventListener('touchend', function(e) {
         const touchDuration = Date.now() - touchStartTime;
         
+        console.log('Touch end for:', element.id, 'Duration:', touchDuration, 'Moved:', touchMoved, 'HasDragged:', element.hasDragged);
+        
         // 如果是短時間觸控且沒有移動，且沒有被拖曳功能標記為已拖曳
-        if (touchDuration < 500 && !touchMoved && !element.hasDragged) {
-            // 延遲一點執行，確保拖曳檢查完成
-            setTimeout(() => {
-                if (!element.hasDragged) {
-                    console.log('Mobile touch click for:', element.id);
-                    // 直接調用對應的函數
-                    if (functionName === 'handleFullscreenClick' && typeof window.handleFullscreenClick === 'function') {
-                        window.handleFullscreenClick();
-                    } else if (functionName === 'handleLocationClick' && typeof window.handleLocationClick === 'function') {
-                        window.handleLocationClick();
-                    }
+        if (touchDuration < 800 && !touchMoved && !element.hasDragged) {
+            // 對於全螢幕按鈕，增加額外的穩定性處理
+            if (functionName === 'handleFullscreenClick') {
+                // 立即執行，不延遲，確保用戶手勢有效
+                console.log('Immediate fullscreen trigger for mobile');
+                e.preventDefault();
+                e.stopPropagation();
+                
+                if (typeof window.handleFullscreenClick === 'function') {
+                    window.handleFullscreenClick();
                 }
-            }, 20);
+            } else {
+                // 其他功能延遲執行
+                setTimeout(() => {
+                    if (!element.hasDragged) {
+                        console.log('Mobile touch click for:', element.id);
+                        if (functionName === 'handleLocationClick' && typeof window.handleLocationClick === 'function') {
+                            window.handleLocationClick();
+                        }
+                    }
+                }, 20);
+            }
         }
-    }, { passive: true });
+        
+        // 重置拖曳標記
+        setTimeout(() => {
+            element.hasDragged = false;
+        }, 100);
+    }, { passive: false }); // 對於touchend使用非passive，以便可以preventDefault
 }
 
 function makeDraggable(element) {
