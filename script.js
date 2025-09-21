@@ -110,6 +110,9 @@ function initializeApp() {
 // 自動獲取當前位置函數
 function autoGetCurrentLocation() {
     if ('geolocation' in navigator) {
+        // 顯示定位中的提示
+        showNotification('📍 正在獲取您的位置...', 'info');
+        
         navigator.geolocation.getCurrentPosition(
             function(position) {
                 currentPosition = {
@@ -128,18 +131,42 @@ function autoGetCurrentLocation() {
                 // 更新當前位置標記
                 updateCurrentLocationMarker();
                 
+                // 顯示成功通知
+                const accuracy = Math.round(currentPosition.accuracy);
+                showNotification(`🎯 定位成功！精度: ±${accuracy}公尺`, 'success');
+                
                 console.log('自動定位成功:', currentPosition);
             },
             function(error) {
                 console.log('自動定位失敗:', error);
-                // 靜默失敗，不顯示錯誤通知
+                
+                // 根據錯誤類型顯示不同的提示
+                let errorMessage = '📍 無法獲取位置';
+                switch(error.code) {
+                    case error.PERMISSION_DENIED:
+                        errorMessage = '❌ 位置權限被拒絕，請在瀏覽器設定中允許位置存取';
+                        break;
+                    case error.POSITION_UNAVAILABLE:
+                        errorMessage = '📍 位置信息不可用，請檢查GPS或網路連接';
+                        break;
+                    case error.TIMEOUT:
+                        errorMessage = '⏰ 定位超時，請稍後再試';
+                        break;
+                    default:
+                        errorMessage = '📍 定位失敗，請手動點擊定位按鈕重試';
+                        break;
+                }
+                
+                showNotification(errorMessage, 'warning');
             },
             {
                 enableHighAccuracy: true,
-                timeout: 10000,
+                timeout: 15000, // 增加超時時間到15秒
                 maximumAge: 300000 // 5分鐘內的緩存位置可接受
             }
         );
+    } else {
+        showNotification('❌ 您的瀏覽器不支援地理定位功能', 'error');
     }
 }
 
@@ -1067,6 +1094,11 @@ function handleInitialSetup() {
             showNotification('🎉 所有權限設定完成！您現在可以接收位置提醒了', 'success');
         } else if (enableLocation) {
             showNotification('✅ 位置權限已設定，您可以開始使用地圖功能', 'success');
+        }
+        
+        // 如果啟用了位置權限，自動獲取當前位置
+        if (enableLocation) {
+            autoGetCurrentLocation();
         }
     }).catch((error) => {
         console.log('Permission setup error:', error);
