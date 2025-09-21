@@ -446,6 +446,11 @@ function initEventListeners() {
                 requestNotificationPermission();
             }
             
+            // 如果modal在全螢幕容器中，將其移回body
+            const fullscreenContainer = document.querySelector('.map-container.fullscreen');
+            if (fullscreenContainer && fullscreenContainer.contains(modal)) {
+                document.body.appendChild(modal);
+            }
             modal.style.display = 'none';
         });
     });
@@ -460,6 +465,11 @@ function initEventListeners() {
                     requestNotificationPermission();
                 }
                 
+                // 如果modal在全螢幕容器中，將其移回body
+                const fullscreenContainer = document.querySelector('.map-container.fullscreen');
+                if (fullscreenContainer && fullscreenContainer.contains(this)) {
+                    document.body.appendChild(this);
+                }
                 this.style.display = 'none';
             }
         });
@@ -473,6 +483,11 @@ function initEventListeners() {
             
             const modal = this.closest('.modal');
             if (modal) {
+                // 如果modal在全螢幕容器中，將其移回body
+                const fullscreenContainer = document.querySelector('.map-container.fullscreen');
+                if (fullscreenContainer && fullscreenContainer.contains(modal)) {
+                    document.body.appendChild(modal);
+                }
                 modal.style.display = 'none';
                 
                 // 如果是標記模態視窗，重置添加標記模式
@@ -562,26 +577,56 @@ function enterFullscreen(element) {
     // 更新按鈕圖標 - 進入全螢幕時顯示退出圖標
     fullscreenIcon.textContent = '⛶';
     
-    // 嘗試使用瀏覽器原生全螢幕API
+    // 檢測是否為行動裝置
+    const isMobile = isMobileDevice();
+    const isIOS = isIOSDevice();
+    
+    // iOS Safari 不支援對非video元素使用全螢幕API，直接使用CSS全螢幕
+    if (isIOS) {
+        console.log('iOS detected, using CSS fullscreen');
+        handleCSSFullscreen();
+        return;
+    }
+    
+    // 對於其他行動裝置和桌面，嘗試使用原生全螢幕API
+    let fullscreenPromise = null;
+    
     if (element.requestFullscreen) {
-        element.requestFullscreen().catch(() => {
-            // 如果原生API失敗，使用CSS全螢幕
-            handleCSSFullscreen();
-        });
+        fullscreenPromise = element.requestFullscreen();
     } else if (element.webkitRequestFullscreen) {
-        element.webkitRequestFullscreen().catch(() => {
-            handleCSSFullscreen();
-        });
+        fullscreenPromise = element.webkitRequestFullscreen();
     } else if (element.msRequestFullscreen) {
-        element.msRequestFullscreen().catch(() => {
+        fullscreenPromise = element.msRequestFullscreen();
+    }
+    
+    if (fullscreenPromise) {
+        fullscreenPromise.catch((error) => {
+            console.log('Native fullscreen failed, using CSS fullscreen:', error);
             handleCSSFullscreen();
         });
     } else {
         // 瀏覽器不支持原生全螢幕，使用CSS全螢幕
+        console.log('Native fullscreen not supported, using CSS fullscreen');
         handleCSSFullscreen();
     }
     
     isFullscreen = true;
+    
+    // 如果modal已經打開，將其移到全螢幕容器中
+    const modal = document.getElementById('markerModal');
+    if (modal && modal.style.display === 'block') {
+        mapContainer.appendChild(modal);
+        
+        // 確保modal的樣式正確
+        setTimeout(() => {
+            modal.style.position = 'fixed';
+            modal.style.zIndex = '10001';
+            modal.style.left = '0';
+            modal.style.top = '0';
+            modal.style.width = '100vw';
+            modal.style.height = '100vh';
+        }, 10);
+    }
     
     // 更新全螢幕追蹤顯示
     updateFullscreenTrackingDisplay();
@@ -603,6 +648,19 @@ function exitFullscreen() {
     // 移除全螢幕CSS類
     mapContainer.classList.remove('fullscreen');
     
+    // 清理CSS全螢幕樣式
+    mapContainer.style.position = '';
+    mapContainer.style.top = '';
+    mapContainer.style.left = '';
+    mapContainer.style.width = '';
+    mapContainer.style.height = '';
+    mapContainer.style.minHeight = '';
+    mapContainer.style.zIndex = '';
+    mapContainer.style.backgroundColor = '';
+    
+    // 恢復頁面滾動條
+    document.body.style.overflow = '';
+    
     // 更新按鈕圖標 - 退出全螢幕時顯示進入圖標
     fullscreenIcon.textContent = '⛶';
     
@@ -616,6 +674,20 @@ function exitFullscreen() {
     }
     
     isFullscreen = false;
+    
+    // 將modal移回body（如果它在全螢幕容器中）
+    const modal = document.getElementById('markerModal');
+    if (modal && mapContainer.contains(modal)) {
+        document.body.appendChild(modal);
+        
+        // 重置modal的樣式
+        modal.style.position = '';
+        modal.style.zIndex = '';
+        modal.style.left = '';
+        modal.style.top = '';
+        modal.style.width = '';
+        modal.style.height = '';
+    }
     
     // 更新全螢幕追蹤顯示
     updateFullscreenTrackingDisplay();
@@ -631,12 +703,43 @@ function exitFullscreen() {
 function handleCSSFullscreen() {
     // 純CSS全螢幕實現，適用於不支持原生API的情況
     const mapContainer = document.querySelector('.map-container');
+    const isIOS = isIOSDevice();
+    
     mapContainer.style.position = 'fixed';
     mapContainer.style.top = '0';
     mapContainer.style.left = '0';
     mapContainer.style.width = '100vw';
     mapContainer.style.height = '100vh';
     mapContainer.style.zIndex = '9999';
+    mapContainer.style.backgroundColor = '#000';
+    
+    // 行動裝置特殊處理
+    if (isIOS) {
+        // iOS Safari 特殊處理，隱藏地址欄
+        mapContainer.style.height = '100vh';
+        mapContainer.style.minHeight = '100vh';
+        
+        // 嘗試隱藏Safari的地址欄
+        setTimeout(() => {
+            window.scrollTo(0, 1);
+            mapContainer.style.height = window.innerHeight + 'px';
+        }, 100);
+        
+        // 監聽方向變化
+        window.addEventListener('orientationchange', () => {
+            setTimeout(() => {
+                mapContainer.style.height = window.innerHeight + 'px';
+                if (map) {
+                    map.invalidateSize();
+                }
+            }, 500);
+        });
+    }
+    
+    // 隱藏頁面滾動條
+    document.body.style.overflow = 'hidden';
+    
+    console.log('CSS fullscreen activated for mobile device');
 }
 
 // 按鈕點擊處理函數
@@ -654,10 +757,34 @@ function handleLocationClick() {
 window.handleFullscreenClick = handleFullscreenClick;
 window.handleLocationClick = handleLocationClick;
 
+// 行動裝置檢測函數
+function isMobileDevice() {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+}
+
+function isIOSDevice() {
+    return /iPad|iPhone|iPod/.test(navigator.userAgent);
+}
+
 // 初始化控制按鈕
 function initControlButtons() {
     // 拖曳功能
     initDragFunctionality();
+    
+    // 為行動裝置添加特殊提示
+    if (isMobileDevice()) {
+        const fullscreenBtn = document.getElementById('fullscreenBtn');
+        if (fullscreenBtn) {
+            // 更新行動裝置的提示文字
+            if (isIOSDevice()) {
+                fullscreenBtn.title = '全螢幕顯示 (iOS使用CSS全螢幕)';
+            } else {
+                fullscreenBtn.title = '全螢幕顯示 (行動裝置)';
+            }
+        }
+        
+        console.log('Mobile device detected, fullscreen optimized for mobile');
+    }
 }
 
 // 監聽全螢幕狀態變化
@@ -766,35 +893,55 @@ function initDragFunctionality() {
 function addMobileTouchSupport(element, functionName) {
     let touchStartTime = 0;
     let touchMoved = false;
+    let touchStartX = 0;
+    let touchStartY = 0;
     
     element.addEventListener('touchstart', function(e) {
         touchStartTime = Date.now();
         touchMoved = false;
-    }, { passive: true });
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+        
+        // 防止預設行為，確保觸控事件正確處理
+        e.preventDefault();
+    }, { passive: false });
     
     element.addEventListener('touchmove', function(e) {
-        touchMoved = true;
+        const touchX = e.touches[0].clientX;
+        const touchY = e.touches[0].clientY;
+        const moveDistance = Math.sqrt(
+            Math.pow(touchX - touchStartX, 2) + Math.pow(touchY - touchStartY, 2)
+        );
+        
+        // 如果移動距離超過10像素，視為移動
+        if (moveDistance > 10) {
+            touchMoved = true;
+        }
     }, { passive: true });
     
     element.addEventListener('touchend', function(e) {
         const touchDuration = Date.now() - touchStartTime;
         
+        // 防止預設行為
+        e.preventDefault();
+        
         // 如果是短時間觸控且沒有移動，且沒有被拖曳功能標記為已拖曳
         if (touchDuration < 500 && !touchMoved && !element.hasDragged) {
-            // 延遲一點執行，確保拖曳檢查完成
-            setTimeout(() => {
-                if (!element.hasDragged) {
-                    console.log('Mobile touch click for:', element.id);
-                    // 直接調用對應的函數
-                    if (functionName === 'handleFullscreenClick' && typeof window.handleFullscreenClick === 'function') {
-                        window.handleFullscreenClick();
-                    } else if (functionName === 'handleLocationClick' && typeof window.handleLocationClick === 'function') {
-                        window.handleLocationClick();
-                    }
-                }
-            }, 20);
+            console.log('Mobile touch click for:', element.id);
+            
+            // 立即調用對應的函數，不延遲（確保在用戶手勢事件中執行）
+            if (functionName === 'handleFullscreenClick' && typeof window.handleFullscreenClick === 'function') {
+                window.handleFullscreenClick();
+            } else if (functionName === 'handleLocationClick' && typeof window.handleLocationClick === 'function') {
+                window.handleLocationClick();
+            }
         }
-    }, { passive: true });
+        
+        // 重置拖曳標記
+        setTimeout(() => {
+            element.hasDragged = false;
+        }, 50);
+    }, { passive: false });
 }
 
 function makeDraggable(element) {
@@ -1094,7 +1241,27 @@ function showInitialSetup() {
     // 填充現有組別到選擇器
     updateDefaultGroupSelect();
     
+    // 確保modal在全螢幕模式下也能正確顯示
     modal.style.display = 'block';
+    
+    // 如果處於全螢幕模式，確保modal在正確的容器中
+    if (isFullscreen) {
+        const fullscreenContainer = document.querySelector('.map-container.fullscreen');
+        if (fullscreenContainer) {
+            // 強制將modal移到全螢幕容器中
+            fullscreenContainer.appendChild(modal);
+            
+            // 確保modal的樣式正確
+            setTimeout(() => {
+                modal.style.position = 'fixed';
+                modal.style.zIndex = '10001';
+                modal.style.left = '0';
+                modal.style.top = '0';
+                modal.style.width = '100vw';
+                modal.style.height = '100vh';
+            }, 10);
+        }
+    }
 }
 
 // 更新預設組別選擇器
@@ -1428,7 +1595,28 @@ function showMarkerModal(lat, lng, existingMarker = null) {
         delete form.dataset.markerId;
     }
     
+    // 確保modal在全螢幕模式下也能正確顯示
     modal.style.display = 'block';
+    
+    // 如果處於全螢幕模式，確保modal在正確的容器中並強制設定樣式
+    if (isFullscreen) {
+        const fullscreenContainer = document.querySelector('.map-container.fullscreen');
+        if (fullscreenContainer) {
+            // 強制將modal移到全螢幕容器中
+            fullscreenContainer.appendChild(modal);
+            
+            // 延遲設定樣式確保正確顯示
+            setTimeout(() => {
+                modal.style.position = 'fixed';
+                modal.style.zIndex = '10001';
+                modal.style.left = '0';
+                modal.style.top = '0';
+                modal.style.width = '100vw';
+                modal.style.height = '100vh';
+                modal.style.display = 'block';
+            }, 10);
+        }
+    }
 }
 
 function updateSubgroupOptions(groupId) {

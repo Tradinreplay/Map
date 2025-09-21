@@ -722,6 +722,7 @@ body {
     height: 100vh !important;
     z-index: 9999 !important;
     background: #000;
+    overflow: visible !important;
 }
 
 .map-container.fullscreen #map {
@@ -875,13 +876,23 @@ body {
 .modal {
     display: none;
     position: fixed;
-    z-index: 2000;
+    z-index: 10001;
     left: 0;
     top: 0;
     width: 100%;
     height: 100%;
     background-color: rgba(0,0,0,0.5);
     backdrop-filter: blur(5px);
+}
+
+/* 全螢幕模式下的modal樣式 */
+.map-container.fullscreen .modal {
+    position: fixed !important;
+    z-index: 10001 !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
 }
 
 .modal-content {
