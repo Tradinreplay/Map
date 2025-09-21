@@ -499,9 +499,7 @@ document.getElementById('createGroupForm').addEventListener('submit', handleCrea
 // 測試通知按鈕
     document.getElementById('testNotificationBtn').addEventListener('click', testNotification);
     
-    // 側邊欄最小化功能
-    document.getElementById('minimizeSidebarBtn').addEventListener('click', minimizeSidebar);
-    document.getElementById('expandSidebarBtn').addEventListener('click', expandSidebar);
+
 
 // 添加重置功能（用於測試）
 window.resetSetup = function() {
@@ -526,55 +524,9 @@ window.toggleSection = function(sectionName) {
     }
 };
 
-// 最小化側邊欄
-function minimizeSidebar() {
-    const sidebar = document.querySelector('.sidebar');
-    const expandBtn = document.getElementById('expandSidebarBtn');
-    
-    sidebar.classList.add('minimized');
-    expandBtn.style.display = 'flex';
-    
-    // 儲存最小化狀態
-    localStorage.setItem('sidebarMinimized', 'true');
-    
-    // 觸發地圖重新調整大小
-    setTimeout(() => {
-        if (map) {
-            map.invalidateSize();
-        }
-    }, 300);
-}
 
-// 展開側邊欄
-function expandSidebar() {
-    const sidebar = document.querySelector('.sidebar');
-    const expandBtn = document.getElementById('expandSidebarBtn');
-    
-    sidebar.classList.remove('minimized');
-    expandBtn.style.display = 'none';
-    
-    // 儲存展開狀態
-    localStorage.setItem('sidebarMinimized', 'false');
-    
-    // 觸發地圖重新調整大小
-    setTimeout(() => {
-        if (map) {
-            map.invalidateSize();
-        }
-    }, 300);
-}
 
-// 載入側邊欄狀態
-function loadSidebarState() {
-    const isMinimized = localStorage.getItem('sidebarMinimized') === 'true';
-    if (isMinimized) {
-        const sidebar = document.querySelector('.sidebar');
-        const expandBtn = document.getElementById('expandSidebarBtn');
-        
-        sidebar.classList.add('minimized');
-        expandBtn.style.display = 'flex';
-    }
-}
+
 
 // 全螢幕功能
 let isFullscreen = false;
@@ -3314,17 +3266,7 @@ document.addEventListener('DOMContentLoaded', function() {
             console.error('Error loading settings:', error);
         }
         
-        // 載入側邊欄狀態
-        try {
-            console.log('Calling loadSidebarState...');
-            if (typeof loadSidebarState === 'function') {
-                loadSidebarState();
-            } else {
-                console.warn('loadSidebarState function not found');
-            }
-        } catch (error) {
-            console.error('Error loading sidebar state:', error);
-        }
+
         
         // 請求定位權限
         try {

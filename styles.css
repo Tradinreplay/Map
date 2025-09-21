@@ -580,59 +580,7 @@ body {
     transform: scale(0.8) !important;
 }
 
-/* 側邊欄最小化功能 */
-.sidebar.minimized {
-    width: 0;
-    min-width: 0;
-    overflow: hidden;
-    padding: 0;
-    border-right: none;
-}
 
-.minimize-btn {
-    background: rgba(255, 59, 48, 0.1) !important;
-    color: #FF3B30 !important;
-    border: 1px solid rgba(255, 59, 48, 0.3) !important;
-}
-
-.minimize-btn:hover {
-    background: rgba(255, 59, 48, 0.2) !important;
-    transform: translateY(-1px) scale(1.05);
-}
-
-.expand-sidebar-btn {
-    position: absolute;
-    top: 16px;
-    left: 16px;
-    width: 40px;
-    height: 40px;
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    border-radius: 12px;
-    color: #007AFF;
-    font-size: 16px;
-    cursor: pointer;
-    z-index: 1001;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.expand-sidebar-btn:hover {
-    background: rgba(0, 122, 255, 0.1);
-    border-color: rgba(0, 122, 255, 0.3);
-    transform: translateY(-2px) scale(1.05);
-    box-shadow: 0 6px 25px rgba(0, 122, 255, 0.15);
-}
-
-.expand-sidebar-btn:active {
-    transform: translateY(-1px) scale(0.98);
-    box-shadow: 0 4px 15px rgba(0, 122, 255, 0.25);
-}
 
 /* 全螢幕按鈕 */
 .fullscreen-btn {
@@ -2203,10 +2151,7 @@ input:checked + .slider:before {
         display: none !important;
     }
     
-    /* 展開側邊欄按鈕在全螢幕模式下隱藏 */
-    .map-container.fullscreen .expand-sidebar-btn {
-        display: none !important;
-    }
+
 }
 
 @media (max-width: 480px) {
