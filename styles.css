@@ -730,78 +730,7 @@ body {
     height: 100% !important;
 }
 
-/* 全螢幕模式下的追蹤距離顯示 */
-.fullscreen-tracking-info {
-    position: absolute;
-    top: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: rgba(0, 0, 0, 0.8);
-    backdrop-filter: blur(10px);
-    color: white;
-    padding: 12px 20px;
-    border-radius: 12px;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    font-size: 14px;
-    font-weight: 500;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    z-index: 10000;
-    min-width: 200px;
-    text-align: center;
-    transition: all 0.3s ease;
-}
 
-.tracking-target-info {
-    margin-bottom: 6px;
-    font-size: 13px;
-    opacity: 0.9;
-    color: #e0e0e0;
-}
-
-.tracking-distance-info {
-    font-size: 18px;
-    font-weight: 600;
-    color: #4CAF50;
-}
-
-.distance-unit {
-    font-size: 12px;
-    font-weight: 400;
-    margin-left: 4px;
-    opacity: 0.8;
-}
-
-/* 距離顏色樣式 */
-.distance-close {
-    color: #ff4444 !important; /* 紅色 - 接近目標 */
-    animation: pulse 1s infinite;
-}
-
-.distance-medium {
-    color: #ffaa00 !important; /* 橙色 - 中等距離 */
-}
-
-.distance-far {
-    color: #4CAF50 !important; /* 綠色 - 較遠距離 */
-}
-
-/* 接近目標時的脈衝動畫 */
-@keyframes pulse {
-    0% { opacity: 1; }
-    50% { opacity: 0.6; }
-    100% { opacity: 1; }
-}
-
-/* 只在全螢幕模式下顯示 */
-.map-container.fullscreen .fullscreen-tracking-info {
-    display: block !important;
-}
-
-/* 非全螢幕模式下隱藏 */
-.map-container:not(.fullscreen) .fullscreen-tracking-info {
-    display: none !important;
-}
 
 .map-container.fullscreen .fullscreen-btn {
     left: 20px;
