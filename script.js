@@ -578,11 +578,17 @@ function toggleFullscreen() {
     const mapContainer = document.querySelector('.map-container');
     const fullscreenIcon = document.getElementById('fullscreenIcon');
     
+    console.log('toggleFullscreen called, current isFullscreen:', isFullscreen);
+    console.log('mapContainer found:', !!mapContainer);
+    console.log('fullscreenIcon found:', !!fullscreenIcon);
+    
     if (!isFullscreen) {
         // 進入全螢幕模式
+        console.log('Attempting to enter fullscreen');
         enterFullscreen(mapContainer);
     } else {
         // 退出全螢幕模式
+        console.log('Attempting to exit fullscreen');
         exitFullscreen();
     }
 }
@@ -591,10 +597,12 @@ function enterFullscreen(element) {
     const mapContainer = document.querySelector('.map-container');
     const fullscreenIcon = document.getElementById('fullscreenIcon');
     
+    console.log('Entering fullscreen mode');
+    
     // 添加全螢幕CSS類
     mapContainer.classList.add('fullscreen');
     
-    // 更新按鈕圖標
+    // 更新按鈕圖標 - 進入全螢幕時顯示退出圖標
     fullscreenIcon.textContent = '⛶';
     
     // 嘗試使用瀏覽器原生全螢幕API
@@ -630,10 +638,12 @@ function exitFullscreen() {
     const mapContainer = document.querySelector('.map-container');
     const fullscreenIcon = document.getElementById('fullscreenIcon');
     
+    console.log('Exiting fullscreen mode');
+    
     // 移除全螢幕CSS類
     mapContainer.classList.remove('fullscreen');
     
-    // 更新按鈕圖標
+    // 更新按鈕圖標 - 退出全螢幕時顯示進入圖標
     fullscreenIcon.textContent = '⛶';
     
     // 嘗試退出瀏覽器原生全螢幕
@@ -674,8 +684,12 @@ function handleFullscreenClick() {
 
 function handleLocationClick() {
     console.log('Location button clicked');
-    getCurrentLocation();
+    centerMapToCurrentLocation();
 }
+
+// 將函數暴露到全局作用域，讓HTML的onclick可以訪問
+window.handleFullscreenClick = handleFullscreenClick;
+window.handleLocationClick = handleLocationClick;
 
 // 初始化控制按鈕
 function initControlButtons() {
@@ -787,30 +801,34 @@ function makeDraggable(element) {
     let currentX = 0, currentY = 0;
     let dragStartTime = 0;
     
+    // 明確初始化hasDragged為false
+    element.hasDragged = false;
+    
     // 獲取初始位置
     const computedStyle = window.getComputedStyle(element);
     initialX = parseInt(computedStyle.left) || 0;
     initialY = parseInt(computedStyle.top) || 0;
     
-    // 鼠標事件
+    // 只綁定開始事件到元素本身
     element.addEventListener('mousedown', dragStart);
-    document.addEventListener('mousemove', drag);
-    document.addEventListener('mouseup', dragEnd);
-    
-    // 觸摸事件（移動設備）
     element.addEventListener('touchstart', dragStart, { passive: false });
-    document.addEventListener('touchmove', drag, { passive: false });
-    document.addEventListener('touchend', dragEnd);
     
     function dragStart(e) {
         dragStartTime = Date.now();
+        element.hasDragged = false;
         
         if (e.type === 'touchstart') {
             startX = e.touches[0].clientX;
             startY = e.touches[0].clientY;
+            // 綁定觸摸事件
+            document.addEventListener('touchmove', drag, { passive: false });
+            document.addEventListener('touchend', dragEnd);
         } else {
             startX = e.clientX;
             startY = e.clientY;
+            // 綁定滑鼠事件
+            document.addEventListener('mousemove', drag);
+            document.addEventListener('mouseup', dragEnd);
         }
         
         isDragging = false;
@@ -819,6 +837,8 @@ function makeDraggable(element) {
         const rect = element.getBoundingClientRect();
         currentX = rect.left - initialX;
         currentY = rect.top - initialY;
+        
+        e.preventDefault();
     }
     
     function drag(e) {
@@ -839,6 +859,7 @@ function makeDraggable(element) {
         // 如果移動距離超過5像素，開始拖曳
         if (!isDragging && distance > 5) {
             isDragging = true;
+            element.hasDragged = true;
             element.classList.add('dragging');
             e.preventDefault();
         }
@@ -868,31 +889,46 @@ function makeDraggable(element) {
     }
     
     function dragEnd(e) {
-        if (isDragging) {
-            isDragging = false;
-            element.classList.remove('dragging');
-            
+        // 移除事件監聽器
+        document.removeEventListener('mousemove', drag);
+        document.removeEventListener('mouseup', dragEnd);
+        document.removeEventListener('touchmove', drag);
+        document.removeEventListener('touchend', dragEnd);
+        
+        // 總是重置拖曳狀態
+        isDragging = false;
+        element.classList.remove('dragging');
+        
+        if (element.hasDragged) {
             // 更新初始位置
-            const rect = element.getBoundingClientRect();
-            initialX = rect.left;
-            initialY = rect.top;
+            const computedStyle = window.getComputedStyle(element);
+            initialX = parseInt(computedStyle.left) || 0;
+            initialY = parseInt(computedStyle.top) || 0;
             currentX = 0;
             currentY = 0;
             
             // 保存位置到localStorage
             saveButtonPosition(element.id, initialX, initialY);
         }
+        
+        // 短暫延遲後重置hasDragged，避免立即觸發點擊
+        setTimeout(() => {
+            element.hasDragged = false;
+        }, 10);
     }
     
     // 阻止拖曳時觸發點擊事件
     element.addEventListener('click', function(e) {
         // 只有在真正發生拖曳時才阻止點擊
-        if (element.classList.contains('dragging')) {
+        if (element.hasDragged) {
+            console.log('Preventing click due to drag for element:', element.id);
             e.preventDefault();
             e.stopPropagation();
             return false;
+        } else {
+            console.log('Allowing click for element:', element.id);
         }
-    }, true);
+    }, false);
 }
 
 function saveButtonPosition(buttonId, x, y) {
@@ -920,14 +956,15 @@ function loadButtonPositions() {
 function requestLocationPermission() {
     console.log('開始請求位置權限...');
     
-    // 檢查是否為HTTPS或localhost
-    const isSecure = location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-    if (!isSecure) {
-        console.warn('警告：非安全連線可能影響定位功能');
-        showNotification('提示：建議使用HTTPS以獲得更好的定位體驗', 'warning');
-    }
-    
-    if ('geolocation' in navigator) {
+    return new Promise((resolve, reject) => {
+        // 檢查是否為HTTPS或localhost
+        const isSecure = location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+        if (!isSecure) {
+            console.warn('警告：非安全連線可能影響定位功能');
+            showNotification('提示：建議使用HTTPS以獲得更好的定位體驗', 'warning');
+        }
+        
+        if ('geolocation' in navigator) {
         console.log('瀏覽器支援地理位置功能，正在請求位置...');
         navigator.geolocation.getCurrentPosition(
             function(position) {
@@ -947,6 +984,8 @@ function requestLocationPermission() {
                 } else {
                     showNotification('定位成功！', 'success');
                 }
+                
+                resolve(position);
             },
             function(error) {
                 console.error('無法獲取位置:', error);
@@ -978,6 +1017,8 @@ function requestLocationPermission() {
                 const defaultLng = 121.5654;
                 map.setView([defaultLat, defaultLng], 16);
                 showNotification('已自動設定為台北市中心。您可以點擊地圖來添加標記。', 'info');
+                
+                reject(error);
             },
             {
                 enableHighAccuracy: true,
@@ -985,9 +1026,11 @@ function requestLocationPermission() {
                 maximumAge: 30000
             }
         );
-    } else {
-        showNotification('您的瀏覽器不支援地理位置功能', 'error');
-    }
+        } else {
+            showNotification('您的瀏覽器不支援地理位置功能', 'error');
+            reject(new Error('瀏覽器不支援地理位置功能'));
+        }
+    });
 }
 
 // 請求通知權限
@@ -1742,6 +1785,23 @@ function stopTracking() {
 }
 
 function centerMapToCurrentLocation() {
+    // 檢查是否從地圖上的定位按鈕調用，如果是則添加視覺反饋
+    const locationBtn = document.getElementById('locationBtn');
+    const locationIcon = document.getElementById('locationIcon');
+    let isFromMapButton = false;
+    
+    // 檢查調用堆疊，判斷是否來自handleLocationClick
+    const stack = new Error().stack;
+    if (stack && stack.includes('handleLocationClick')) {
+        isFromMapButton = true;
+        // 設置按鈕為載入狀態
+        if (locationBtn && locationIcon) {
+            locationBtn.classList.add('locating');
+            locationBtn.disabled = true;
+            locationIcon.textContent = '🔄';
+        }
+    }
+    
     if (currentPosition) {
         map.setView([currentPosition.lat, currentPosition.lng], 18);
         updateCurrentLocationMarker();
@@ -1749,8 +1809,32 @@ function centerMapToCurrentLocation() {
         if (currentLocationMarker) {
             currentLocationMarker.openPopup();
         }
+        
+        // 恢復按鈕狀態
+        if (isFromMapButton && locationBtn && locationIcon) {
+            locationBtn.classList.remove('locating');
+            locationBtn.disabled = false;
+            locationIcon.textContent = '📍';
+        }
+        
+        showNotification('已回到您的位置', 'success');
     } else {
-        requestLocationPermission();
+        // 如果沒有位置資料，請求位置權限
+        requestLocationPermission().then(() => {
+            // 恢復按鈕狀態
+            if (isFromMapButton && locationBtn && locationIcon) {
+                locationBtn.classList.remove('locating');
+                locationBtn.disabled = false;
+                locationIcon.textContent = '📍';
+            }
+        }).catch(() => {
+            // 恢復按鈕狀態
+            if (isFromMapButton && locationBtn && locationIcon) {
+                locationBtn.classList.remove('locating');
+                locationBtn.disabled = false;
+                locationIcon.textContent = '📍';
+            }
+        });
     }
 }
 
