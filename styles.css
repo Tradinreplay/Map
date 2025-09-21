@@ -466,6 +466,39 @@ body {
      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
+.accuracy-display {
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    padding: 8px 12px;
+    border-radius: 8px;
+    margin: 5px 0;
+    font-size: 12px;
+    text-align: center;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    background: rgba(158, 158, 158, 0.1);
+    color: #666;
+    border: 1px solid rgba(158, 158, 158, 0.3);
+}
+
+.accuracy-display.accuracy-good {
+    background: rgba(76, 175, 80, 0.1);
+    color: #2e7d32;
+    border: 1px solid rgba(76, 175, 80, 0.3);
+}
+
+.accuracy-display.accuracy-medium {
+    background: rgba(255, 152, 0, 0.1);
+    color: #e65100;
+    border: 1px solid rgba(255, 152, 0, 0.3);
+}
+
+.accuracy-display.accuracy-poor {
+    background: rgba(244, 67, 54, 0.1);
+    color: #c62828;
+    border: 1px solid rgba(244, 67, 54, 0.3);
+}
+
 #centerMapBtn {
     width: 100%;
     padding: 16px;
@@ -604,24 +637,23 @@ body {
 /* 全螢幕按鈕 */
 .fullscreen-btn {
     position: absolute;
-    top: 16px;
-    left: 16px;
-    width: 44px;
-    height: 44px;
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    border-radius: 12px;
-    color: #007AFF;
-    font-size: 18px;
-    cursor: pointer;
+    top: 12px;
+    left: 12px;
+    width: 36px;
+    height: 36px;
+    background: rgba(255, 255, 255, 0.9);
+    border: 2px solid rgba(0, 123, 255, 0.3);
+    border-radius: 10px;
+    cursor: move;
     z-index: 1002;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
     display: flex;
     align-items: center;
     justify-content: center;
+    font-size: 16px;
+    color: #007bff;
+    user-select: none;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    backdrop-filter: blur(10px);
 }
 
 .fullscreen-btn:hover {
@@ -639,24 +671,23 @@ body {
 /* 定位點按鈕 */
 .location-btn {
     position: absolute;
-    top: 76px; /* 在全螢幕按鈕下方 */
-    left: 16px;
-    width: 44px;
-    height: 44px;
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    border-radius: 12px;
+    top: 60px; /* 在全螢幕按鈕下方 */
+    left: 12px;
+    width: 36px;
+    height: 36px;
+    background: rgba(255, 255, 255, 0.9);
+    border: 2px solid rgba(40, 167, 69, 0.3);
+    border-radius: 10px;
+    cursor: move;
+    font-size: 16px;
     color: #28a745;
-    font-size: 18px;
-    cursor: pointer;
-    z-index: 1002;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
     display: flex;
     align-items: center;
     justify-content: center;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 1002;
+    backdrop-filter: blur(10px);
+    user-select: none;
 }
 
 .location-btn:hover {
@@ -680,6 +711,52 @@ body {
 
 .location-btn.locating {
     animation: pulse 1.5s infinite;
+}
+
+/* 拖曳狀態樣式 */
+.fullscreen-btn.dragging,
+.location-btn.dragging {
+    transform: scale(1.1) rotate(5deg);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
+    z-index: 10000;
+    opacity: 0.85;
+    transition: none;
+    animation: dragPulse 0.6s ease-in-out infinite alternate;
+}
+
+.fullscreen-btn.dragging {
+    border-color: rgba(0, 123, 255, 0.9);
+    background: rgba(0, 123, 255, 0.15);
+}
+
+.location-btn.dragging {
+    border-color: rgba(40, 167, 69, 0.9);
+    background: rgba(40, 167, 69, 0.15);
+}
+
+/* 拖曳脈衝動畫 */
+@keyframes dragPulse {
+    0% {
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4), 0 0 0 0 rgba(0, 123, 255, 0.7);
+    }
+    100% {
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4), 0 0 0 8px rgba(0, 123, 255, 0);
+    }
+}
+
+/* 按鈕懸停效果增強 */
+.fullscreen-btn:hover:not(.dragging),
+.location-btn:hover:not(.dragging) {
+    transform: scale(1.05);
+    transition: all 0.2s ease;
+}
+
+.fullscreen-btn:hover:not(.dragging) {
+    box-shadow: 0 6px 20px rgba(0, 123, 255, 0.3);
+}
+
+.location-btn:hover:not(.dragging) {
+    box-shadow: 0 6px 20px rgba(40, 167, 69, 0.3);
 }
 
 @keyframes pulse {
@@ -707,11 +784,17 @@ body {
 .map-container.fullscreen .fullscreen-btn {
     left: 20px;
     top: 20px;
+    width: 40px;
+    height: 40px;
+    font-size: 18px;
 }
 
 .map-container.fullscreen .location-btn {
     left: 20px;
-    top: 80px;
+    top: 68px;
+    width: 40px;
+    height: 40px;
+    font-size: 18px;
 }
 
 /* 浮動控制面板 */
@@ -1992,19 +2075,19 @@ input:checked + .slider:before {
 @media (max-width: 768px) {
     /* 全螢幕按鈕在移動設備上的調整 */
     .fullscreen-btn {
-        width: 48px;
-        height: 48px;
-        font-size: 20px;
+        width: 32px;
+        height: 32px;
+        font-size: 14px;
         top: 12px;
         left: 12px;
     }
     
     /* 定位點按鈕在移動設備上的調整 */
     .location-btn {
-        width: 48px;
-        height: 48px;
-        font-size: 18px;
-        top: 68px;
+        width: 32px;
+        height: 32px;
+        font-size: 14px;
+        top: 52px;
         left: 12px;
     }
     
@@ -2024,17 +2107,17 @@ input:checked + .slider:before {
     .map-container.fullscreen .fullscreen-btn {
         left: 16px;
         top: 16px;
-        width: 52px;
-        height: 52px;
-        font-size: 22px;
+        width: 36px;
+        height: 36px;
+        font-size: 16px;
     }
     
     .map-container.fullscreen .location-btn {
         left: 16px;
-        top: 76px;
-        width: 52px;
-        height: 52px;
-        font-size: 20px;
+        top: 60px;
+        width: 36px;
+        height: 36px;
+        font-size: 16px;
     }
     
     .map-container.fullscreen .floating-controls {
@@ -2056,18 +2139,18 @@ input:checked + .slider:before {
 @media (max-width: 480px) {
     /* 小螢幕設備的進一步優化 */
     .fullscreen-btn {
-        width: 44px;
-        height: 44px;
-        font-size: 18px;
+        width: 28px;
+        height: 28px;
+        font-size: 12px;
         top: 8px;
         left: 8px;
     }
     
     .location-btn {
-        width: 44px;
-        height: 44px;
-        font-size: 16px;
-        top: 60px;
+        width: 28px;
+        height: 28px;
+        font-size: 12px;
+        top: 44px;
         left: 8px;
     }
     
@@ -2086,17 +2169,17 @@ input:checked + .slider:before {
     .map-container.fullscreen .fullscreen-btn {
         left: 12px;
         top: 12px;
-        width: 48px;
-        height: 48px;
-        font-size: 20px;
+        width: 32px;
+        height: 32px;
+        font-size: 14px;
     }
     
     .map-container.fullscreen .location-btn {
         left: 12px;
-        top: 68px;
-        width: 48px;
-        height: 48px;
-        font-size: 18px;
+        top: 52px;
+        width: 32px;
+        height: 32px;
+        font-size: 14px;
     }
     
     .map-container.fullscreen .floating-controls {

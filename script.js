@@ -102,6 +102,44 @@ function initializeApp() {
     } else {
         requestLocationPermission();
         requestNotificationPermission();
+        // 自動獲取當前位置
+        autoGetCurrentLocation();
+    }
+}
+
+// 自動獲取當前位置函數
+function autoGetCurrentLocation() {
+    if ('geolocation' in navigator) {
+        navigator.geolocation.getCurrentPosition(
+            function(position) {
+                currentPosition = {
+                    lat: position.coords.latitude,
+                    lng: position.coords.longitude,
+                    accuracy: position.coords.accuracy,
+                    timestamp: position.timestamp
+                };
+                
+                // 移動地圖到當前位置
+                map.setView([currentPosition.lat, currentPosition.lng], 15);
+                
+                // 更新位置顯示
+                updateLocationDisplay();
+                
+                // 更新當前位置標記
+                updateCurrentLocationMarker();
+                
+                console.log('自動定位成功:', currentPosition);
+            },
+            function(error) {
+                console.log('自動定位失敗:', error);
+                // 靜默失敗，不顯示錯誤通知
+            },
+            {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 300000 // 5分鐘內的緩存位置可接受
+            }
+        );
     }
 }
 
@@ -441,6 +479,9 @@ document.getElementById('createGroupForm').addEventListener('submit', handleCrea
     
     // 定位點功能
     document.getElementById('locationBtn').addEventListener('click', getCurrentLocation);
+    
+    // 拖曳功能
+    initDragFunctionality();
 
 // 添加重置功能（用於測試）
 window.resetSetup = function() {
@@ -693,6 +734,156 @@ function getCurrentLocation() {
             maximumAge: 60000
         }
     );
+}
+
+// 拖曳功能實現
+function initDragFunctionality() {
+    const fullscreenBtn = document.getElementById('fullscreenBtn');
+    const locationBtn = document.getElementById('locationBtn');
+    
+    // 載入保存的按鈕位置
+    loadButtonPositions();
+    
+    // 為每個按鈕添加拖曳功能
+    makeDraggable(fullscreenBtn);
+    makeDraggable(locationBtn);
+}
+
+function makeDraggable(element) {
+    let isDragging = false;
+    let startX, startY, initialX, initialY;
+    let currentX = 0, currentY = 0;
+    let dragStartTime = 0;
+    
+    // 獲取初始位置
+    const computedStyle = window.getComputedStyle(element);
+    initialX = parseInt(computedStyle.left) || 0;
+    initialY = parseInt(computedStyle.top) || 0;
+    
+    // 鼠標事件
+    element.addEventListener('mousedown', dragStart);
+    document.addEventListener('mousemove', drag);
+    document.addEventListener('mouseup', dragEnd);
+    
+    // 觸摸事件（移動設備）
+    element.addEventListener('touchstart', dragStart, { passive: false });
+    document.addEventListener('touchmove', drag, { passive: false });
+    document.addEventListener('touchend', dragEnd);
+    
+    function dragStart(e) {
+        dragStartTime = Date.now();
+        
+        if (e.type === 'touchstart') {
+            startX = e.touches[0].clientX;
+            startY = e.touches[0].clientY;
+        } else {
+            startX = e.clientX;
+            startY = e.clientY;
+        }
+        
+        isDragging = false;
+        
+        // 延遲判斷是否為拖曳
+        setTimeout(() => {
+            if (Date.now() - dragStartTime > 150) { // 150ms後才算拖曳
+                isDragging = true;
+                element.classList.add('dragging');
+                
+                // 設置初始偏移
+                const rect = element.getBoundingClientRect();
+                currentX = rect.left - initialX;
+                currentY = rect.top - initialY;
+                
+                e.preventDefault();
+            }
+        }, 150);
+    }
+    
+    function drag(e) {
+        if (!isDragging) return;
+        
+        e.preventDefault();
+        
+        let clientX, clientY;
+        if (e.type === 'touchmove') {
+            clientX = e.touches[0].clientX;
+            clientY = e.touches[0].clientY;
+        } else {
+            clientX = e.clientX;
+            clientY = e.clientY;
+        }
+        
+        // 計算新位置
+        const deltaX = clientX - startX;
+        const deltaY = clientY - startY;
+        
+        const newX = initialX + currentX + deltaX;
+        const newY = initialY + currentY + deltaY;
+        
+        // 獲取視窗和元素尺寸
+        const windowWidth = window.innerWidth;
+        const windowHeight = window.innerHeight;
+        const elementWidth = element.offsetWidth;
+        const elementHeight = element.offsetHeight;
+        
+        // 限制在視窗範圍內
+        const constrainedX = Math.max(0, Math.min(newX, windowWidth - elementWidth));
+        const constrainedY = Math.max(0, Math.min(newY, windowHeight - elementHeight));
+        
+        // 應用新位置
+        element.style.left = constrainedX + 'px';
+        element.style.top = constrainedY + 'px';
+        element.style.right = 'auto';
+        element.style.bottom = 'auto';
+    }
+    
+    function dragEnd(e) {
+        if (isDragging) {
+            isDragging = false;
+            element.classList.remove('dragging');
+            
+            // 更新初始位置
+            const rect = element.getBoundingClientRect();
+            initialX = rect.left;
+            initialY = rect.top;
+            currentX = 0;
+            currentY = 0;
+            
+            // 保存位置到localStorage
+            saveButtonPosition(element.id, initialX, initialY);
+        }
+    }
+    
+    // 阻止拖曳時觸發點擊事件
+    element.addEventListener('click', function(e) {
+        const clickTime = Date.now();
+        if (clickTime - dragStartTime > 200 || element.classList.contains('dragging')) {
+            e.preventDefault();
+            e.stopPropagation();
+            return false;
+        }
+    }, true);
+}
+
+function saveButtonPosition(buttonId, x, y) {
+    const positions = JSON.parse(localStorage.getItem('buttonPositions') || '{}');
+    positions[buttonId] = { x, y };
+    localStorage.setItem('buttonPositions', JSON.stringify(positions));
+}
+
+function loadButtonPositions() {
+    const positions = JSON.parse(localStorage.getItem('buttonPositions') || '{}');
+    
+    Object.keys(positions).forEach(buttonId => {
+        const element = document.getElementById(buttonId);
+        if (element) {
+            const { x, y } = positions[buttonId];
+            element.style.left = x + 'px';
+            element.style.top = y + 'px';
+            element.style.right = 'auto';
+            element.style.bottom = 'auto';
+        }
+    });
 }
 
 // 請求位置權限
@@ -1773,18 +1964,10 @@ function showLocationAlert(marker, distance) {
 // UI更新函數
 function updateLocationDisplay() {
     const locationDiv = document.getElementById('currentLocation');
+    const accuracyDiv = document.getElementById('locationAccuracy');
+    
     if (currentPosition) {
-        let accuracyText = '';
         let timeText = '';
-        
-        if (currentPosition.accuracy) {
-            const accuracy = Math.round(currentPosition.accuracy);
-            let accuracyColor = '#00ffff';
-            if (accuracy > 100) accuracyColor = '#ff6b6b';
-            else if (accuracy > 50) accuracyColor = '#ffa500';
-            
-            accuracyText = `<br><span style="color: ${accuracyColor}">精度: ±${accuracy}公尺</span>`;
-        }
         
         if (currentPosition.timestamp) {
             const updateTime = new Date(currentPosition.timestamp);
@@ -1793,10 +1976,38 @@ function updateLocationDisplay() {
         
         locationDiv.innerHTML = `
             緯度: ${currentPosition.lat.toFixed(6)}<br>
-            經度: ${currentPosition.lng.toFixed(6)}${accuracyText}${timeText}
+            經度: ${currentPosition.lng.toFixed(6)}${timeText}
         `;
+        
+        // 更新精度顯示
+        if (currentPosition.accuracy && accuracyDiv) {
+            const accuracy = Math.round(currentPosition.accuracy);
+            let accuracyClass = 'accuracy-good';
+            let accuracyIcon = '🎯';
+            
+            if (accuracy > 100) {
+                accuracyClass = 'accuracy-poor';
+                accuracyIcon = '📍';
+            } else if (accuracy > 50) {
+                accuracyClass = 'accuracy-medium';
+                accuracyIcon = '🎯';
+            } else {
+                accuracyClass = 'accuracy-good';
+                accuracyIcon = '🎯';
+            }
+            
+            accuracyDiv.innerHTML = `${accuracyIcon} 精度: ±${accuracy}公尺`;
+            accuracyDiv.className = `accuracy-display ${accuracyClass}`;
+        } else if (accuracyDiv) {
+            accuracyDiv.innerHTML = '📍 精度: --';
+            accuracyDiv.className = 'accuracy-display';
+        }
     } else {
         locationDiv.textContent = '位置未知';
+        if (accuracyDiv) {
+            accuracyDiv.innerHTML = '📍 精度: --';
+            accuracyDiv.className = 'accuracy-display';
+        }
     }
 }
 
