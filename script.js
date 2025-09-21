@@ -438,6 +438,9 @@ document.getElementById('createGroupForm').addEventListener('submit', handleCrea
     
     // 全螢幕功能
     document.getElementById('fullscreenBtn').addEventListener('click', toggleFullscreen);
+    
+    // 定位點功能
+    document.getElementById('locationBtn').addEventListener('click', getCurrentLocation);
 
 // 添加重置功能（用於測試）
 window.resetSetup = function() {
@@ -622,6 +625,74 @@ function handleFullscreenChange() {
         exitFullscreen();
     }
 }
+}
+
+// 定位點功能
+function getCurrentLocation() {
+    const locationBtn = document.getElementById('locationBtn');
+    const locationIcon = document.getElementById('locationIcon');
+    
+    // 檢查是否支持地理位置
+    if (!navigator.geolocation) {
+        showNotification('您的瀏覽器不支持地理位置功能', 'error');
+        return;
+    }
+    
+    // 設置按鈕為載入狀態
+    locationBtn.classList.add('locating');
+    locationBtn.disabled = true;
+    locationIcon.textContent = '🔄';
+    
+    // 獲取當前位置
+    navigator.geolocation.getCurrentPosition(
+        function(position) {
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+            
+            // 更新當前位置
+            currentPosition = { lat, lng };
+            
+            // 移動地圖到當前位置
+            map.setView([lat, lng], 16);
+            
+            // 更新當前位置標記
+            updateCurrentLocationMarker();
+            
+            // 恢復按鈕狀態
+            locationBtn.classList.remove('locating');
+            locationBtn.disabled = false;
+            locationIcon.textContent = '📍';
+            
+            showNotification('已定位到您的位置', 'success');
+        },
+        function(error) {
+            // 處理錯誤
+            let errorMessage = '無法獲取位置';
+            switch(error.code) {
+                case error.PERMISSION_DENIED:
+                    errorMessage = '位置權限被拒絕，請在瀏覽器設定中允許位置存取';
+                    break;
+                case error.POSITION_UNAVAILABLE:
+                    errorMessage = '位置資訊無法取得';
+                    break;
+                case error.TIMEOUT:
+                    errorMessage = '位置請求逾時';
+                    break;
+            }
+            
+            // 恢復按鈕狀態
+            locationBtn.classList.remove('locating');
+            locationBtn.disabled = false;
+            locationIcon.textContent = '📍';
+            
+            showNotification(errorMessage, 'error');
+        },
+        {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 60000
+        }
+    );
 }
 
 // 請求位置權限

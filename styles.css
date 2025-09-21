@@ -605,7 +605,7 @@ body {
 .fullscreen-btn {
     position: absolute;
     top: 16px;
-    right: 16px;
+    left: 16px;
     width: 44px;
     height: 44px;
     background: rgba(255, 255, 255, 0.95);
@@ -636,6 +636,58 @@ body {
     box-shadow: 0 4px 15px rgba(0, 122, 255, 0.25);
 }
 
+/* 定位點按鈕 */
+.location-btn {
+    position: absolute;
+    top: 76px; /* 在全螢幕按鈕下方 */
+    left: 16px;
+    width: 44px;
+    height: 44px;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 12px;
+    color: #28a745;
+    font-size: 18px;
+    cursor: pointer;
+    z-index: 1002;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.location-btn:hover {
+    background: rgba(40, 167, 69, 0.1);
+    border-color: rgba(40, 167, 69, 0.3);
+    transform: translateY(-2px) scale(1.05);
+    box-shadow: 0 6px 25px rgba(40, 167, 69, 0.15);
+}
+
+.location-btn:active {
+    transform: translateY(-1px) scale(0.98);
+    box-shadow: 0 4px 15px rgba(40, 167, 69, 0.25);
+}
+
+.location-btn:disabled {
+    background: rgba(255, 255, 255, 0.5);
+    color: #6c757d;
+    border-color: #6c757d;
+    cursor: not-allowed;
+}
+
+.location-btn.locating {
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+}
+
 /* 全螢幕模式時的樣式調整 */
 .map-container.fullscreen {
     position: fixed !important;
@@ -653,15 +705,20 @@ body {
 }
 
 .map-container.fullscreen .fullscreen-btn {
-    right: 20px;
+    left: 20px;
     top: 20px;
+}
+
+.map-container.fullscreen .location-btn {
+    left: 20px;
+    top: 80px;
 }
 
 /* 浮動控制面板 */
 .floating-controls {
     position: absolute;
     top: 16px;
-    right: 72px; /* 調整位置避免與全螢幕按鈕重疊 */
+    right: 16px; /* 全螢幕按鈕移到左上角後，恢復原位置 */
     z-index: 1000;
     display: flex;
     flex-direction: column;
@@ -1939,12 +1996,21 @@ input:checked + .slider:before {
         height: 48px;
         font-size: 20px;
         top: 12px;
-        right: 12px;
+        left: 12px;
+    }
+    
+    /* 定位點按鈕在移動設備上的調整 */
+    .location-btn {
+        width: 48px;
+        height: 48px;
+        font-size: 18px;
+        top: 68px;
+        left: 12px;
     }
     
     /* 浮動控制面板在移動設備上的調整 */
     .floating-controls {
-        right: 72px;
+        right: 12px;
         top: 12px;
     }
     
@@ -1956,15 +2022,23 @@ input:checked + .slider:before {
     
     /* 全螢幕模式下的移動設備優化 */
     .map-container.fullscreen .fullscreen-btn {
-        right: 16px;
+        left: 16px;
         top: 16px;
         width: 52px;
         height: 52px;
         font-size: 22px;
     }
     
+    .map-container.fullscreen .location-btn {
+        left: 16px;
+        top: 76px;
+        width: 52px;
+        height: 52px;
+        font-size: 20px;
+    }
+    
     .map-container.fullscreen .floating-controls {
-        right: 80px;
+        right: 16px;
         top: 16px;
     }
     
@@ -1986,11 +2060,19 @@ input:checked + .slider:before {
         height: 44px;
         font-size: 18px;
         top: 8px;
-        right: 8px;
+        left: 8px;
+    }
+    
+    .location-btn {
+        width: 44px;
+        height: 44px;
+        font-size: 16px;
+        top: 60px;
+        left: 8px;
     }
     
     .floating-controls {
-        right: 60px;
+        right: 8px;
         top: 8px;
         gap: 6px;
     }
@@ -2002,15 +2084,23 @@ input:checked + .slider:before {
     }
     
     .map-container.fullscreen .fullscreen-btn {
-        right: 12px;
+        left: 12px;
         top: 12px;
         width: 48px;
         height: 48px;
         font-size: 20px;
     }
     
+    .map-container.fullscreen .location-btn {
+        left: 12px;
+        top: 68px;
+        width: 48px;
+        height: 48px;
+        font-size: 18px;
+    }
+    
     .map-container.fullscreen .floating-controls {
-        right: 68px;
+        right: 12px;
         top: 12px;
     }
 }
