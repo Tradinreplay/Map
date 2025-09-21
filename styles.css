@@ -306,8 +306,7 @@ body {
 }
 
 .group-item:active {
-    background: rgba(0, 122, 255, 0.15);
-    border-color: rgba(0, 122, 255, 0.4);
+    /* 移除底色，只保留反饋效果 */
     transform: translateY(-1px) scale(0.98);
     box-shadow: 0 4px 15px rgba(0, 122, 255, 0.25);
     transition: all 0.1s ease;
@@ -367,10 +366,10 @@ body {
 }
 
 .subgroup-item:active {
-    background: rgba(52, 199, 89, 0.15);
-    border-color: rgba(52, 199, 89, 0.4);
-    transform: translateY(0px);
-    box-shadow: 0 1px 4px rgba(52, 199, 89, 0.25);
+    /* 移除底色，只保留反饋效果 */
+    transform: translateY(-1px) scale(0.98);
+    box-shadow: 0 4px 15px rgba(52, 199, 89, 0.25);
+    transition: all 0.1s ease;
 }
 
 .subgroup-item.active {
@@ -501,6 +500,42 @@ body {
 #map {
     height: 100%;
     width: 100%;
+}
+
+/* 調整Leaflet圖層控制器位置，避免與標註功能重疊 */
+.leaflet-top.leaflet-right {
+    top: 80px !important; /* 往下移動，避免與浮動控制面板重疊 */
+    right: 16px !important;
+}
+
+.leaflet-control-layers {
+    background: rgba(255, 255, 255, 0.95) !important;
+    backdrop-filter: blur(20px) !important;
+    -webkit-backdrop-filter: blur(20px) !important;
+    border-radius: 12px !important;
+    border: 1px solid rgba(255, 255, 255, 0.3) !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1) !important;
+    padding: 8px !important;
+}
+
+.leaflet-control-layers-toggle {
+    background-color: transparent !important;
+    border-radius: 8px !important;
+    width: 36px !important;
+    height: 36px !important;
+}
+
+.leaflet-control-layers-list {
+    padding: 8px !important;
+    margin: 0 !important;
+}
+
+.leaflet-control-layers label {
+    font-size: 14px !important;
+    margin: 4px 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
 }
 
 /* 浮動控制面板 */
