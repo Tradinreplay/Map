@@ -315,39 +315,53 @@ function initMap() {
     
     map = L.map('map').setView([defaultLat, defaultLng], 16);
     
-    // 添加地圖圖層 - 使用更精確的地圖服務
-    // 使用 CartoDB Positron 提供更清晰的地圖顯示
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-        attribution: '© OpenStreetMap contributors © CARTO',
-        subdomains: 'abcd',
+    // 添加地圖圖層 - 使用Google地圖圖資
+    // Google街道地圖 (主要圖層)
+    const googleStreetLayer = L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+        attribution: '© Google',
+        subdomains: ['0', '1', '2', '3'],
         maxZoom: 20,
         minZoom: 8
     }).addTo(map);
     
-    // 備用地圖圖層 - Esri World Imagery (衛星圖)
-    const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-        attribution: 'Tiles © Esri — Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
+    // Google衛星圖
+    const googleSatelliteLayer = L.tileLayer('https://mt{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+        attribution: '© Google',
+        subdomains: ['0', '1', '2', '3'],
         maxZoom: 20,
         minZoom: 8
     });
     
-    // 街道地圖圖層 - OpenStreetMap (備用)
-    const streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors',
+    // Google混合圖 (衛星+標籤)
+    const googleHybridLayer = L.tileLayer('https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+        attribution: '© Google',
+        subdomains: ['0', '1', '2', '3'],
         maxZoom: 20,
+        minZoom: 8
+    });
+    
+    // Google地形圖
+    const googleTerrainLayer = L.tileLayer('https://mt{s}.google.com/vt/lyrs=p&x={x}&y={y}&z={z}', {
+        attribution: '© Google',
+        subdomains: ['0', '1', '2', '3'],
+        maxZoom: 20,
+        minZoom: 8
+    });
+    
+    // 備用圖層 - OpenStreetMap
+    const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors',
+        maxZoom: 19,
         minZoom: 8
     });
     
     // 地圖圖層控制
     const baseMaps = {
-        "清晰地圖": L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-            attribution: '© OpenStreetMap contributors © CARTO',
-            subdomains: 'abcd',
-            maxZoom: 20,
-            minZoom: 8
-        }),
-        "衛星圖": satelliteLayer,
-        "街道地圖": streetLayer
+        "Google 街道地圖": googleStreetLayer,
+        "Google 衛星圖": googleSatelliteLayer,
+        "Google 混合圖": googleHybridLayer,
+        "Google 地形圖": googleTerrainLayer,
+        "OpenStreetMap": osmLayer
     };
     
     // 添加圖層控制器
