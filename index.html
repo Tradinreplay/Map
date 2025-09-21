@@ -62,9 +62,46 @@
                         <input type="number" id="alertInterval" value="30" min="5" max="300" class="compact-input">
                         <span class="unit">s</span>
                     </div>
+                    
+                    <!-- 即時定位設定 -->
+                    <div class="setting-group">
+                        <h4>📍 即時定位設定</h4>
+                        <div class="setting-row">
+                            <label class="switch">
+                                <input type="checkbox" id="enableHighAccuracy" checked>
+                                <span class="slider"></span>
+                            </label>
+                            <span>高精度模式</span>
+                        </div>
+                        <div class="setting-row">
+                            <label class="switch">
+                                <input type="checkbox" id="autoStartTracking">
+                                <span class="slider"></span>
+                            </label>
+                            <span>自動開始追蹤</span>
+                        </div>
+                        <div class="setting-row">
+                            <label>更新頻率</label>
+                            <select id="locationUpdateFrequency" class="compact-input">
+                                <option value="1000">即時 (1秒)</option>
+                                <option value="3000" selected>快速 (3秒)</option>
+                                <option value="5000">標準 (5秒)</option>
+                                <option value="10000">省電 (10秒)</option>
+                                <option value="30000">超省電 (30秒)</option>
+                            </select>
+                        </div>
+                        <div class="setting-row">
+                            <label>定位超時</label>
+                            <input type="number" id="locationTimeout" value="20" min="5" max="60" class="compact-input">
+                            <span class="unit">s</span>
+                        </div>
+                    </div>
+                    
                     <div class="location-display">
                         <div id="currentLocation">定位中...</div>
                         <div id="locationAccuracy" class="accuracy-display">精度: --</div>
+                        <div id="locationStatus" class="status-display">狀態: 未啟動</div>
+                        <div id="locationSpeed" class="speed-display" style="display: none;">速度: --</div>
                     </div>
                     
                     <!-- 設定管理按鈕 -->

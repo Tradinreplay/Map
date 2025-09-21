@@ -18,6 +18,14 @@ let markersInRange = new Set(); // 記錄當前在範圍內的標註點
 let trackingTarget = null; // 當前追蹤的目標標註點
 let currentFilter = null; // 當前過濾設定 { type: 'marker'|'group'|'subgroup', id: string }
 
+// 即時定位設定
+let enableHighAccuracy = true; // 高精度模式
+let autoStartTracking = false; // 自動開始追蹤
+let locationUpdateFrequency = 3000; // 定位更新頻率（毫秒）
+let locationTimeout = 20000; // 定位超時時間（毫秒）
+let lastLocationUpdate = null; // 最後一次定位更新時間
+let locationUpdateTimer = null; // 定位更新定時器
+
 // 資料結構
 class Group {
     constructor(id, name) {
@@ -99,6 +107,16 @@ function initializeApp() {
         showInitialSetup();
     } else {
         requestNotificationPermission();
+        
+        // 如果啟用自動開始追蹤，延遲一秒後開始追蹤
+        if (autoStartTracking) {
+            setTimeout(() => {
+                if (!isTracking) {
+                    startTracking();
+                    showNotification('🎯 自動開始即時定位追蹤', 'info');
+                }
+            }, 1000);
+        }
     }
 }
 
@@ -513,6 +531,27 @@ document.getElementById('createGroupForm').addEventListener('submit', handleCrea
 
 // 測試通知按鈕
     document.getElementById('testNotificationBtn').addEventListener('click', testNotification);
+    
+    // 即時定位設定事件監聽器
+    document.getElementById('enableHighAccuracy').addEventListener('change', function(e) {
+        enableHighAccuracy = e.target.checked;
+        saveData();
+    });
+    
+    document.getElementById('autoStartTracking').addEventListener('change', function(e) {
+        autoStartTracking = e.target.checked;
+        saveData();
+    });
+    
+    document.getElementById('locationUpdateFrequency').addEventListener('change', function(e) {
+        locationUpdateFrequency = parseInt(e.target.value); // 已經是毫秒
+        saveData();
+    });
+    
+    document.getElementById('locationTimeout').addEventListener('change', function(e) {
+        locationTimeout = parseInt(e.target.value) * 1000; // 轉換為毫秒
+        saveData();
+    });
     
 
 
@@ -1985,20 +2024,42 @@ function toggleTracking() {
 
 function startTracking() {
     if ('geolocation' in navigator) {
+        // 更新狀態顯示
+        updateLocationStatus('正在啟動追蹤...');
+        
         watchId = navigator.geolocation.watchPosition(
             function(position) {
+                const now = Date.now();
+                lastLocationUpdate = now;
+                
+                // 計算速度（如果有前一個位置）
+                let speed = null;
+                if (currentPosition && position.coords.speed !== null) {
+                    speed = position.coords.speed;
+                } else if (currentPosition) {
+                    const timeDiff = (now - currentPosition.timestamp) / 1000; // 秒
+                    const distance = calculateDistance(
+                        currentPosition.lat, currentPosition.lng,
+                        position.coords.latitude, position.coords.longitude
+                    );
+                    if (timeDiff > 0) {
+                        speed = distance / timeDiff; // 公尺/秒
+                    }
+                }
+                
                 currentPosition = {
                     lat: position.coords.latitude,
                     lng: position.coords.longitude,
                     accuracy: position.coords.accuracy,
-                    timestamp: position.timestamp
+                    timestamp: now,
+                    speed: speed
                 };
                 
                 updateLocationDisplay();
                 updateCurrentLocationMarker();
                 updateFullscreenTrackingDisplay();
                 refreshAllMarkerPopups(); // 更新所有標記的提示窗距離顯示
-                // 移除頻繁的距離檢查，改為只在定時器中按間隔檢查
+                updateLocationStatus('追蹤中');
                 
                 // 如果精度較差，顯示警告
                 if (position.coords.accuracy > 50) {
@@ -2011,20 +2072,23 @@ function startTracking() {
                 switch(error.code) {
                     case error.PERMISSION_DENIED:
                         errorMessage = '位置權限被拒絕';
+                        updateLocationStatus('權限被拒絕');
                         break;
                     case error.POSITION_UNAVAILABLE:
                         errorMessage = '位置信息不可用';
+                        updateLocationStatus('位置不可用');
                         break;
                     case error.TIMEOUT:
                         errorMessage = '定位超時，請檢查GPS信號';
+                        updateLocationStatus('定位超時');
                         break;
                 }
                 showNotification(errorMessage, 'error');
             },
             {
-                enableHighAccuracy: true,
-                timeout: 20000,
-                maximumAge: 10000
+                enableHighAccuracy: enableHighAccuracy,
+                timeout: locationTimeout,
+                maximumAge: Math.min(locationUpdateFrequency, 10000)
             }
         );
         
@@ -2033,9 +2097,10 @@ function startTracking() {
             startProximityCheck();
         }
         
-        showNotification('位置追蹤已啟動');
+        showNotification(`位置追蹤已啟動 (${enableHighAccuracy ? '高精度' : '標準'}模式)`);
     } else {
         showNotification('您的瀏覽器不支援位置追蹤', 'error');
+        updateLocationStatus('不支援定位');
     }
 }
 
@@ -2365,6 +2430,25 @@ function showLocationAlert(marker, distance) {
     } catch (error) {
         // 音效失敗不影響其他功能
         console.log('Audio notification failed:', error);
+    }
+}
+
+// 更新定位狀態顯示
+function updateLocationStatus(status) {
+    const statusDiv = document.getElementById('locationStatus');
+    if (statusDiv) {
+        statusDiv.textContent = status;
+    }
+}
+
+// 更新速度顯示
+function updateSpeedDisplay(speed) {
+    const speedDiv = document.getElementById('locationSpeed');
+    if (speedDiv && speed !== null && speed !== undefined) {
+        const speedKmh = (speed * 3.6).toFixed(1); // 轉換為 km/h
+        speedDiv.textContent = `${speedKmh} km/h`;
+    } else if (speedDiv) {
+        speedDiv.textContent = '-- km/h';
     }
 }
 
@@ -2738,7 +2822,12 @@ function saveData() {
         alertDistance: alertDistance,
         alertInterval: alertInterval,
         currentGroup: currentGroup ? { id: currentGroup.id, name: currentGroup.name } : null,
-        currentSubgroup: currentSubgroup ? { id: currentSubgroup.id, name: currentSubgroup.name, groupId: currentSubgroup.groupId } : null
+        currentSubgroup: currentSubgroup ? { id: currentSubgroup.id, name: currentSubgroup.name, groupId: currentSubgroup.groupId } : null,
+        // 即時定位設定
+        enableHighAccuracy: enableHighAccuracy,
+        autoStartTracking: autoStartTracking,
+        locationUpdateFrequency: locationUpdateFrequency,
+        locationTimeout: locationTimeout
     };
     
     localStorage.setItem('mapAnnotationData', JSON.stringify(data));
@@ -2795,8 +2884,20 @@ function loadData() {
             currentGroup = data.currentGroup;
             currentSubgroup = data.currentSubgroup;
             
+            // 恢復即時定位設定
+            enableHighAccuracy = data.enableHighAccuracy !== undefined ? data.enableHighAccuracy : true;
+            autoStartTracking = data.autoStartTracking !== undefined ? data.autoStartTracking : false;
+            locationUpdateFrequency = data.locationUpdateFrequency || 3000;
+            locationTimeout = data.locationTimeout || 20000;
+            
             document.getElementById('alertDistance').value = alertDistance;
             document.getElementById('alertInterval').value = alertInterval;
+            
+            // 更新即時定位設定UI
+            document.getElementById('enableHighAccuracy').checked = enableHighAccuracy;
+            document.getElementById('autoStartTracking').checked = autoStartTracking;
+            document.getElementById('locationUpdateFrequency').value = locationUpdateFrequency; // 已經是毫秒
+            document.getElementById('locationTimeout').value = locationTimeout / 1000; // 轉換為秒
             
             // 更新UI
             updateGroupsList();

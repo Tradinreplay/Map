@@ -1975,6 +1975,24 @@ input:checked + .slider:before {
     transform: translateX(20px);
 }
 
+/* 設定組樣式 */
+.setting-group {
+    margin: 16px 0;
+    padding: 12px;
+    background: rgba(248, 250, 252, 0.6);
+    border-radius: 8px;
+    border: 1px solid rgba(226, 232, 240, 0.8);
+}
+
+.setting-group h4 {
+    font-size: 14px;
+    font-weight: 600;
+    color: #2d3748;
+    margin: 0 0 12px 0;
+    padding-bottom: 6px;
+    border-bottom: 1px solid rgba(226, 232, 240, 0.6);
+}
+
 /* 位置顯示 */
 .location-display {
     margin-top: 8px;
@@ -1983,6 +2001,23 @@ input:checked + .slider:before {
     border-radius: 8px;
     font-size: 12px;
     color: #4a5568;
+}
+
+.location-display div {
+    margin-bottom: 4px;
+}
+
+.location-display div:last-child {
+    margin-bottom: 0;
+}
+
+.status-display {
+    font-weight: 500;
+}
+
+.speed-display {
+    color: #6366f1;
+    font-weight: 500;
 }
 
 /* 通知樣式 */
