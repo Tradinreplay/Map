@@ -3499,19 +3499,42 @@ function resetToDefaultSettings() {
 }
 
 // 匯出標註點資料
-function exportMarkerData() {
+async function exportMarkerData() {
     try {
         // 準備匯出資料，包含標註點、群組和設定
-        const markersToExport = markers.map(marker => ({
-            id: marker.id,
-            name: marker.name,
-            description: marker.description,
-            lat: marker.lat,
-            lng: marker.lng,
-            groupId: marker.groupId,
-            subgroupId: marker.subgroupId,
-            color: marker.color || 'red',
-            icon: marker.icon || '📍'
+        const markersToExport = await Promise.all(markers.map(async marker => {
+            let compressedImageData = null;
+            
+            // 如果有圖片資料，進行壓縮處理
+            if (marker.imageData) {
+                if (Array.isArray(marker.imageData)) {
+                    // 處理多張圖片
+                    compressedImageData = await Promise.all(
+                        marker.imageData.map(async imageData => {
+                            if (typeof imageData === 'string' && imageData.startsWith('data:image/')) {
+                                return await compressImage(imageData, 50);
+                            }
+                            return imageData;
+                        })
+                    );
+                } else if (typeof marker.imageData === 'string' && marker.imageData.startsWith('data:image/')) {
+                    // 處理單張圖片
+                    compressedImageData = await compressImage(marker.imageData, 50);
+                }
+            }
+            
+            return {
+                id: marker.id,
+                name: marker.name,
+                description: marker.description,
+                lat: marker.lat,
+                lng: marker.lng,
+                groupId: marker.groupId,
+                subgroupId: marker.subgroupId,
+                color: marker.color || 'red',
+                icon: marker.icon || '📍',
+                imageData: compressedImageData
+            };
         }));
         
         const groupsToExport = groups.map(group => ({
@@ -3624,7 +3647,8 @@ function importMarkerData(file) {
                         markerData.groupId,
                         markerData.subgroupId,
                         markerData.color || 'red',
-                        markerData.icon || '📍'
+                        markerData.icon || '📍',
+                        markerData.imageData || null
                     )
                 );
                 
@@ -3755,7 +3779,9 @@ function initSettingsButtons() {
     // 匯出資料按鈕
     const exportBtn = document.getElementById('exportDataBtn');
     if (exportBtn) {
-        exportBtn.addEventListener('click', exportMarkerData);
+        exportBtn.addEventListener('click', async function() {
+            await exportMarkerData();
+        });
     }
     
     // 匯入資料按鈕
