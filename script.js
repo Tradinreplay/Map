@@ -313,46 +313,50 @@ function initMap() {
     const defaultLat = 25.0330;
     const defaultLng = 121.5654;
     
-    map = L.map('map').setView([defaultLat, defaultLng], 16);
+    // 設定地圖初始縮放級別為18，適合查看建築物和街道細節
+    map = L.map('map', {
+        maxZoom: 22,  // 設定地圖最大縮放級別，符合Google地圖標準
+        minZoom: 3    // 設定地圖最小縮放級別，允許查看更大範圍
+    }).setView([defaultLat, defaultLng], 18);
     
     // 添加地圖圖層 - 使用Google地圖圖資
     // Google街道地圖 (主要圖層)
     const googleStreetLayer = L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
         attribution: '© Google',
         subdomains: ['0', '1', '2', '3'],
-        maxZoom: 20,
-        minZoom: 8
+        maxZoom: 22,  // 街道地圖最大縮放級別22
+        minZoom: 3
     }).addTo(map);
     
     // Google衛星圖
     const googleSatelliteLayer = L.tileLayer('https://mt{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
         attribution: '© Google',
         subdomains: ['0', '1', '2', '3'],
-        maxZoom: 20,
-        minZoom: 8
+        maxZoom: 23,  // 衛星圖最大縮放級別23，在某些地區可達到建築物細節
+        minZoom: 3
     });
     
     // Google混合圖 (衛星+標籤)
     const googleHybridLayer = L.tileLayer('https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
         attribution: '© Google',
         subdomains: ['0', '1', '2', '3'],
-        maxZoom: 20,
-        minZoom: 8
+        maxZoom: 23,  // 混合圖最大縮放級別23
+        minZoom: 3
     });
     
     // Google地形圖
     const googleTerrainLayer = L.tileLayer('https://mt{s}.google.com/vt/lyrs=p&x={x}&y={y}&z={z}', {
         attribution: '© Google',
         subdomains: ['0', '1', '2', '3'],
-        maxZoom: 20,
-        minZoom: 8
+        maxZoom: 20,  // 地形圖最大縮放級別20
+        minZoom: 3
     });
     
     // 備用圖層 - OpenStreetMap
     const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap contributors',
-        maxZoom: 19,
-        minZoom: 8
+        maxZoom: 19,  // OSM最大縮放級別19
+        minZoom: 3
     });
     
     // 地圖圖層控制
