@@ -427,6 +427,11 @@ function initEventListeners() {
     document.getElementById('alertInterval').addEventListener('change', function(e) {
         alertInterval = parseInt(e.target.value);
         saveData();
+        
+        // 如果正在追蹤，重新啟動距離檢查定時器以使用新間隔
+        if (trackingTarget && proximityCheckTimer) {
+            startProximityCheck();
+        }
     });
     
     // 彈窗控制
@@ -605,70 +610,36 @@ function enterFullscreen(element) {
     // 更新按鈕圖標 - 進入全螢幕時顯示退出圖標
     fullscreenIcon.textContent = '⛶';
     
-    // 手機優先使用CSS全螢幕，因為原生API在手機上不穩定
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    
-    if (isMobile) {
-        console.log('Mobile device detected, using CSS fullscreen');
-        handleCSSFullscreen();
-        isFullscreen = true;
-        
-        // 重新調整地圖大小
-        setTimeout(() => {
-            if (map) {
-                map.invalidateSize();
-            }
-        }, 100);
-        return;
-    }
-    
-    // 桌面設備嘗試使用瀏覽器原生全螢幕API
-    let fullscreenPromise = null;
-    
+    // 嘗試使用瀏覽器原生全螢幕API
     if (element.requestFullscreen) {
-        fullscreenPromise = element.requestFullscreen();
-    } else if (element.webkitRequestFullscreen) {
-        fullscreenPromise = element.webkitRequestFullscreen();
-    } else if (element.msRequestFullscreen) {
-        fullscreenPromise = element.msRequestFullscreen();
-    }
-    
-    if (fullscreenPromise) {
-        fullscreenPromise.then(() => {
-            console.log('Native fullscreen successful');
-            isFullscreen = true;
-            
-            // 重新調整地圖大小
-            setTimeout(() => {
-                if (map) {
-                    map.invalidateSize();
-                }
-            }, 100);
-        }).catch((error) => {
-            console.log('Native fullscreen failed, using CSS fallback:', error);
+        element.requestFullscreen().catch(() => {
+            // 如果原生API失敗，使用CSS全螢幕
             handleCSSFullscreen();
-            isFullscreen = true;
-            
-            // 重新調整地圖大小
-            setTimeout(() => {
-                if (map) {
-                    map.invalidateSize();
-                }
-            }, 100);
+        });
+    } else if (element.webkitRequestFullscreen) {
+        element.webkitRequestFullscreen().catch(() => {
+            handleCSSFullscreen();
+        });
+    } else if (element.msRequestFullscreen) {
+        element.msRequestFullscreen().catch(() => {
+            handleCSSFullscreen();
         });
     } else {
         // 瀏覽器不支持原生全螢幕，使用CSS全螢幕
-        console.log('Native fullscreen not supported, using CSS fallback');
         handleCSSFullscreen();
-        isFullscreen = true;
-        
-        // 重新調整地圖大小
-        setTimeout(() => {
-            if (map) {
-                map.invalidateSize();
-            }
-        }, 100);
     }
+    
+    isFullscreen = true;
+    
+    // 更新全螢幕追蹤顯示
+    updateFullscreenTrackingDisplay();
+    
+    // 重新調整地圖大小
+    setTimeout(() => {
+        if (map) {
+            map.invalidateSize();
+        }
+    }, 100);
 }
 
 function exitFullscreen() {
@@ -683,30 +654,6 @@ function exitFullscreen() {
     // 更新按鈕圖標 - 退出全螢幕時顯示進入圖標
     fullscreenIcon.textContent = '⛶';
     
-    // 恢復CSS樣式
-    mapContainer.style.position = '';
-    mapContainer.style.top = '';
-    mapContainer.style.left = '';
-    mapContainer.style.width = '';
-    mapContainer.style.height = '';
-    mapContainer.style.zIndex = '';
-    
-    // 手機專用恢復
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    if (isMobile) {
-        // 恢復滾動
-        document.body.style.overflow = '';
-        document.documentElement.style.overflow = '';
-        
-        // 恢復viewport設定
-        const viewport = document.querySelector('meta[name="viewport"]');
-        if (viewport) {
-            viewport.setAttribute('content', 'width=device-width, initial-scale=1.0, user-scalable=yes');
-        }
-        
-        console.log('Restored mobile-specific settings');
-    }
-    
     // 嘗試退出瀏覽器原生全螢幕
     if (document.exitFullscreen) {
         document.exitFullscreen().catch(() => {});
@@ -717,6 +664,9 @@ function exitFullscreen() {
     }
     
     isFullscreen = false;
+    
+    // 更新全螢幕追蹤顯示
+    updateFullscreenTrackingDisplay();
     
     // 重新調整地圖大小
     setTimeout(() => {
@@ -729,37 +679,12 @@ function exitFullscreen() {
 function handleCSSFullscreen() {
     // 純CSS全螢幕實現，適用於不支持原生API的情況
     const mapContainer = document.querySelector('.map-container');
-    
-    // 基本全螢幕樣式
     mapContainer.style.position = 'fixed';
     mapContainer.style.top = '0';
     mapContainer.style.left = '0';
     mapContainer.style.width = '100vw';
     mapContainer.style.height = '100vh';
     mapContainer.style.zIndex = '9999';
-    
-    // 手機專用優化
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    if (isMobile) {
-        // 隱藏手機瀏覽器的地址欄和工具欄
-        mapContainer.style.height = '100vh';
-        mapContainer.style.height = '100dvh'; // 動態視窗高度，更適合手機
-        
-        // 防止滾動
-        document.body.style.overflow = 'hidden';
-        document.documentElement.style.overflow = 'hidden';
-        
-        // 防止縮放
-        const viewport = document.querySelector('meta[name="viewport"]');
-        if (viewport) {
-            viewport.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
-        }
-        
-        // 強制重新計算佈局
-        mapContainer.offsetHeight;
-        
-        console.log('Applied mobile-specific CSS fullscreen optimizations');
-    }
 }
 
 // 按鈕點擊處理函數
@@ -889,68 +814,35 @@ function initDragFunctionality() {
 function addMobileTouchSupport(element, functionName) {
     let touchStartTime = 0;
     let touchMoved = false;
-    let touchStartX = 0;
-    let touchStartY = 0;
     
     element.addEventListener('touchstart', function(e) {
         touchStartTime = Date.now();
         touchMoved = false;
-        
-        if (e.touches && e.touches.length > 0) {
-            touchStartX = e.touches[0].clientX;
-            touchStartY = e.touches[0].clientY;
-        }
-        
-        console.log('Touch start for:', element.id);
     }, { passive: true });
     
     element.addEventListener('touchmove', function(e) {
-        if (e.touches && e.touches.length > 0) {
-            const moveX = Math.abs(e.touches[0].clientX - touchStartX);
-            const moveY = Math.abs(e.touches[0].clientY - touchStartY);
-            
-            // 只有移動超過5像素才算作移動
-            if (moveX > 5 || moveY > 5) {
-                touchMoved = true;
-            }
-        }
+        touchMoved = true;
     }, { passive: true });
     
     element.addEventListener('touchend', function(e) {
         const touchDuration = Date.now() - touchStartTime;
         
-        console.log('Touch end for:', element.id, 'Duration:', touchDuration, 'Moved:', touchMoved, 'HasDragged:', element.hasDragged);
-        
         // 如果是短時間觸控且沒有移動，且沒有被拖曳功能標記為已拖曳
-        if (touchDuration < 800 && !touchMoved && !element.hasDragged) {
-            // 對於全螢幕按鈕，增加額外的穩定性處理
-            if (functionName === 'handleFullscreenClick') {
-                // 立即執行，不延遲，確保用戶手勢有效
-                console.log('Immediate fullscreen trigger for mobile');
-                e.preventDefault();
-                e.stopPropagation();
-                
-                if (typeof window.handleFullscreenClick === 'function') {
-                    window.handleFullscreenClick();
-                }
-            } else {
-                // 其他功能延遲執行
-                setTimeout(() => {
-                    if (!element.hasDragged) {
-                        console.log('Mobile touch click for:', element.id);
-                        if (functionName === 'handleLocationClick' && typeof window.handleLocationClick === 'function') {
-                            window.handleLocationClick();
-                        }
+        if (touchDuration < 500 && !touchMoved && !element.hasDragged) {
+            // 延遲一點執行，確保拖曳檢查完成
+            setTimeout(() => {
+                if (!element.hasDragged) {
+                    console.log('Mobile touch click for:', element.id);
+                    // 直接調用對應的函數
+                    if (functionName === 'handleFullscreenClick' && typeof window.handleFullscreenClick === 'function') {
+                        window.handleFullscreenClick();
+                    } else if (functionName === 'handleLocationClick' && typeof window.handleLocationClick === 'function') {
+                        window.handleLocationClick();
                     }
-                }, 20);
-            }
+                }
+            }, 20);
         }
-        
-        // 重置拖曳標記
-        setTimeout(() => {
-            element.hasDragged = false;
-        }, 100);
-    }, { passive: false }); // 對於touchend使用非passive，以便可以preventDefault
+    }, { passive: true });
 }
 
 function makeDraggable(element) {
@@ -1749,27 +1641,10 @@ function addMarkerToMap(marker) {
     const customIcon = createCustomMarkerIcon(marker.color || 'red', marker.icon || '📍');
     const leafletMarker = L.marker([marker.lat, marker.lng], { icon: customIcon }).addTo(map);
     
-    // 創建簡化的彈出視窗內容
-    const groupName = marker.groupId ? (groups.find(g => g.id === marker.groupId)?.name || '未知群組') : '無群組';
-    const subgroupName = marker.subgroupId ? 
-        (groups.find(g => g.id === marker.groupId)?.subgroups.find(sg => sg.id === marker.subgroupId)?.name || '未知子群組') : 
-        '無子群組';
-    
-    leafletMarker.bindPopup(`
-        <div style="text-align: center; min-width: 200px;">
-            <div style="font-size: 18px; margin-bottom: 8px;">${marker.icon} <strong>${marker.name}</strong></div>
-            ${marker.description ? `<div style="font-size: 14px; color: #333; margin-bottom: 8px; text-align: left; padding: 0 10px;">${marker.description}</div>` : ''}
-            <div style="font-size: 12px; color: #666; margin-bottom: 8px;">群組: ${groupName}</div>
-            <div style="font-size: 12px; color: #666; margin-bottom: 12px;">子群組: ${subgroupName}</div>
-            <div style="display: flex; gap: 5px; justify-content: center; flex-wrap: wrap;">
-                <button onclick="editMarker('${marker.id}')" style="padding: 4px 8px; font-size: 12px;">編輯</button>
-                <button onclick="setTrackingTarget('${marker.id}')" style="padding: 4px 8px; font-size: 12px;">追蹤</button>
-                <button onclick="showOnlyThisMarker('${marker.id}')" style="padding: 4px 8px; font-size: 12px;">只顯示</button>
-            </div>
-        </div>
-    `);
-    
     marker.leafletMarker = leafletMarker;
+    
+    // 使用統一的popup更新函數
+    updateMarkerPopup(marker);
 }
 
 function editMarker(markerId) {
@@ -1797,6 +1672,104 @@ function setTrackingTarget(markerId) {
         if (isTracking && currentPosition) {
             startProximityCheck();
         }
+        
+        // 重新渲染所有標記的popup以更新按鈕狀態
+        refreshAllMarkerPopups();
+    }
+}
+
+function clearTrackingTarget() {
+    if (trackingTarget) {
+        const targetName = trackingTarget.name;
+        
+        // 停止重複提醒
+        stopRepeatedAlert(trackingTarget.id);
+        
+        // 清除追蹤目標
+        trackingTarget = null;
+        
+        // 更新全螢幕追蹤顯示
+        updateFullscreenTrackingDisplay();
+        
+        // 顯示通知
+        showNotification(`已取消追蹤 "${targetName}"`);
+        
+        // 重新渲染所有標記的popup以更新按鈕狀態
+        refreshAllMarkerPopups();
+    }
+}
+
+function refreshAllMarkerPopups() {
+    markers.forEach(marker => {
+        if (marker.leafletMarker) {
+            updateMarkerPopup(marker);
+        }
+    });
+}
+
+function updateMarkerPopup(marker) {
+    const groupName = marker.groupId ? (groups.find(g => g.id === marker.groupId)?.name || '未知群組') : '無群組';
+    const subgroupName = marker.subgroupId ? 
+        (groups.find(g => g.id === marker.groupId)?.subgroups.find(sg => sg.id === marker.subgroupId)?.name || '未知子群組') : 
+        '無子群組';
+    
+    // 計算距離顯示
+    let distanceDisplay = '';
+    if (currentPosition) {
+        const distance = calculateDistance(
+            currentPosition.lat, 
+            currentPosition.lng, 
+            marker.lat, 
+            marker.lng
+        );
+        
+        let distanceText = '';
+        let distanceColor = '#666';
+        
+        if (distance < 1000) {
+            distanceText = `${Math.round(distance)}公尺`;
+        } else {
+            distanceText = `${(distance / 1000).toFixed(1)}公里`;
+        }
+        
+        // 根據距離設置顏色
+        if (distance <= alertDistance) {
+            distanceColor = '#ff4444'; // 紅色 - 接近目標
+        } else if (distance <= alertDistance * 2) {
+            distanceColor = '#ffaa00'; // 橙色 - 中等距離
+        } else {
+            distanceColor = '#4CAF50'; // 綠色 - 較遠距離
+        }
+        
+        distanceDisplay = `<div style="font-size: 13px; color: ${distanceColor}; margin-bottom: 8px; font-weight: 500;">📍 距離: ${distanceText}</div>`;
+    }
+    
+    // 檢查是否為當前追蹤目標
+    const isCurrentTarget = trackingTarget && trackingTarget.id === marker.id;
+    const trackingButton = isCurrentTarget 
+        ? `<button onclick="clearTrackingTarget()" style="padding: 4px 8px; font-size: 12px; background-color: #ef4444; color: white;">取消追蹤</button>`
+        : `<button onclick="setTrackingTarget('${marker.id}')" style="padding: 4px 8px; font-size: 12px;">追蹤</button>`;
+    
+    const popupContent = `
+        <div style="text-align: center; min-width: 200px;">
+            <div style="font-size: 18px; margin-bottom: 8px;">${marker.icon} <strong>${marker.name}</strong></div>
+            ${marker.description ? `<div style="font-size: 14px; color: #333; margin-bottom: 8px; text-align: left; padding: 0 10px;">${marker.description}</div>` : ''}
+            ${distanceDisplay}
+            <div style="font-size: 12px; color: #666; margin-bottom: 8px;">群組: ${groupName}</div>
+            <div style="font-size: 12px; color: #666; margin-bottom: 12px;">子群組: ${subgroupName}</div>
+            <div style="display: flex; gap: 5px; justify-content: center; flex-wrap: wrap;">
+                <button onclick="editMarker('${marker.id}')" style="padding: 4px 8px; font-size: 12px;">編輯</button>
+                ${trackingButton}
+                <button onclick="showOnlyThisMarker('${marker.id}')" style="padding: 4px 8px; font-size: 12px;">只顯示</button>
+            </div>
+        </div>
+    `;
+    
+    // 如果還沒有綁定popup，先綁定
+    if (!marker.leafletMarker.getPopup()) {
+        marker.leafletMarker.bindPopup(popupContent);
+    } else {
+        marker.leafletMarker.setPopupContent(popupContent);
     }
 }
 
@@ -1879,6 +1852,8 @@ function startTracking() {
                 
                 updateLocationDisplay();
                 updateCurrentLocationMarker();
+                updateFullscreenTrackingDisplay();
+                refreshAllMarkerPopups(); // 更新所有標記的提示窗距離顯示
                 // 移除頻繁的距離檢查，改為只在定時器中按間隔檢查
                 
                 // 如果精度較差，顯示警告
@@ -2027,10 +2002,10 @@ function startProximityCheck() {
         clearInterval(proximityCheckTimer);
     }
     
-    // 設定定時器，每10秒檢查一次距離（僅用於判斷進入/離開範圍）
+    // 設定定時器，使用用戶設定的提醒間隔時間檢查距離
     proximityCheckTimer = setInterval(() => {
         checkProximityAlerts();
-    }, 10000); // 每10秒檢查一次
+    }, alertInterval * 1000); // 使用設定的提醒間隔時間
     
     // 立即執行一次檢查
     checkProximityAlerts();
@@ -2305,8 +2280,8 @@ function updateLocationDisplay() {
 // 更新全螢幕模式下的追蹤距離顯示
 function updateFullscreenTrackingDisplay() {
     const fullscreenTrackingDiv = document.getElementById('fullscreenTrackingInfo');
-    const targetNameDiv = document.getElementById('fullscreenTargetName');
-    const targetDistanceDiv = document.getElementById('fullscreenTargetDistance');
+    const targetNameDiv = document.getElementById('trackingTargetName');
+    const targetDistanceDiv = document.getElementById('trackingDistanceValue');
     
     if (!fullscreenTrackingDiv || !targetNameDiv || !targetDistanceDiv) {
         return;
@@ -2545,6 +2520,45 @@ function testNotification() {
     showNotification('🔔 測試通知已發送！請檢查您的瀏覽器通知', 'info');
 }
 
+// 添加測試popup功能
+function testPopupFunction() {
+    console.log('=== 測試Popup功能 ===');
+    
+    // 創建測試標記
+    const testMarker = new Marker(
+        'test-popup-' + Date.now(),
+        '測試Popup標記',
+        '這是一個測試popup功能的標記',
+        25.0330,
+        121.5654,
+        null,
+        null,
+        'blue',
+        '🧪'
+    );
+    
+    // 添加到markers陣列
+    markers.push(testMarker);
+    
+    // 添加到地圖
+    addMarkerToMap(testMarker);
+    
+    console.log('測試標記已創建:', testMarker);
+    console.log('標記的leafletMarker:', testMarker.leafletMarker);
+    console.log('Popup是否已綁定:', testMarker.leafletMarker ? testMarker.leafletMarker.getPopup() : 'leafletMarker不存在');
+    
+    // 顯示通知
+    showNotification('🧪 測試標記已添加到地圖！請點擊藍色的🧪圖標查看popup', 'info');
+    
+    // 將地圖中心移動到測試標記
+    if (map) {
+        map.setView([testMarker.lat, testMarker.lng], 15);
+    }
+}
+
+// 將測試函數添加到全局範圍
+window.testPopupFunction = testPopupFunction;
+
 // 資料持久化
 function saveData() {
     // 創建不包含 leafletMarker 的標記副本
@@ -2664,6 +2678,7 @@ window.deleteGroup = deleteGroup;
 window.deleteSubgroup = deleteSubgroup;
 window.focusMarker = focusMarker;
 window.setTrackingTarget = setTrackingTarget;
+window.clearTrackingTarget = clearTrackingTarget;
 window.showOnlyThisMarker = showOnlyThisMarker;
 
 function saveCurrentSettings() {
@@ -3197,6 +3212,11 @@ function initSettingsButtons() {
         alertIntervalInput.addEventListener('change', function() {
             alertInterval = parseInt(this.value);
             console.log('Alert interval updated:', alertInterval);
+            
+            // 如果正在追蹤，重新啟動距離檢查定時器以使用新間隔
+            if (trackingTarget && proximityCheckTimer) {
+                startProximityCheck();
+            }
         });
     }
 }
