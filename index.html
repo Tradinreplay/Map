@@ -82,10 +82,17 @@
                         </div>
                         <div class="setting-row">
                             <label class="switch">
-                                <input type="checkbox" id="keepMapCentered">
+                                <input type="checkbox" id="keepMapCentered" checked>
                                 <span class="slider"></span>
                             </label>
                             <span>保持地圖中央</span>
+                        </div>
+                        <div class="setting-row">
+                            <label class="switch">
+                                <input type="checkbox" id="autoRotateMap" checked>
+                                <span class="slider"></span>
+                            </label>
+                            <span>自動轉向行進方向</span>
                         </div>
                         <div class="setting-row">
                             <label>更新頻率</label>
@@ -155,6 +162,11 @@
             <!-- 定位點按鈕 -->
             <button id="locationBtn" class="location-btn" title="定位到我的位置" onclick="handleLocationClick()">
                 <span id="locationIcon">📍</span>
+            </button>
+            
+            <!-- 自動居中按鈕 -->
+            <button id="centerBtn" class="center-btn" title="開啟/關閉自動居中功能" onclick="handleCenterClick()">
+                <span id="centerIcon">🎯</span>
             </button>
             
             <!-- 浮動控制面板 -->

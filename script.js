@@ -21,11 +21,14 @@ let currentFilter = null; // 當前過濾設定 { type: 'marker'|'group'|'subgro
 // 即時定位設定
 let enableHighAccuracy = true; // 高精度模式
 let autoStartTracking = false; // 自動開始追蹤
-let keepMapCentered = false; // 保持地圖中央
+let keepMapCentered = true; // 保持地圖中央（預設開啟）
+let autoRotateMap = true; // 自動轉向行進方向（預設開啟）
 let locationUpdateFrequency = 3000; // 定位更新頻率（毫秒）
 let locationTimeout = 20000; // 定位超時時間（毫秒）
 let lastLocationUpdate = null; // 最後一次定位更新時間
 let locationUpdateTimer = null; // 定位更新定時器
+let lastPosition = null; // 上一次位置（用於計算方向）
+let currentBearing = 0; // 當前行進方向（角度）
 
 // 資料結構
 class Group {
@@ -580,6 +583,16 @@ document.getElementById('createGroupForm').addEventListener('submit', handleCrea
         saveData();
     });
     
+    document.getElementById('autoRotateMap').addEventListener('change', function(e) {
+        autoRotateMap = e.target.checked;
+        // 如果關閉自動轉向，重置地圖方向
+        if (!autoRotateMap) {
+            map.setBearing(0);
+            currentBearing = 0;
+        }
+        saveData();
+    });
+    
     document.getElementById('locationUpdateFrequency').addEventListener('change', function(e) {
         locationUpdateFrequency = parseInt(e.target.value); // 已經是毫秒
         saveData();
@@ -1115,9 +1128,105 @@ function handleLocationClick() {
     centerMapToCurrentLocation();
 }
 
+// 更新自動居中按鈕的提示文字
+function updateCenterButtonTooltip() {
+    const centerBtn = document.getElementById('centerBtn');
+    if (centerBtn) {
+        const status = keepMapCentered ? '已開啟' : '已關閉';
+        centerBtn.title = `自動居中功能 (目前${status}) - 點擊切換`;
+    }
+}
+
+// 顯示手機端自動居中狀態提示
+function showMobileCenterStatusToast() {
+    // 檢查是否為手機裝置
+    if (!isMobileDevice()) {
+        return;
+    }
+    
+    const status = keepMapCentered ? '已開啟' : '已關閉';
+    const message = `自動居中功能${status}`;
+    
+    // 創建提示元素
+    const toast = document.createElement('div');
+    toast.className = 'mobile-status-toast';
+    toast.textContent = message;
+    
+    // 添加樣式
+    toast.style.cssText = `
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(0, 0, 0, 0.8);
+        color: white;
+        padding: 12px 20px;
+        border-radius: 8px;
+        font-size: 16px;
+        font-weight: bold;
+        z-index: 10000;
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    `;
+    
+    // 添加到頁面
+    document.body.appendChild(toast);
+    
+    // 顯示動畫
+    setTimeout(() => {
+        toast.style.opacity = '1';
+    }, 10);
+    
+    // 2秒後移除
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        setTimeout(() => {
+            if (toast.parentNode) {
+                toast.parentNode.removeChild(toast);
+            }
+        }, 300);
+    }, 2000);
+}
+
+function handleCenterClick() {
+    console.log('Center button clicked');
+    // 切換自動居中功能
+    keepMapCentered = !keepMapCentered;
+    
+    // 更新按鈕狀態
+    const centerBtn = document.getElementById('centerBtn');
+    const centerIcon = document.getElementById('centerIcon');
+    
+    if (keepMapCentered) {
+        centerBtn.classList.add('active');
+        centerIcon.textContent = '🎯';
+        showNotification('自動居中已開啟', 'success');
+        
+        // 如果有當前位置，立即居中
+        if (currentPosition) {
+            map.setView([currentPosition.lat, currentPosition.lng], map.getZoom());
+        }
+    } else {
+        centerBtn.classList.remove('active');
+        centerIcon.textContent = '🎯';
+        showNotification('自動居中已關閉', 'info');
+    }
+    
+    // 更新按鈕提示文字
+    updateCenterButtonTooltip();
+    
+    // 更新設定面板中的複選框
+    document.getElementById('keepMapCentered').checked = keepMapCentered;
+    
+    // 保存設定
+    saveCurrentSettings();
+}
+
 // 將函數暴露到全局作用域，讓HTML的onclick可以訪問
 window.handleFullscreenClick = handleFullscreenClick;
 window.handleLocationClick = handleLocationClick;
+window.handleCenterClick = handleCenterClick;
 
 // 行動裝置檢測函數
 function isMobileDevice() {
@@ -1132,6 +1241,15 @@ function isIOSDevice() {
 function initControlButtons() {
     // 拖曳功能
     initDragFunctionality();
+    
+    // 初始化自動居中按鈕狀態
+    const centerBtn = document.getElementById('centerBtn');
+    if (centerBtn && keepMapCentered) {
+        centerBtn.classList.add('active');
+    }
+    
+    // 初始化按鈕提示文字
+    updateCenterButtonTooltip();
     
     // 為行動裝置添加特殊提示
     if (isMobileDevice()) {
@@ -1237,6 +1355,7 @@ function getCurrentLocation() {
 function initDragFunctionality() {
     const fullscreenBtn = document.getElementById('fullscreenBtn');
     const locationBtn = document.getElementById('locationBtn');
+    const centerBtn = document.getElementById('centerBtn');
     
     // 載入保存的按鈕位置
     loadButtonPositions();
@@ -1244,10 +1363,12 @@ function initDragFunctionality() {
     // 為每個按鈕添加拖曳功能
     makeDraggable(fullscreenBtn);
     makeDraggable(locationBtn);
+    makeDraggable(centerBtn);
     
     // 為手機添加額外的觸控事件處理
     addMobileTouchSupport(fullscreenBtn, 'handleFullscreenClick');
     addMobileTouchSupport(locationBtn, 'handleLocationClick');
+    addMobileTouchSupport(centerBtn, 'handleCenterClick');
 }
 
 // 為手機添加觸控事件支持
@@ -1295,6 +1416,10 @@ function addMobileTouchSupport(element, functionName) {
                 window.handleFullscreenClick();
             } else if (functionName === 'handleLocationClick' && typeof window.handleLocationClick === 'function') {
                 window.handleLocationClick();
+            } else if (functionName === 'handleCenterClick' && typeof window.handleCenterClick === 'function') {
+                window.handleCenterClick();
+                // 在手機端顯示額外的狀態提示
+                showMobileCenterStatusToast();
             }
         }
         
@@ -2448,6 +2573,32 @@ function startTracking() {
                     }
                 }
                 
+                // 計算行進方向（如果啟用自動轉向且有前一個位置）
+                if (autoRotateMap && lastPosition && currentPosition) {
+                    const bearing = calculateBearing(
+                        lastPosition.lat, lastPosition.lng,
+                        position.coords.latitude, position.coords.longitude
+                    );
+                    
+                    // 只有在移動距離足夠時才更新方向（避免GPS漂移造成的誤差）
+                    const distance = calculateDistance(
+                        lastPosition.lat, lastPosition.lng,
+                        position.coords.latitude, position.coords.longitude
+                    );
+                    
+                    if (distance > 5) { // 移動超過5公尺才更新方向
+                        currentBearing = bearing;
+                        // 設置地圖旋轉
+                        map.setBearing(currentBearing);
+                    }
+                }
+                
+                // 保存當前位置作為下次計算的參考
+                lastPosition = currentPosition ? {
+                    lat: currentPosition.lat,
+                    lng: currentPosition.lng
+                } : null;
+                
                 currentPosition = {
                     lat: position.coords.latitude,
                     lng: position.coords.longitude,
@@ -2598,6 +2749,21 @@ function calculateDistance(lat1, lng1, lat2, lng2) {
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 
     return R * c; // 距離（公尺）
+}
+
+// 計算兩點間的方向角度（以北為0度，順時針）
+function calculateBearing(lat1, lng1, lat2, lng2) {
+    const φ1 = lat1 * Math.PI/180;
+    const φ2 = lat2 * Math.PI/180;
+    const Δλ = (lng2-lng1) * Math.PI/180;
+
+    const y = Math.sin(Δλ) * Math.cos(φ2);
+    const x = Math.cos(φ1) * Math.sin(φ2) - Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ);
+
+    const θ = Math.atan2(y, x);
+    
+    // 轉換為0-360度
+    return (θ * 180/Math.PI + 360) % 360;
 }
 
 // 距離檢查定時器
@@ -3326,6 +3492,7 @@ function saveCurrentSettings() {
             
             // 地圖設定
             keepMapCentered: keepMapCentered,
+            autoRotateMap: autoRotateMap,
             
             // 標註點和群組資料
             markers: markersToSave,
@@ -3385,6 +3552,10 @@ function loadSavedSettings() {
         if (settings.keepMapCentered !== undefined) {
             document.getElementById('keepMapCentered').checked = settings.keepMapCentered;
             keepMapCentered = settings.keepMapCentered;
+        }
+        if (settings.autoRotateMap !== undefined) {
+            document.getElementById('autoRotateMap').checked = settings.autoRotateMap;
+            autoRotateMap = settings.autoRotateMap;
         }
         
         // 載入標註點和群組資料（如果存在）
