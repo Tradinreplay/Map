@@ -321,7 +321,19 @@ function initMap() {
     // 設定地圖初始縮放級別為18，適合查看建築物和街道細節
     map = L.map('map', {
         maxZoom: 22,  // 設定地圖最大縮放級別，符合Google地圖標準
-        minZoom: 3    // 設定地圖最小縮放級別，允許查看更大範圍
+        minZoom: 3,   // 設定地圖最小縮放級別，允許查看更大範圍
+        // 性能優化設置
+        preferCanvas: true,        // 使用Canvas渲染以提升性能
+        zoomAnimation: true,       // 啟用縮放動畫
+        fadeAnimation: true,       // 啟用淡入淡出動畫
+        markerZoomAnimation: true, // 啟用標記縮放動畫
+        zoomSnap: 0.25,           // 縮放步進設置，更細緻的縮放控制
+        wheelPxPerZoomLevel: 60,  // 滾輪縮放靈敏度
+        // 觸控優化
+        tap: true,                // 啟用觸控點擊
+        tapTolerance: 15,         // 觸控容錯範圍
+        touchZoom: true,          // 啟用觸控縮放
+        bounceAtZoomLimits: false // 禁用縮放邊界彈跳效果以提升性能
     }).setView([defaultLat, defaultLng], 18);
     
     // 添加地圖圖層 - 使用Google地圖圖資
@@ -330,7 +342,12 @@ function initMap() {
         attribution: '© Google',
         subdomains: ['0', '1', '2', '3'],
         maxZoom: 22,  // 街道地圖最大縮放級別22
-        minZoom: 3
+        minZoom: 3,
+        // 性能優化
+        updateWhenIdle: false,    // 地圖移動時持續更新圖層
+        updateWhenZooming: true,  // 縮放時更新圖層
+        keepBuffer: 2,            // 保持額外的圖層緩存
+        updateInterval: 150       // 更新間隔（毫秒）
     });
     
     // Google衛星圖
@@ -338,7 +355,12 @@ function initMap() {
         attribution: '© Google',
         subdomains: ['0', '1', '2', '3'],
         maxZoom: 23,  // 衛星圖最大縮放級別23，在某些地區可達到建築物細節
-        minZoom: 3
+        minZoom: 3,
+        // 性能優化
+        updateWhenIdle: false,    // 地圖移動時持續更新圖層
+        updateWhenZooming: true,  // 縮放時更新圖層
+        keepBuffer: 2,            // 保持額外的圖層緩存
+        updateInterval: 150       // 更新間隔（毫秒）
     });
     
     // Google混合圖 (衛星+標籤) - 設為預設圖層
@@ -346,7 +368,12 @@ function initMap() {
         attribution: '© Google',
         subdomains: ['0', '1', '2', '3'],
         maxZoom: 23,  // 混合圖最大縮放級別23
-        minZoom: 3
+        minZoom: 3,
+        // 性能優化
+        updateWhenIdle: false,    // 地圖移動時持續更新圖層
+        updateWhenZooming: true,  // 縮放時更新圖層
+        keepBuffer: 2,            // 保持額外的圖層緩存
+        updateInterval: 150       // 更新間隔（毫秒）
     }).addTo(map);
     
     // Google地形圖
@@ -354,14 +381,24 @@ function initMap() {
         attribution: '© Google',
         subdomains: ['0', '1', '2', '3'],
         maxZoom: 20,  // 地形圖最大縮放級別20
-        minZoom: 3
+        minZoom: 3,
+        // 性能優化
+        updateWhenIdle: false,    // 地圖移動時持續更新圖層
+        updateWhenZooming: true,  // 縮放時更新圖層
+        keepBuffer: 2,            // 保持額外的圖層緩存
+        updateInterval: 150       // 更新間隔（毫秒）
     });
     
     // 備用圖層 - OpenStreetMap
     const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap contributors',
         maxZoom: 19,  // OSM最大縮放級別19
-        minZoom: 3
+        minZoom: 3,
+        // 性能優化
+        updateWhenIdle: false,    // 地圖移動時持續更新圖層
+        updateWhenZooming: true,  // 縮放時更新圖層
+        keepBuffer: 2,            // 保持額外的圖層緩存
+        updateInterval: 150       // 更新間隔（毫秒）
     });
     
     // 地圖圖層控制

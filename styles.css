@@ -674,15 +674,35 @@ body {
     transform: scale(0.8) !important;
 }
 
-/* 地圖旋轉功能專用樣式 */
+/* 地圖性能優化樣式 */
 .leaflet-map-pane {
-    transition: transform 0.3s ease-in-out !important;
-    transform-origin: center center !important;
+    /* 移除transition以提升滑動性能 */
+    will-change: transform;
+    transform: translateZ(0); /* 啟用硬體加速 */
 }
 
-/* 確保地圖旋轉時不影響其他元素 */
-.leaflet-map-pane * {
-    transform-origin: inherit !important;
+/* 地圖容器性能優化 */
+#map {
+    /* 啟用硬體加速 */
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    perspective: 1000px;
+    /* 優化觸控滑動 */
+    touch-action: pan-x pan-y;
+    /* 提升渲染性能 */
+    will-change: transform;
+}
+
+/* 地圖圖層性能優化 */
+.leaflet-layer {
+    transform: translateZ(0);
+    backface-visibility: hidden;
+}
+
+/* 標記性能優化 */
+.leaflet-marker-icon {
+    transform: translateZ(0);
+    backface-visibility: hidden;
 }
 
 
