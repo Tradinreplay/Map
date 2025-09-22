@@ -21,7 +21,7 @@ let currentFilter = null; // 當前過濾設定 { type: 'marker'|'group'|'subgro
 // 即時定位設定
 let enableHighAccuracy = true; // 高精度模式
 let autoStartTracking = false; // 自動開始追蹤
-let keepMapCentered = true; // 保持地圖中央（預設開啟）
+let keepMapCentered = false; // 保持地圖中央（預設關閉）
 let autoRotateMap = true; // 自動轉向行進方向（預設開啟）
 let locationUpdateFrequency = 3000; // 定位更新頻率（毫秒）
 let locationTimeout = 20000; // 定位超時時間（毫秒）
@@ -325,13 +325,13 @@ function initMap() {
     }).setView([defaultLat, defaultLng], 18);
     
     // 添加地圖圖層 - 使用Google地圖圖資
-    // Google街道地圖 (主要圖層)
+    // Google街道地圖
     const googleStreetLayer = L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
         attribution: '© Google',
         subdomains: ['0', '1', '2', '3'],
         maxZoom: 22,  // 街道地圖最大縮放級別22
         minZoom: 3
-    }).addTo(map);
+    });
     
     // Google衛星圖
     const googleSatelliteLayer = L.tileLayer('https://mt{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
@@ -341,13 +341,13 @@ function initMap() {
         minZoom: 3
     });
     
-    // Google混合圖 (衛星+標籤)
+    // Google混合圖 (衛星+標籤) - 設為預設圖層
     const googleHybridLayer = L.tileLayer('https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
         attribution: '© Google',
         subdomains: ['0', '1', '2', '3'],
         maxZoom: 23,  // 混合圖最大縮放級別23
         minZoom: 3
-    });
+    }).addTo(map);
     
     // Google地形圖
     const googleTerrainLayer = L.tileLayer('https://mt{s}.google.com/vt/lyrs=p&x={x}&y={y}&z={z}', {
@@ -2085,6 +2085,39 @@ function selectGroup(groupId, subgroupId = null) {
     updateMarkersList();
 }
 
+// 編輯組別名稱
+function editGroupName(groupId) {
+    const group = groups.find(g => g.id === groupId);
+    if (!group) return;
+    
+    const newName = prompt('請輸入新的組別名稱：', group.name);
+    if (newName && newName.trim() && newName.trim() !== group.name) {
+        group.name = newName.trim();
+        updateGroupsList();
+        updateMarkersList();
+        saveData();
+        showNotification('組別名稱已更新', 'success');
+    }
+}
+
+// 編輯子群組名稱
+function editSubgroupName(groupId, subgroupId) {
+    const group = groups.find(g => g.id === groupId);
+    if (!group) return;
+    
+    const subgroup = group.subgroups.find(sg => sg.id === subgroupId);
+    if (!subgroup) return;
+    
+    const newName = prompt('請輸入新的群組名稱：', subgroup.name);
+    if (newName && newName.trim() && newName.trim() !== subgroup.name) {
+        subgroup.name = newName.trim();
+        updateGroupsList();
+        updateMarkersList();
+        saveData();
+        showNotification('群組名稱已更新', 'success');
+    }
+}
+
 // 標註功能
 function toggleAddMarkerMode() {
     isAddingMarker = !isAddingMarker;
@@ -3314,6 +3347,7 @@ function updateGroupsList() {
         groupDiv.innerHTML = `
             <div class="group-name" onclick="selectGroup('${group.id}')">${group.name}</div>
             <div class="group-actions">
+                <button onclick="editGroupName('${group.id}')">編輯</button>
                 <button onclick="addSubgroup('${group.id}')">新增群組</button>
                 <button onclick="deleteGroup('${group.id}')">刪除</button>
             </div>
@@ -3328,6 +3362,7 @@ function updateGroupsList() {
             subgroupDiv.innerHTML = `
                 <div class="subgroup-name" onclick="selectGroup('${group.id}', '${subgroup.id}')">${subgroup.name}</div>
                 <div class="subgroup-actions">
+                    <button onclick="editSubgroupName('${group.id}', '${subgroup.id}')">編輯</button>
                     <button onclick="deleteSubgroup('${group.id}', '${subgroup.id}')">刪除</button>
                 </div>
             `;
@@ -3705,6 +3740,8 @@ window.focusMarker = focusMarker;
 window.setTrackingTarget = setTrackingTarget;
 window.clearTrackingTarget = clearTrackingTarget;
 window.showOnlyThisMarker = showOnlyThisMarker;
+window.editGroupName = editGroupName;
+window.editSubgroupName = editSubgroupName;
 
 function saveCurrentSettings() {
     try {
