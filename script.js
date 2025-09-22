@@ -607,6 +607,52 @@ document.getElementById('createGroupForm').addEventListener('submit', handleCrea
 // 測試通知按鈕
     document.getElementById('testNotificationBtn').addEventListener('click', testNotification);
     
+    // 組別詳情模態框按鈕事件監聽器
+    document.getElementById('showAllGroupMarkersBtn').addEventListener('click', showAllMarkersInGroup);
+    document.getElementById('hideAllGroupMarkersBtn').addEventListener('click', hideAllMarkersInGroup);
+    document.getElementById('centerToGroupBtn').addEventListener('click', centerToGroupMarkers);
+    
+    // 匯入選項模態框按鈕事件監聽器
+    document.getElementById('confirmImportBtn').addEventListener('click', function() {
+        const selectedRadio = document.querySelector('input[name="importMode"]:checked');
+        if (!selectedRadio) {
+            showNotification('請選擇匯入模式', 'error');
+            return;
+        }
+        const selectedOption = selectedRadio.value;
+        handleImportOption(selectedOption);
+    });
+    
+    document.getElementById('cancelImportBtn').addEventListener('click', function() {
+        closeImportOptionsModal();
+    });
+    
+    document.getElementById('showDuplicatesBtn').addEventListener('click', function() {
+        const duplicateDetails = document.getElementById('duplicateDetails');
+        if (duplicateDetails.style.display === 'none') {
+            duplicateDetails.style.display = 'block';
+            this.textContent = '隱藏重複詳情';
+        } else {
+            duplicateDetails.style.display = 'none';
+            this.textContent = '查看重複詳情';
+        }
+    });
+    
+    // 為匯入選項添加視覺反饋
+    document.querySelectorAll('input[name="importMode"]').forEach(radio => {
+        radio.addEventListener('change', function() {
+            // 移除所有選項的選中樣式
+            document.querySelectorAll('.import-option').forEach(option => {
+                option.classList.remove('selected');
+            });
+            
+            // 為當前選中的選項添加選中樣式
+            if (this.checked) {
+                this.closest('.import-option').classList.add('selected');
+            }
+        });
+    });
+    
     // 即時定位設定事件監聽器
     document.getElementById('enableHighAccuracy').addEventListener('change', function(e) {
         enableHighAccuracy = e.target.checked;
@@ -702,6 +748,38 @@ document.getElementById('createGroupForm').addEventListener('submit', handleCrea
         locationTimeout = parseInt(e.target.value) * 1000; // 轉換為毫秒
         saveData();
     });
+    
+    // 組別詳情模態框事件監聽器
+    const groupDetailsModal = document.getElementById('groupDetailsModal');
+    if (groupDetailsModal) {
+        // 關閉按鈕事件
+        const groupDetailsCloseBtn = groupDetailsModal.querySelector('.close');
+        if (groupDetailsCloseBtn) {
+            groupDetailsCloseBtn.addEventListener('click', closeGroupDetailsModal);
+        }
+        
+        // 點擊模態框背景關閉
+        groupDetailsModal.addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeGroupDetailsModal();
+            }
+        });
+        
+        // 組別詳情按鈕事件
+        const showAllBtn = document.getElementById('showAllGroupMarkersBtn');
+        const hideAllBtn = document.getElementById('hideAllGroupMarkersBtn');
+        const centerBtn = document.getElementById('centerToGroupBtn');
+        
+        if (showAllBtn) {
+            showAllBtn.addEventListener('click', showAllMarkersInGroup);
+        }
+        if (hideAllBtn) {
+            hideAllBtn.addEventListener('click', hideAllMarkersInGroup);
+        }
+        if (centerBtn) {
+            centerBtn.addEventListener('click', centerToGroupMarkers);
+        }
+    }
     
 }
 
@@ -3288,11 +3366,12 @@ function updateGroupsList() {
         groupDiv.dataset.groupId = group.id;
         
         groupDiv.innerHTML = `
-            <div class="group-name" onclick="selectGroup('${group.id}')">${group.name}</div>
+            <div class="group-name" onclick="selectGroup('${group.id}')" oncontextmenu="event.preventDefault(); showGroupDetailsModal('${group.id}');" title="左鍵選擇組別，右鍵查看詳情">${group.name}</div>
             <div class="group-actions">
                 <button onclick="editGroupName('${group.id}')">編輯</button>
                 <button onclick="addSubgroup('${group.id}')">新增群組</button>
                 <button onclick="deleteGroup('${group.id}')">刪除</button>
+                <button onclick="showGroupDetailsModal('${group.id}')" title="查看組別詳情">詳情</button>
             </div>
         `;
         
@@ -3303,10 +3382,11 @@ function updateGroupsList() {
             subgroupDiv.dataset.subgroupId = subgroup.id;
             
             subgroupDiv.innerHTML = `
-                <div class="subgroup-name" onclick="selectGroup('${group.id}', '${subgroup.id}')">${subgroup.name}</div>
+                <div class="subgroup-name" onclick="selectGroup('${group.id}', '${subgroup.id}')" oncontextmenu="event.preventDefault(); showGroupDetailsModal('${group.id}', '${subgroup.id}');" title="左鍵選擇群組，右鍵查看詳情">${subgroup.name}</div>
                 <div class="subgroup-actions">
                     <button onclick="editSubgroupName('${group.id}', '${subgroup.id}')">編輯</button>
                     <button onclick="deleteSubgroup('${group.id}', '${subgroup.id}')">刪除</button>
+                    <button onclick="showGroupDetailsModal('${group.id}', '${subgroup.id}')" title="查看群組詳情">詳情</button>
                 </div>
             `;
             
@@ -4049,103 +4129,16 @@ function importMarkerData(file) {
                     throw new Error('無效的資料格式');
                 }
                 
-                // 詢問使用者是否要覆蓋現有資料
+                // 檢查是否有現有資料
                 const hasExistingData = markers.length > 0 || groups.length > 0;
-                let shouldProceed = true;
                 
-                if (hasExistingData) {
-                    shouldProceed = confirm(
-                        `即將匯入 ${importData.markers.length} 個標註點和 ${importData.groups.length} 個群組。\n\n` +
-                        '這將會覆蓋目前所有的標註點和群組資料。\n\n' +
-                        '確定要繼續嗎？'
-                    );
+                if (!hasExistingData) {
+                    // 沒有現有資料，直接匯入
+                    performDirectImport(importData);
+                } else {
+                    // 有現有資料，進行比對並顯示選項
+                    showImportOptionsModal(importData);
                 }
-                
-                if (!shouldProceed) {
-                    return;
-                }
-                
-                // 清除現有資料
-                clearAllData();
-                
-                // 重建群組
-                groups = importData.groups.map(groupData => {
-                    const group = new Group(groupData.id, groupData.name);
-                    groupData.subgroups.forEach(subgroupData => {
-                        const subgroup = new Subgroup(subgroupData.id, subgroupData.name, subgroupData.groupId);
-                        group.addSubgroup(subgroup);
-                    });
-                    return group;
-                });
-                
-                // 重建標註點
-                markers = importData.markers.map(markerData => 
-                    new Marker(
-                        markerData.id,
-                        markerData.name,
-                        markerData.description,
-                        markerData.lat,
-                        markerData.lng,
-                        markerData.groupId,
-                        markerData.subgroupId,
-                        markerData.color || 'red',
-                        markerData.icon || '📍',
-                        markerData.imageData || null
-                    )
-                );
-                
-                // 將標註點加入對應的群組和子群組
-                markers.forEach(marker => {
-                    const group = groups.find(g => g.id === marker.groupId);
-                    if (group) {
-                        group.addMarker(marker);
-                        if (marker.subgroupId) {
-                            const subgroup = group.subgroups.find(sg => sg.id === marker.subgroupId);
-                            if (subgroup) {
-                                subgroup.addMarker(marker);
-                            }
-                        }
-                    }
-                });
-                
-                // 恢復設定（如果有的話）
-                if (importData.settings) {
-                    alertDistance = importData.settings.alertDistance || 100;
-                    alertInterval = importData.settings.alertInterval || 30;
-                    
-                    // 更新UI設定
-                    document.getElementById('alertDistance').value = alertDistance;
-                    document.getElementById('alertInterval').value = alertInterval;
-                    if (importData.settings.enableNotifications !== undefined) {
-                        document.getElementById('enableNotifications').checked = importData.settings.enableNotifications;
-                    }
-                }
-                
-                // 恢復當前選擇的群組和子群組
-                currentGroup = importData.currentGroup;
-                currentSubgroup = importData.currentSubgroup;
-                
-                // 更新UI
-                updateGroupsList();
-                updateMarkersList();
-                updateMapMarkers();
-                
-                // 儲存到localStorage
-                saveData();
-                
-                const markerCount = importData.markers.length;
-                const groupCount = importData.groups.length;
-                const importDate = importData.exportDate ? 
-                    new Date(importData.exportDate).toLocaleString('zh-TW') : '未知';
-                
-                showNotification(
-                    `資料匯入成功！\n` +
-                    `包含 ${markerCount} 個標註點，${groupCount} 個群組\n` +
-                    `(匯出時間: ${importDate})`, 
-                    'success'
-                );
-                
-                console.log('Data imported successfully:', importData);
                 
             } catch (parseError) {
                 console.error('Error parsing imported data:', parseError);
@@ -4162,6 +4155,81 @@ function importMarkerData(file) {
         console.error('Error importing data:', error);
         showNotification('匯入資料時發生錯誤', 'error');
     }
+}
+
+// 直接匯入（無現有資料時）
+function performDirectImport(importData) {
+    // 重建群組
+    groups = importData.groups.map(groupData => {
+        const group = new Group(groupData.id, groupData.name);
+        groupData.subgroups.forEach(subgroupData => {
+            const subgroup = new Subgroup(subgroupData.id, subgroupData.name, subgroupData.groupId);
+            group.addSubgroup(subgroup);
+        });
+        return group;
+    });
+    
+    // 重建標註點
+    markers = importData.markers.map(markerData => 
+        new Marker(
+            markerData.id,
+            markerData.name,
+            markerData.description,
+            markerData.lat,
+            markerData.lng,
+            markerData.groupId,
+            markerData.subgroupId,
+            markerData.color || 'red',
+            markerData.icon || '📍',
+            markerData.imageData || null
+        )
+    );
+    
+    // 將標註點加入對應的群組和子群組
+    markers.forEach(marker => {
+        const group = groups.find(g => g.id === marker.groupId);
+        if (group) {
+            group.addMarker(marker);
+            if (marker.subgroupId) {
+                const subgroup = group.subgroups.find(sg => sg.id === marker.subgroupId);
+                if (subgroup) {
+                    subgroup.addMarker(marker);
+                }
+            }
+        }
+    });
+    
+    // 恢復設定
+    if (importData.settings) {
+        alertDistance = importData.settings.alertDistance || 100;
+        alertInterval = importData.settings.alertInterval || 30;
+        
+        document.getElementById('alertDistance').value = alertDistance;
+        document.getElementById('alertInterval').value = alertInterval;
+        if (importData.settings.enableNotifications !== undefined) {
+            document.getElementById('enableNotifications').checked = importData.settings.enableNotifications;
+        }
+    }
+    
+    currentGroup = importData.currentGroup;
+    currentSubgroup = importData.currentSubgroup;
+    
+    updateGroupsList();
+    updateMarkersList();
+    updateMapMarkers();
+    saveData();
+    
+    const markerCount = importData.markers.length;
+    const groupCount = importData.groups.length;
+    const importDate = importData.exportDate ? 
+        new Date(importData.exportDate).toLocaleString('zh-TW') : '未知';
+    
+    showNotification(
+        `資料匯入成功！\n` +
+        `包含 ${markerCount} 個標註點，${groupCount} 個群組\n` +
+        `(匯出時間: ${importDate})`, 
+        'success'
+    );
 }
 
 // 清除所有資料的輔助函數
@@ -4324,6 +4392,392 @@ function addRandomColorAnimationToGroupButtons() {
         });
     });
 }
+
+// 顯示匯入選項模態框
+function showImportOptionsModal(importData) {
+    const modal = document.getElementById('importOptionsModal');
+    const comparisonInfo = document.getElementById('comparisonInfo');
+    const duplicateDetails = document.getElementById('duplicateDetails');
+    
+    // 比對資料
+    const comparison = compareImportData(importData);
+    
+    // 顯示比對資訊
+    comparisonInfo.innerHTML = `
+        <div class="comparison-summary">
+            <h4>資料比對結果</h4>
+            <div class="comparison-stats">
+                <div class="stat-item">
+                    <span class="stat-label">匯入檔案：</span>
+                    <span class="stat-value">${importData.markers.length} 個標註點，${importData.groups.length} 個群組</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">目前資料：</span>
+                    <span class="stat-value">${markers.length} 個標註點，${groups.length} 個群組</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">重複標註點：</span>
+                    <span class="stat-value">${comparison.duplicateMarkers.length} 個</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">新增標註點：</span>
+                    <span class="stat-value">${comparison.newMarkers.length} 個</span>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // 顯示重複詳情
+    if (comparison.duplicateMarkers.length > 0) {
+        duplicateDetails.innerHTML = `
+            <h4>重複的標註點</h4>
+            <div class="duplicate-list">
+                ${comparison.duplicateMarkers.map(dup => `
+                    <div class="duplicate-item">
+                        <div class="duplicate-name">${dup.import.name}</div>
+                        <div class="duplicate-location">位置: ${dup.import.lat.toFixed(6)}, ${dup.import.lng.toFixed(6)}</div>
+                        <div class="duplicate-comparison">
+                            <span class="existing">現有: ${dup.existing.description || '無描述'}</span>
+                            <span class="importing">匯入: ${dup.import.description || '無描述'}</span>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    } else {
+        duplicateDetails.innerHTML = '<p>沒有發現重複的標註點</p>';
+    }
+    
+    // 儲存匯入資料供後續使用
+    modal.importData = importData;
+    modal.comparison = comparison;
+    
+    // 設置預設選項為"完全覆蓋"
+    const defaultOption = document.getElementById('importOverwrite');
+    if (defaultOption) {
+        defaultOption.checked = true;
+        // 初始化視覺反饋
+        document.querySelectorAll('.import-option').forEach(option => {
+            option.classList.remove('selected');
+        });
+        defaultOption.closest('.import-option').classList.add('selected');
+    }
+    
+    modal.style.display = 'block';
+}
+
+// 比對匯入資料與現有資料
+function compareImportData(importData) {
+    const duplicateMarkers = [];
+    const newMarkers = [];
+    const LOCATION_THRESHOLD = 0.0001; // 約10公尺的誤差範圍
+    
+    importData.markers.forEach(importMarker => {
+        const existingMarker = markers.find(existing => {
+            const latDiff = Math.abs(existing.lat - importMarker.lat);
+            const lngDiff = Math.abs(existing.lng - importMarker.lng);
+            return latDiff < LOCATION_THRESHOLD && lngDiff < LOCATION_THRESHOLD;
+        });
+        
+        if (existingMarker) {
+            duplicateMarkers.push({
+                existing: existingMarker,
+                import: importMarker
+            });
+        } else {
+            newMarkers.push(importMarker);
+        }
+    });
+    
+    return {
+        duplicateMarkers,
+        newMarkers,
+        totalImport: importData.markers.length,
+        totalExisting: markers.length
+    };
+}
+
+// 處理匯入選項
+function handleImportOption(option) {
+    const modal = document.getElementById('importOptionsModal');
+    const importData = modal.importData;
+    const comparison = modal.comparison;
+    
+    switch (option) {
+        case 'overwrite':
+            // 全部覆蓋
+            clearAllData();
+            performDirectImport(importData);
+            showNotification('已覆蓋所有資料並匯入新資料', 'success');
+            break;
+            
+        case 'merge':
+            // 只增加新的標註點
+            performMergeImport(importData, comparison);
+            showNotification(`已合併資料，新增 ${comparison.newMarkers.length} 個標註點`, 'success');
+            break;
+            
+        case 'update':
+            // 更新重複的，增加新的
+            performUpdateImport(importData, comparison);
+            showNotification(
+                `已更新 ${comparison.duplicateMarkers.length} 個重複標註點，新增 ${comparison.newMarkers.length} 個新標註點`, 
+                'success'
+            );
+            break;
+    }
+    
+    modal.style.display = 'none';
+}
+
+// 生成唯一ID
+function generateId() {
+    return Date.now().toString() + '-' + Math.random().toString(36).substr(2, 9);
+}
+
+// 合併匯入（只增加新的）
+function performMergeImport(importData, comparison) {
+    // 處理新群組
+    importData.groups.forEach(importGroup => {
+        const existingGroup = groups.find(g => g.name === importGroup.name);
+        if (!existingGroup) {
+            const newGroup = new Group(generateId(), importGroup.name);
+            importGroup.subgroups.forEach(subgroupData => {
+                const subgroup = new Subgroup(generateId(), subgroupData.name, newGroup.id);
+                newGroup.addSubgroup(subgroup);
+            });
+            groups.push(newGroup);
+        }
+    });
+    
+    // 只添加新的標註點
+    comparison.newMarkers.forEach(markerData => {
+        const targetGroup = groups.find(g => g.name === importData.groups.find(ig => ig.id === markerData.groupId)?.name);
+        if (targetGroup) {
+            const newMarker = new Marker(
+                generateId(),
+                markerData.name,
+                markerData.description,
+                markerData.lat,
+                markerData.lng,
+                targetGroup.id,
+                markerData.subgroupId,
+                markerData.color || 'red',
+                markerData.icon || '📍',
+                markerData.imageData || null
+            );
+            
+            markers.push(newMarker);
+            targetGroup.addMarker(newMarker);
+        }
+    });
+    
+    updateGroupsList();
+    updateMarkersList();
+    updateMapMarkers();
+    saveData();
+}
+
+// 更新匯入（更新重複的，增加新的）
+function performUpdateImport(importData, comparison) {
+    // 處理新群組
+    importData.groups.forEach(importGroup => {
+        const existingGroup = groups.find(g => g.name === importGroup.name);
+        if (!existingGroup) {
+            const newGroup = new Group(generateId(), importGroup.name);
+            importGroup.subgroups.forEach(subgroupData => {
+                const subgroup = new Subgroup(generateId(), subgroupData.name, newGroup.id);
+                newGroup.addSubgroup(subgroup);
+            });
+            groups.push(newGroup);
+        }
+    });
+    
+    // 添加新的標註點
+    comparison.newMarkers.forEach(markerData => {
+        const targetGroup = groups.find(g => g.name === importData.groups.find(ig => ig.id === markerData.groupId)?.name);
+        if (targetGroup) {
+            const newMarker = new Marker(
+                generateId(),
+                markerData.name,
+                markerData.description,
+                markerData.lat,
+                markerData.lng,
+                targetGroup.id,
+                markerData.subgroupId,
+                markerData.color || 'red',
+                markerData.icon || '📍',
+                markerData.imageData || null
+            );
+            
+            markers.push(newMarker);
+            targetGroup.addMarker(newMarker);
+        }
+    });
+    
+    // 更新重複的標註點
+    comparison.duplicateMarkers.forEach(dup => {
+        const existingMarker = dup.existing;
+        const importMarker = dup.import;
+        
+        // 更新標註點資訊
+        existingMarker.name = importMarker.name;
+        existingMarker.description = importMarker.description;
+        existingMarker.color = importMarker.color || existingMarker.color;
+        existingMarker.icon = importMarker.icon || existingMarker.icon;
+        if (importMarker.imageData) {
+            existingMarker.imageData = importMarker.imageData;
+        }
+    });
+    
+    updateGroupsList();
+    updateMarkersList();
+    updateMapMarkers();
+    saveData();
+}
+
+// 關閉匯入選項模態框
+function closeImportOptionsModal() {
+    document.getElementById('importOptionsModal').style.display = 'none';
+}
+
+// 顯示組別詳情模態框
+function showGroupDetailsModal(groupId, subgroupId = null) {
+    const modal = document.getElementById('groupDetailsModal');
+    const title = document.getElementById('groupDetailsTitle');
+    const stats = document.getElementById('groupDetailsStats');
+    const markersList = document.getElementById('groupDetailsMarkersList');
+    
+    let targetGroup, targetSubgroup, targetMarkers, titleText;
+    
+    if (subgroupId) {
+        // 顯示子群組詳情
+        targetGroup = groups.find(g => g.id === groupId);
+        targetSubgroup = targetGroup?.subgroups.find(sg => sg.id === subgroupId);
+        targetMarkers = markers.filter(m => m.groupId === groupId && m.subgroupId === subgroupId);
+        titleText = `${targetGroup?.name} - ${targetSubgroup?.name}`;
+    } else {
+        // 顯示群組詳情
+        targetGroup = groups.find(g => g.id === groupId);
+        targetMarkers = markers.filter(m => m.groupId === groupId);
+        titleText = targetGroup?.name;
+    }
+    
+    if (!targetGroup) return;
+    
+    // 設定標題
+    title.textContent = titleText;
+    
+    // 設定統計資訊
+    stats.innerHTML = `
+        <div class="stats-item">
+            <span class="stats-label">標註點數量：</span>
+            <span class="stats-value">${targetMarkers.length}</span>
+        </div>
+        <div class="stats-item">
+            <span class="stats-label">群組：</span>
+            <span class="stats-value">${targetGroup.name}</span>
+        </div>
+        ${subgroupId ? `
+        <div class="stats-item">
+            <span class="stats-label">子群組：</span>
+            <span class="stats-value">${targetSubgroup.name}</span>
+        </div>
+        ` : ''}
+    `;
+    
+    // 設定標註點列表
+    if (targetMarkers.length > 0) {
+        markersList.innerHTML = targetMarkers.map(marker => `
+            <div class="group-details-marker-item">
+                <div class="marker-info">
+                    <div class="marker-name">${marker.name}</div>
+                    <div class="marker-description">${marker.description || '無描述'}</div>
+                    <div class="marker-location">位置: ${marker.lat.toFixed(6)}, ${marker.lng.toFixed(6)}</div>
+                </div>
+                <div class="marker-actions">
+                    <button onclick="focusMarker('${marker.id}')" class="btn-focus">定位</button>
+                    <button onclick="editMarker('${marker.id}')" class="btn-edit">編輯</button>
+                </div>
+            </div>
+        `).join('');
+    } else {
+        markersList.innerHTML = '<p class="no-markers">此群組目前沒有標註點</p>';
+    }
+    
+    // 儲存當前群組資訊供按鈕使用
+    modal.currentGroupId = groupId;
+    modal.currentSubgroupId = subgroupId;
+    
+    modal.style.display = 'block';
+}
+
+// 關閉組別詳情模態框
+function closeGroupDetailsModal() {
+    document.getElementById('groupDetailsModal').style.display = 'none';
+}
+
+// 顯示所有標註點
+function showAllMarkersInGroup() {
+    const modal = document.getElementById('groupDetailsModal');
+    const groupId = modal.currentGroupId;
+    const subgroupId = modal.currentSubgroupId;
+    
+    if (subgroupId) {
+        setFilter('subgroup', subgroupId);
+    } else {
+        setFilter('group', groupId);
+    }
+    
+    showNotification('已顯示該群組的所有標註點', 'success');
+}
+
+// 隱藏所有標註點
+function hideAllMarkersInGroup() {
+    clearFilter();
+    showNotification('已隱藏所有標註點', 'success');
+}
+
+// 居中顯示群組標註點
+function centerToGroupMarkers() {
+    const modal = document.getElementById('groupDetailsModal');
+    const groupId = modal.currentGroupId;
+    const subgroupId = modal.currentSubgroupId;
+    
+    let targetMarkers;
+    if (subgroupId) {
+        targetMarkers = markers.filter(m => m.groupId === groupId && m.subgroupId === subgroupId);
+    } else {
+        targetMarkers = markers.filter(m => m.groupId === groupId);
+    }
+    
+    if (targetMarkers.length === 0) {
+        showNotification('該群組沒有標註點可以居中顯示', 'warning');
+        return;
+    }
+    
+    if (targetMarkers.length === 1) {
+        // 只有一個標註點，直接居中
+        const marker = targetMarkers[0];
+        map.setView([marker.lat, marker.lng], 16);
+    } else {
+        // 多個標註點，計算邊界並適配視圖
+        const bounds = L.latLngBounds(targetMarkers.map(m => [m.lat, m.lng]));
+        map.fitBounds(bounds, { padding: [20, 20] });
+    }
+    
+    closeGroupDetailsModal();
+    showNotification('已居中顯示群組標註點', 'success');
+}
+
+// 將函數暴露到全域範圍
+window.handleImportOption = handleImportOption;
+window.closeImportOptionsModal = closeImportOptionsModal;
+window.showGroupDetailsModal = showGroupDetailsModal;
+window.closeGroupDetailsModal = closeGroupDetailsModal;
+window.showAllMarkersInGroup = showAllMarkersInGroup;
+window.hideAllMarkersInGroup = hideAllMarkersInGroup;
+window.centerToGroupMarkers = centerToGroupMarkers;
 
 // 初始化 - 在所有函數定義之後
 document.addEventListener('DOMContentLoaded', function() {

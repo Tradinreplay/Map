@@ -362,6 +362,110 @@
         </div>
     </div>
 
+    <!-- 組別/群組詳情浮動視窗 -->
+    <div id="groupDetailsModal" class="modal">
+        <div class="modal-content group-detail-content">
+            <span class="close">&times;</span>
+            <div class="group-detail-header">
+                <h2 id="groupDetailsTitle">組別詳情</h2>
+                <div id="groupDetailsStats" class="group-detail-stats">
+                    <span id="groupMarkerCount">0 個標註點</span>
+                </div>
+            </div>
+            <div class="group-detail-body">
+                <div class="group-detail-actions">
+                    <button id="showAllGroupMarkersBtn" class="detail-action-btn">
+                        <span>👁️</span>
+                        顯示所有標註點
+                    </button>
+                    <button id="hideAllGroupMarkersBtn" class="detail-action-btn">
+                        <span>🙈</span>
+                        隱藏所有標註點
+                    </button>
+                    <button id="centerToGroupBtn" class="detail-action-btn">
+                        <span>🎯</span>
+                        居中顯示
+                    </button>
+                </div>
+                <div class="group-markers-list">
+                    <h4>標註點列表</h4>
+                    <div id="groupDetailsMarkersList" class="detail-markers-container">
+                        <!-- 動態生成的標註點列表 -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 匯入選項模態框 -->
+    <div id="importOptionsModal" class="modal">
+        <div class="modal-content import-options-content">
+            <span class="close">&times;</span>
+            <h2>匯入標註點選項</h2>
+            <div class="import-options-body">
+                <div id="comparisonInfo" class="import-comparison-info">
+                    <h3>檢測到重複的標註點</h3>
+                    <p>系統發現匯入的資料中有 <span id="duplicateCount">0</span> 個標註點與現有資料重複。</p>
+                    <p>新增的標註點有 <span id="newCount">0</span> 個。</p>
+                </div>
+                
+                <div class="import-options">
+                    <div class="import-option">
+                        <input type="radio" id="importOverwrite" name="importMode" value="overwrite" checked>
+                        <label for="importOverwrite">
+                            <div class="option-header">
+                                <span class="option-icon">🔄</span>
+                                <span class="option-title">完全覆蓋</span>
+                            </div>
+                            <div class="option-description">
+                                刪除所有現有標註點，使用匯入的資料完全替換
+                            </div>
+                        </label>
+                    </div>
+                    
+                    <div class="import-option">
+                        <input type="radio" id="importMerge" name="importMode" value="merge">
+                        <label for="importMerge">
+                            <div class="option-header">
+                                <span class="option-icon">➕</span>
+                                <span class="option-title">合併匯入</span>
+                            </div>
+                            <div class="option-description">
+                                保留現有標註點，只添加新的標註點（跳過重複的）
+                            </div>
+                        </label>
+                    </div>
+                    
+                    <div class="import-option">
+                        <input type="radio" id="importUpdate" name="importMode" value="update">
+                        <label for="importUpdate">
+                            <div class="option-header">
+                                <span class="option-icon">🔄</span>
+                                <span class="option-title">更新合併</span>
+                            </div>
+                            <div class="option-description">
+                                保留現有標註點，添加新的標註點，並更新重複標註點的資訊
+                            </div>
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="duplicate-details" id="duplicateDetails" style="display: none;">
+                    <h4>重複的標註點詳情</h4>
+                    <div id="duplicateList" class="duplicate-list">
+                        <!-- 動態生成的重複標註點列表 -->
+                    </div>
+                </div>
+            </div>
+            
+            <div class="import-options-buttons">
+                <button id="confirmImportBtn" class="primary-btn">確認匯入</button>
+                <button id="cancelImportBtn" class="secondary-btn">取消</button>
+                <button id="showDuplicatesBtn" class="detail-btn">查看重複詳情</button>
+            </div>
+        </div>
+    </div>
+
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="script.js?v=20240120-2"></script>
     
