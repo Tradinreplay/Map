@@ -2622,6 +2622,9 @@ function toggleTracking() {
 }
 
 function startTracking() {
+    console.log('=== 開始位置追蹤 ===');
+    console.log('自動轉向設置:', autoRotateMap);
+    
     if ('geolocation' in navigator) {
         // 更新狀態顯示
         updateLocationStatus('正在啟動追蹤...');
@@ -2904,25 +2907,38 @@ function calculateBearing(lat1, lng1, lat2, lng2) {
 
 // 統一的自動轉向處理函數
 function handleAutoRotate(newPosition) {
-    if (!autoRotateMap || !lastPosition || !newPosition) {
-        return;
-    }
-    
-    const bearing = calculateBearing(
-        lastPosition.lat, lastPosition.lng,
-        newPosition.lat, newPosition.lng
-    );
-    
-    // 只有在移動距離足夠時才更新方向（避免GPS漂移造成的誤差）
-    const distance = calculateDistance(
-        lastPosition.lat, lastPosition.lng,
-        newPosition.lat, newPosition.lng
-    );
-    
-    if (distance > 5) { // 移動超過5公尺才更新方向
-        currentBearing = bearing;
-        // 設置地圖旋轉
-        map.setBearing(currentBearing);
+    try {
+        if (!autoRotateMap || !lastPosition || !newPosition) {
+            return;
+        }
+        
+        const bearing = calculateBearing(
+            lastPosition.lat, lastPosition.lng,
+            newPosition.lat, newPosition.lng
+        );
+        
+        // 只有在移動距離足夠時才更新方向（避免GPS漂移造成的誤差）
+        const distance = calculateDistance(
+            lastPosition.lat, lastPosition.lng,
+            newPosition.lat, newPosition.lng
+        );
+        
+        if (distance > 5) { // 移動超過5公尺才更新方向
+            currentBearing = bearing;
+            console.log(`自動轉向: 距離=${distance.toFixed(2)}m, 方向=${bearing.toFixed(2)}°`);
+            
+            // 安全地設置地圖旋轉
+             if (map && typeof map.setBearing === 'function') {
+                 console.log('設置地圖方向:', currentBearing);
+                 map.setBearing(currentBearing);
+                 console.log('地圖方向設置完成');
+             } else {
+                 console.warn('地圖對象或setBearing方法不可用');
+             }
+        }
+    } catch (error) {
+        console.error('自動轉向處理錯誤:', error);
+        // 發生錯誤時不影響定位功能
     }
 }
 
@@ -3453,6 +3469,41 @@ function testPopupFunction() {
 
 // 將測試函數添加到全局範圍
 window.testPopupFunction = testPopupFunction;
+
+// 測試自動轉向功能
+function testAutoRotate() {
+    console.log('=== 測試自動轉向功能 ===');
+    
+    // 模擬位置變化
+    const testPositions = [
+        { lat: 25.0330, lng: 121.5654 }, // 起始位置
+        { lat: 25.0340, lng: 121.5664 }, // 向東北移動
+        { lat: 25.0350, lng: 121.5674 }, // 繼續向東北移動
+    ];
+    
+    let index = 0;
+    const interval = setInterval(() => {
+        if (index >= testPositions.length) {
+            clearInterval(interval);
+            console.log('測試完成');
+            return;
+        }
+        
+        const pos = testPositions[index];
+        console.log(`測試位置 ${index + 1}:`, pos);
+        
+        // 模擬位置更新
+        if (lastPosition) {
+            handleAutoRotate(pos);
+        }
+        lastPosition = { lat: currentPosition?.lat || pos.lat, lng: currentPosition?.lng || pos.lng };
+        currentPosition = pos;
+        
+        index++;
+    }, 2000);
+}
+
+window.testAutoRotate = testAutoRotate;
 
 // 資料持久化
 function saveData() {
