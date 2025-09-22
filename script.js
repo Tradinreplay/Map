@@ -626,31 +626,18 @@ document.getElementById('createGroupForm').addEventListener('submit', handleCrea
                                     }
                                 }
                                 
-                                // 計算行進方向（如果啟用自動轉向且有前一個位置）
-                                if (autoRotateMap && lastPosition && currentPosition) {
-                                    const bearing = calculateBearing(
-                                        lastPosition.lat, lastPosition.lng,
-                                        position.coords.latitude, position.coords.longitude
-                                    );
-                                    
-                                    // 只有在移動距離足夠時才更新方向（避免GPS漂移造成的誤差）
-                                    const distance = calculateDistance(
-                                        lastPosition.lat, lastPosition.lng,
-                                        position.coords.latitude, position.coords.longitude
-                                    );
-                                    
-                                    if (distance > 5) { // 移動超過5公尺才更新方向
-                                        currentBearing = bearing;
-                                        // 設置地圖旋轉
-                                        map.setBearing(currentBearing);
-                                    }
-                                }
-                                
                                 // 保存當前位置作為下次計算的參考
                                 lastPosition = currentPosition ? {
                                     lat: currentPosition.lat,
                                     lng: currentPosition.lng
                                 } : null;
+                                
+                                // 處理自動轉向
+                                const newPosition = {
+                                    lat: position.coords.latitude,
+                                    lng: position.coords.longitude
+                                };
+                                handleAutoRotate(newPosition);
                                 
                                 currentPosition = {
                                     lat: position.coords.latitude,
@@ -2659,31 +2646,18 @@ function startTracking() {
                     }
                 }
                 
-                // 計算行進方向（如果啟用自動轉向且有前一個位置）
-                if (autoRotateMap && lastPosition && currentPosition) {
-                    const bearing = calculateBearing(
-                        lastPosition.lat, lastPosition.lng,
-                        position.coords.latitude, position.coords.longitude
-                    );
-                    
-                    // 只有在移動距離足夠時才更新方向（避免GPS漂移造成的誤差）
-                    const distance = calculateDistance(
-                        lastPosition.lat, lastPosition.lng,
-                        position.coords.latitude, position.coords.longitude
-                    );
-                    
-                    if (distance > 5) { // 移動超過5公尺才更新方向
-                        currentBearing = bearing;
-                        // 設置地圖旋轉
-                        map.setBearing(currentBearing);
-                    }
-                }
-                
+                // 處理自動轉向
                 // 保存當前位置作為下次計算的參考
                 lastPosition = currentPosition ? {
                     lat: currentPosition.lat,
                     lng: currentPosition.lng
                 } : null;
+                
+                const newPosition = {
+                    lat: position.coords.latitude,
+                    lng: position.coords.longitude
+                };
+                handleAutoRotate(newPosition);
                 
                 currentPosition = {
                     lat: position.coords.latitude,
@@ -2760,31 +2734,18 @@ function startTracking() {
                                 }
                             }
                             
-                            // 計算行進方向（如果啟用自動轉向且有前一個位置）
-                            if (autoRotateMap && lastPosition && currentPosition) {
-                                const bearing = calculateBearing(
-                                    lastPosition.lat, lastPosition.lng,
-                                    position.coords.latitude, position.coords.longitude
-                                );
-                                
-                                // 只有在移動距離足夠時才更新方向（避免GPS漂移造成的誤差）
-                                const distance = calculateDistance(
-                                    lastPosition.lat, lastPosition.lng,
-                                    position.coords.latitude, position.coords.longitude
-                                );
-                                
-                                if (distance > 5) { // 移動超過5公尺才更新方向
-                                    currentBearing = bearing;
-                                    // 設置地圖旋轉
-                                    map.setBearing(currentBearing);
-                                }
-                            }
-                            
                             // 保存當前位置作為下次計算的參考
                             lastPosition = currentPosition ? {
                                 lat: currentPosition.lat,
                                 lng: currentPosition.lng
                             } : null;
+                            
+                            // 處理自動轉向
+                            const newPosition = {
+                                lat: position.coords.latitude,
+                                lng: position.coords.longitude
+                            };
+                            handleAutoRotate(newPosition);
                             
                             currentPosition = {
                                 lat: position.coords.latitude,
@@ -2939,6 +2900,30 @@ function calculateBearing(lat1, lng1, lat2, lng2) {
     
     // 轉換為0-360度
     return (θ * 180/Math.PI + 360) % 360;
+}
+
+// 統一的自動轉向處理函數
+function handleAutoRotate(newPosition) {
+    if (!autoRotateMap || !lastPosition || !newPosition) {
+        return;
+    }
+    
+    const bearing = calculateBearing(
+        lastPosition.lat, lastPosition.lng,
+        newPosition.lat, newPosition.lng
+    );
+    
+    // 只有在移動距離足夠時才更新方向（避免GPS漂移造成的誤差）
+    const distance = calculateDistance(
+        lastPosition.lat, lastPosition.lng,
+        newPosition.lat, newPosition.lng
+    );
+    
+    if (distance > 5) { // 移動超過5公尺才更新方向
+        currentBearing = bearing;
+        // 設置地圖旋轉
+        map.setBearing(currentBearing);
+    }
 }
 
 // 距離檢查定時器
