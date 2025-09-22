@@ -3500,49 +3500,55 @@ window.testPopupFunction = testPopupFunction;
 
 // 資料持久化
 function saveData() {
-    // 創建不包含 leafletMarker 的標記副本
-    const markersToSave = markers.map(marker => ({
-        id: marker.id,
-        name: marker.name,
-        description: marker.description,
-        lat: marker.lat,
-        lng: marker.lng,
-        groupId: marker.groupId,
-        subgroupId: marker.subgroupId,
-        color: marker.color,
-        icon: marker.icon,
-        imageData: marker.imageData
-        // 不包含 leafletMarker 屬性
-    }));
-    
-    // 創建不包含 markers 屬性的群組副本
-    const groupsToSave = groups.map(group => ({
-        id: group.id,
-        name: group.name,
-        subgroups: group.subgroups.map(subgroup => ({
-            id: subgroup.id,
-            name: subgroup.name,
-            groupId: subgroup.groupId
+    try {
+        // 創建不包含 leafletMarker 的標記副本
+        const markersToSave = markers.map(marker => ({
+            id: marker.id,
+            name: marker.name,
+            description: marker.description,
+            lat: marker.lat,
+            lng: marker.lng,
+            groupId: marker.groupId,
+            subgroupId: marker.subgroupId,
+            color: marker.color,
+            icon: marker.icon,
+            imageData: marker.imageData
+            // 不包含 leafletMarker 屬性
+        }));
+        
+        // 創建不包含 markers 屬性的群組副本
+        const groupsToSave = groups.map(group => ({
+            id: group.id,
+            name: group.name,
+            subgroups: group.subgroups.map(subgroup => ({
+                id: subgroup.id,
+                name: subgroup.name,
+                groupId: subgroup.groupId
+                // 不包含 markers 屬性
+            }))
             // 不包含 markers 屬性
-        }))
-        // 不包含 markers 屬性
-    }));
-    
-    const data = {
-        groups: groupsToSave,
-        markers: markersToSave,
-        alertDistance: alertDistance,
-        alertInterval: alertInterval,
-        currentGroup: currentGroup ? { id: currentGroup.id, name: currentGroup.name } : null,
-        currentSubgroup: currentSubgroup ? { id: currentSubgroup.id, name: currentSubgroup.name, groupId: currentSubgroup.groupId } : null,
-        // 即時定位設定
-        enableHighAccuracy: enableHighAccuracy,
-        autoStartTracking: autoStartTracking,
-        locationUpdateFrequency: locationUpdateFrequency,
-        locationTimeout: locationTimeout
-    };
-    
-    localStorage.setItem('mapAnnotationData', JSON.stringify(data));
+        }));
+        
+        const data = {
+            groups: groupsToSave,
+            markers: markersToSave,
+            alertDistance: alertDistance,
+            alertInterval: alertInterval,
+            currentGroup: currentGroup ? { id: currentGroup.id, name: currentGroup.name } : null,
+            currentSubgroup: currentSubgroup ? { id: currentSubgroup.id, name: currentSubgroup.name, groupId: currentSubgroup.groupId } : null,
+            // 即時定位設定
+            enableHighAccuracy: enableHighAccuracy,
+            autoStartTracking: autoStartTracking,
+            locationUpdateFrequency: locationUpdateFrequency,
+            locationTimeout: locationTimeout
+        };
+        
+        localStorage.setItem('mapAnnotationData', JSON.stringify(data));
+        console.log('資料儲存成功');
+    } catch (error) {
+        console.error('儲存資料失敗:', error);
+        showNotification('儲存資料失敗，請檢查瀏覽器儲存空間', 'error');
+    }
 }
 
 function loadData() {
@@ -3594,8 +3600,19 @@ function loadData() {
             // 恢復設定
             alertDistance = data.alertDistance || 100;
             alertInterval = data.alertInterval || 30;
-            currentGroup = data.currentGroup;
-            currentSubgroup = data.currentSubgroup;
+            
+            // 恢復當前群組和子群組的引用
+            if (data.currentGroup) {
+                currentGroup = groups.find(g => g.id === data.currentGroup.id) || null;
+            } else {
+                currentGroup = null;
+            }
+            
+            if (data.currentSubgroup && currentGroup) {
+                currentSubgroup = currentGroup.subgroups.find(sg => sg.id === data.currentSubgroup.id) || null;
+            } else {
+                currentSubgroup = null;
+            }
             
             // 恢復即時定位設定
             enableHighAccuracy = data.enableHighAccuracy !== undefined ? data.enableHighAccuracy : true;
@@ -3877,6 +3894,13 @@ function resetToDefaultSettings() {
         alertDistance = 100;
         alertInterval = 30;
         
+        // 清除地圖上的標記
+        markers.forEach(marker => {
+            if (marker.leafletMarker) {
+                map.removeLayer(marker.leafletMarker);
+            }
+        });
+        
         // 清除標註點和群組資料
         markers = [];
         groups = [];
@@ -3905,7 +3929,7 @@ function resetToDefaultSettings() {
         updateMapMarkers();
         
         // 清除儲存的設定
-        localStorage.removeItem('userSettings');
+        localStorage.removeItem('mapAnnotationData');
         
         showNotification('已重置為預設設定，所有標註點和群組已清除', 'success');
         console.log('Settings and data reset to defaults');
