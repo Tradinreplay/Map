@@ -21,6 +21,7 @@ let currentFilter = null; // 當前過濾設定 { type: 'marker'|'group'|'subgro
 // 即時定位設定
 let enableHighAccuracy = true; // 高精度模式
 let autoStartTracking = false; // 自動開始追蹤
+let keepMapCentered = false; // 保持地圖中央
 let locationUpdateFrequency = 3000; // 定位更新頻率（毫秒）
 let locationTimeout = 20000; // 定位超時時間（毫秒）
 let lastLocationUpdate = null; // 最後一次定位更新時間
@@ -571,6 +572,11 @@ document.getElementById('createGroupForm').addEventListener('submit', handleCrea
     
     document.getElementById('autoStartTracking').addEventListener('change', function(e) {
         autoStartTracking = e.target.checked;
+        saveData();
+    });
+    
+    document.getElementById('keepMapCentered').addEventListener('change', function(e) {
+        keepMapCentered = e.target.checked;
         saveData();
     });
     
@@ -1745,6 +1751,11 @@ function updateCurrentLocationMarker() {
             <small>點擊地圖其他位置可添加標註</small>
         </div>
     `);
+    
+    // 如果啟用保持地圖中央功能，自動將地圖中心移動到當前位置
+    if (keepMapCentered) {
+        map.setView([currentPosition.lat, currentPosition.lng], map.getZoom());
+    }
 }
 
 // 組別管理功能
@@ -3313,6 +3324,9 @@ function saveCurrentSettings() {
             alertDistance: currentAlertDistance,
             alertInterval: currentAlertInterval,
             
+            // 地圖設定
+            keepMapCentered: keepMapCentered,
+            
             // 標註點和群組資料
             markers: markersToSave,
             groups: groupsToSave,
@@ -3365,6 +3379,12 @@ function loadSavedSettings() {
         if (settings.alertInterval !== undefined) {
             document.getElementById('alertInterval').value = settings.alertInterval;
             alertInterval = settings.alertInterval;
+        }
+        
+        // 應用地圖設定到UI
+        if (settings.keepMapCentered !== undefined) {
+            document.getElementById('keepMapCentered').checked = settings.keepMapCentered;
+            keepMapCentered = settings.keepMapCentered;
         }
         
         // 載入標註點和群組資料（如果存在）
