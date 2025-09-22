@@ -2532,6 +2532,7 @@ function addMarkerToMap(marker) {
 function editMarker(markerId) {
     const marker = markers.find(m => m.id === markerId);
     if (marker) {
+        closeGroupDetailsModal();
         showMarkerModal(marker.lat, marker.lng, marker);
     }
 }
@@ -3501,6 +3502,7 @@ function showOnlyThisMarker(markerId) {
 function focusMarker(markerId) {
     const marker = markers.find(m => m.id === markerId);
     if (marker && marker.leafletMarker) {
+        closeGroupDetailsModal();
         map.setView([marker.lat, marker.lng], 18);
         marker.leafletMarker.openPopup();
     }
@@ -4090,7 +4092,10 @@ async function exportMarkerData() {
         
         // 建立下載檔案名稱
         const now = new Date();
-        const dateStr = now.toISOString().split('T')[0];
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const dateStr = `${year}-${month}-${day}`;
         const timeStr = now.toTimeString().split(' ')[0].replace(/:/g, '-');
         const filename = `地圖標註資料_${dateStr}_${timeStr}.json`;
         
@@ -4537,31 +4542,54 @@ function generateId() {
 
 // 合併匯入（只增加新的）
 function performMergeImport(importData, comparison) {
-    // 處理新群組
+    // 建立群組映射表，用於追蹤匯入群組與現有群組的對應關係
+    const groupMapping = new Map(); // importGroupId -> existingGroupId
+    const subgroupMapping = new Map(); // importSubgroupId -> existingSubgroupId
+    
+    // 處理群組
     importData.groups.forEach(importGroup => {
-        const existingGroup = groups.find(g => g.name === importGroup.name);
-        if (!existingGroup) {
-            const newGroup = new Group(generateId(), importGroup.name);
-            importGroup.subgroups.forEach(subgroupData => {
-                const subgroup = new Subgroup(generateId(), subgroupData.name, newGroup.id);
-                newGroup.addSubgroup(subgroup);
-            });
-            groups.push(newGroup);
+        let targetGroup = groups.find(g => g.name === importGroup.name);
+        
+        if (!targetGroup) {
+            // 如果群組名稱不存在，創建新群組
+            targetGroup = new Group(generateId(), importGroup.name);
+            groups.push(targetGroup);
         }
+        
+        // 記錄群組映射
+        groupMapping.set(importGroup.id, targetGroup.id);
+        
+        // 處理子群組
+        importGroup.subgroups.forEach(importSubgroup => {
+            let targetSubgroup = targetGroup.subgroups.find(sg => sg.name === importSubgroup.name);
+            
+            if (!targetSubgroup) {
+                // 如果子群組名稱不存在，創建新子群組
+                targetSubgroup = new Subgroup(generateId(), importSubgroup.name, targetGroup.id);
+                targetGroup.addSubgroup(targetSubgroup);
+            }
+            
+            // 記錄子群組映射
+            subgroupMapping.set(importSubgroup.id, targetSubgroup.id);
+        });
     });
     
     // 只添加新的標註點
     comparison.newMarkers.forEach(markerData => {
-        const targetGroup = groups.find(g => g.name === importData.groups.find(ig => ig.id === markerData.groupId)?.name);
-        if (targetGroup) {
+        const targetGroupId = groupMapping.get(markerData.groupId);
+        const targetSubgroupId = markerData.subgroupId ? subgroupMapping.get(markerData.subgroupId) : null;
+        
+        if (targetGroupId) {
+            const targetGroup = groups.find(g => g.id === targetGroupId);
+            
             const newMarker = new Marker(
                 generateId(),
                 markerData.name,
                 markerData.description,
                 markerData.lat,
                 markerData.lng,
-                targetGroup.id,
-                markerData.subgroupId,
+                targetGroupId,
+                targetSubgroupId,
                 markerData.color || 'red',
                 markerData.icon || '📍',
                 markerData.imageData || null
@@ -4569,6 +4597,14 @@ function performMergeImport(importData, comparison) {
             
             markers.push(newMarker);
             targetGroup.addMarker(newMarker);
+            
+            // 如果有子群組，也要加入子群組
+            if (targetSubgroupId) {
+                const targetSubgroup = targetGroup.subgroups.find(sg => sg.id === targetSubgroupId);
+                if (targetSubgroup) {
+                    targetSubgroup.addMarker(newMarker);
+                }
+            }
         }
     });
     
@@ -4580,22 +4616,38 @@ function performMergeImport(importData, comparison) {
 
 // 更新匯入（更新重複的，增加新的）
 function performUpdateImport(importData, comparison) {
+    // 建立群組和子群組映射表
+    const groupMapping = new Map(); // 原始群組ID -> 新群組ID
+    const subgroupMapping = new Map(); // 原始子群組ID -> 新子群組ID
+    
     // 處理新群組
     importData.groups.forEach(importGroup => {
-        const existingGroup = groups.find(g => g.name === importGroup.name);
+        let existingGroup = groups.find(g => g.name === importGroup.name);
         if (!existingGroup) {
-            const newGroup = new Group(generateId(), importGroup.name);
-            importGroup.subgroups.forEach(subgroupData => {
-                const subgroup = new Subgroup(generateId(), subgroupData.name, newGroup.id);
-                newGroup.addSubgroup(subgroup);
-            });
-            groups.push(newGroup);
+            // 創建新群組
+            existingGroup = new Group(generateId(), importGroup.name);
+            groups.push(existingGroup);
         }
+        groupMapping.set(importGroup.id, existingGroup.id);
+        
+        // 處理子群組
+        importGroup.subgroups.forEach(subgroupData => {
+            let existingSubgroup = existingGroup.subgroups.find(sg => sg.name === subgroupData.name);
+            if (!existingSubgroup) {
+                // 創建新子群組
+                existingSubgroup = new Subgroup(generateId(), subgroupData.name, existingGroup.id);
+                existingGroup.addSubgroup(existingSubgroup);
+            }
+            subgroupMapping.set(subgroupData.id, existingSubgroup.id);
+        });
     });
     
     // 添加新的標註點
     comparison.newMarkers.forEach(markerData => {
-        const targetGroup = groups.find(g => g.name === importData.groups.find(ig => ig.id === markerData.groupId)?.name);
+        const targetGroupId = groupMapping.get(markerData.groupId);
+        const targetSubgroupId = markerData.subgroupId ? subgroupMapping.get(markerData.subgroupId) : null;
+        const targetGroup = groups.find(g => g.id === targetGroupId);
+        
         if (targetGroup) {
             const newMarker = new Marker(
                 generateId(),
@@ -4603,8 +4655,8 @@ function performUpdateImport(importData, comparison) {
                 markerData.description,
                 markerData.lat,
                 markerData.lng,
-                targetGroup.id,
-                markerData.subgroupId,
+                targetGroupId,
+                targetSubgroupId,
                 markerData.color || 'red',
                 markerData.icon || '📍',
                 markerData.imageData || null
@@ -4612,6 +4664,14 @@ function performUpdateImport(importData, comparison) {
             
             markers.push(newMarker);
             targetGroup.addMarker(newMarker);
+            
+            // 如果有子群組，也要加入子群組
+            if (targetSubgroupId) {
+                const targetSubgroup = targetGroup.subgroups.find(sg => sg.id === targetSubgroupId);
+                if (targetSubgroup) {
+                    targetSubgroup.addMarker(newMarker);
+                }
+            }
         }
     });
     
@@ -4729,12 +4789,14 @@ function showAllMarkersInGroup() {
         setFilter('group', groupId);
     }
     
+    closeGroupDetailsModal();
     showNotification('已顯示該群組的所有標註點', 'success');
 }
 
 // 隱藏所有標註點
 function hideAllMarkersInGroup() {
     clearFilter();
+    closeGroupDetailsModal();
     showNotification('已隱藏所有標註點', 'success');
 }
 
