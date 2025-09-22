@@ -2421,6 +2421,9 @@ function setTrackingTarget(markerId) {
         
         // 重新渲染所有標記的popup以更新按鈕狀態
         refreshAllMarkerPopups();
+        
+        // 更新標註點列表以顯示追蹤目標的醒目樣式
+        updateMarkersList();
     }
 }
 
@@ -2441,6 +2444,9 @@ function clearTrackingTarget() {
         
         // 重新渲染所有標記的popup以更新按鈕狀態
         refreshAllMarkerPopups();
+        
+        // 更新標註點列表以移除追蹤目標的醒目樣式
+        updateMarkersList();
     }
 }
 
@@ -3356,6 +3362,11 @@ function updateMarkersList() {
     displayMarkers.forEach(marker => {
         const markerDiv = document.createElement('div');
         markerDiv.className = 'marker-item';
+        
+        // 檢查是否為當前追蹤目標，如果是則添加特殊樣式
+        if (trackingTarget && trackingTarget.id === marker.id) {
+            markerDiv.classList.add('tracking-target');
+        }
         
         markerDiv.innerHTML = `
             <div class="marker-name" onclick="focusMarker('${marker.id}')">${marker.name}</div>
