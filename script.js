@@ -2652,18 +2652,18 @@ function startTracking() {
                     }
                 }
                 
+                // 保存當前位置作為下次計算的參考（在handleAutoRotate之前）
+                lastPosition = currentPosition ? {
+                    lat: currentPosition.lat,
+                    lng: currentPosition.lng
+                } : null;
+                
                 // 處理自動轉向
                 const newPosition = {
                     lat: position.coords.latitude,
                     lng: position.coords.longitude
                 };
                 handleAutoRotate(newPosition);
-                
-                // 保存當前位置作為下次計算的參考（在handleAutoRotate之後）
-                lastPosition = currentPosition ? {
-                    lat: currentPosition.lat,
-                    lng: currentPosition.lng
-                } : null;
                 
                 currentPosition = {
                     lat: position.coords.latitude,
@@ -2740,18 +2740,18 @@ function startTracking() {
                                 }
                             }
                             
+                            // 保存當前位置作為下次計算的參考（在handleAutoRotate之前）
+                            lastPosition = currentPosition ? {
+                                lat: currentPosition.lat,
+                                lng: currentPosition.lng
+                            } : null;
+                            
                             // 處理自動轉向
                             const newPosition = {
                                 lat: position.coords.latitude,
                                 lng: position.coords.longitude
                             };
                             handleAutoRotate(newPosition);
-                            
-                            // 保存當前位置作為下次計算的參考（在handleAutoRotate之後）
-                            lastPosition = currentPosition ? {
-                                lat: currentPosition.lat,
-                                lng: currentPosition.lng
-                            } : null;
                             
                             currentPosition = {
                                 lat: position.coords.latitude,
@@ -2911,22 +2911,60 @@ function calculateBearing(lat1, lng1, lat2, lng2) {
 // 旋轉地圖函數
 function rotateMap(bearing) {
     try {
+        console.log(`rotateMap 被調用，bearing: ${bearing}度`);
+        
         if (!map || !map.getContainer()) {
             console.warn('地圖容器不可用');
             return;
         }
         
         const mapContainer = map.getContainer();
-        const mapPane = mapContainer.querySelector('.leaflet-map-pane');
+        console.log('地圖容器:', mapContainer);
+        console.log('地圖容器HTML:', mapContainer.outerHTML.substring(0, 200) + '...');
         
+        // 方法1: 嘗試旋轉 leaflet-map-pane
+        let mapPane = mapContainer.querySelector('.leaflet-map-pane');
         if (mapPane) {
-            // 使用CSS變換旋轉地圖
+            console.log('方法1: 找到 leaflet-map-pane');
             mapPane.style.transform = `rotate(${bearing}deg)`;
             mapPane.style.transformOrigin = 'center center';
-            console.log(`地圖已旋轉到: ${bearing}度`);
-        } else {
-            console.warn('找不到地圖面板元素');
+            mapPane.style.transition = 'transform 0.3s ease';
+            console.log(`地圖已旋轉到: ${bearing}度 (方法1)`);
+            return;
         }
+        
+        // 方法2: 嘗試旋轉 leaflet-proxy
+        mapPane = mapContainer.querySelector('.leaflet-proxy');
+        if (mapPane) {
+            console.log('方法2: 找到 leaflet-proxy');
+            mapPane.style.transform = `rotate(${bearing}deg)`;
+            mapPane.style.transformOrigin = 'center center';
+            mapPane.style.transition = 'transform 0.3s ease';
+            console.log(`地圖已旋轉到: ${bearing}度 (方法2)`);
+            return;
+        }
+        
+        // 方法3: 嘗試旋轉所有瓦片層
+        const tileLayers = mapContainer.querySelectorAll('.leaflet-tile-pane, .leaflet-overlay-pane, .leaflet-shadow-pane');
+        if (tileLayers.length > 0) {
+            console.log(`方法3: 找到 ${tileLayers.length} 個圖層`);
+            tileLayers.forEach((layer, index) => {
+                layer.style.transform = `rotate(${bearing}deg)`;
+                layer.style.transformOrigin = 'center center';
+                layer.style.transition = 'transform 0.3s ease';
+                console.log(`圖層 ${index} 已旋轉`);
+            });
+            console.log(`地圖已旋轉到: ${bearing}度 (方法3)`);
+            return;
+        }
+        
+        // 方法4: 直接旋轉整個地圖容器
+        console.log('方法4: 旋轉整個地圖容器');
+        mapContainer.style.transform = `rotate(${bearing}deg)`;
+        mapContainer.style.transformOrigin = 'center center';
+        mapContainer.style.transition = 'transform 0.3s ease';
+        console.log(`地圖已旋轉到: ${bearing}度 (方法4)`);
+        
     } catch (error) {
         console.error('旋轉地圖時發生錯誤:', error);
     }
@@ -3553,6 +3591,31 @@ function testAutoRotate() {
 }
 
 window.testAutoRotate = testAutoRotate;
+
+// 簡單的旋轉測試函數
+function testRotation() {
+    console.log('=== 測試地圖旋轉功能 ===');
+    
+    // 測試不同角度的旋轉
+    const angles = [0, 45, 90, 135, 180, 225, 270, 315, 0];
+    let index = 0;
+    
+    const rotateTest = setInterval(() => {
+        if (index >= angles.length) {
+            clearInterval(rotateTest);
+            console.log('旋轉測試完成');
+            return;
+        }
+        
+        const angle = angles[index];
+        console.log(`測試旋轉角度: ${angle}度`);
+        rotateMap(angle);
+        
+        index++;
+    }, 1000); // 每秒旋轉一次
+}
+
+window.testRotation = testRotation;
 
 // 資料持久化
 function saveData() {
