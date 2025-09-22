@@ -21,8 +21,8 @@ let currentFilter = null; // 當前過濾設定 { type: 'marker'|'group'|'subgro
 // 即時定位設定
 let enableHighAccuracy = true; // 高精度模式
 let autoStartTracking = false; // 自動開始追蹤
-let keepMapCentered = true; // 保持地圖中央（預設開啟）
-let autoRotateMap = true; // 自動轉向行進方向（預設開啟）
+let keepMapCentered = false; // 保持地圖中央（預設關閉）
+
 let locationUpdateFrequency = 3000; // 定位更新頻率（毫秒）
 let locationTimeout = 20000; // 定位超時時間（毫秒）
 let lastLocationUpdate = null; // 最後一次定位更新時間
@@ -325,13 +325,13 @@ function initMap() {
     }).setView([defaultLat, defaultLng], 18);
     
     // 添加地圖圖層 - 使用Google地圖圖資
-    // Google街道地圖 (主要圖層)
+    // Google街道地圖
     const googleStreetLayer = L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
         attribution: '© Google',
         subdomains: ['0', '1', '2', '3'],
         maxZoom: 22,  // 街道地圖最大縮放級別22
         minZoom: 3
-    }).addTo(map);
+    });
     
     // Google衛星圖
     const googleSatelliteLayer = L.tileLayer('https://mt{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
@@ -341,13 +341,13 @@ function initMap() {
         minZoom: 3
     });
     
-    // Google混合圖 (衛星+標籤)
+    // Google混合圖 (衛星+標籤) - 設為預設圖層
     const googleHybridLayer = L.tileLayer('https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
         attribution: '© Google',
         subdomains: ['0', '1', '2', '3'],
         maxZoom: 23,  // 混合圖最大縮放級別23
         minZoom: 3
-    });
+    }).addTo(map);
     
     // Google地形圖
     const googleTerrainLayer = L.tileLayer('https://mt{s}.google.com/vt/lyrs=p&x={x}&y={y}&z={z}', {
@@ -583,18 +583,7 @@ document.getElementById('createGroupForm').addEventListener('submit', handleCrea
         saveData();
     });
     
-    document.getElementById('autoRotateMap').addEventListener('change', function(e) {
-        autoRotateMap = e.target.checked;
-        // 如果關閉自動轉向，重置地圖方向
-        if (!autoRotateMap) {
-            rotateMap(0);
-            currentBearing = 0;
-            console.log('自動轉向已關閉，地圖方向重置為北方');
-        } else {
-            console.log('自動轉向已開啟');
-        }
-        saveData();
-    });
+
     
     document.getElementById('locationUpdateFrequency').addEventListener('change', function(e) {
         locationUpdateFrequency = parseInt(e.target.value); // 已經是毫秒
@@ -635,12 +624,7 @@ document.getElementById('createGroupForm').addEventListener('submit', handleCrea
                                     lng: currentPosition.lng
                                 } : null;
                                 
-                                // 處理自動轉向
-                                const newPosition = {
-                                    lat: position.coords.latitude,
-                                    lng: position.coords.longitude
-                                };
-                                handleAutoRotate(newPosition);
+
                                 
                                 currentPosition = {
                                     lat: position.coords.latitude,
@@ -2085,6 +2069,39 @@ function selectGroup(groupId, subgroupId = null) {
     updateMarkersList();
 }
 
+// 編輯組別名稱
+function editGroupName(groupId) {
+    const group = groups.find(g => g.id === groupId);
+    if (!group) return;
+    
+    const newName = prompt('請輸入新的組別名稱：', group.name);
+    if (newName && newName.trim() && newName.trim() !== group.name) {
+        group.name = newName.trim();
+        updateGroupsList();
+        updateMarkersList();
+        saveData();
+        showNotification('組別名稱已更新', 'success');
+    }
+}
+
+// 編輯子群組名稱
+function editSubgroupName(groupId, subgroupId) {
+    const group = groups.find(g => g.id === groupId);
+    if (!group) return;
+    
+    const subgroup = group.subgroups.find(sg => sg.id === subgroupId);
+    if (!subgroup) return;
+    
+    const newName = prompt('請輸入新的群組名稱：', subgroup.name);
+    if (newName && newName.trim() && newName.trim() !== subgroup.name) {
+        subgroup.name = newName.trim();
+        updateGroupsList();
+        updateMarkersList();
+        saveData();
+        showNotification('群組名稱已更新', 'success');
+    }
+}
+
 // 標註功能
 function toggleAddMarkerMode() {
     isAddingMarker = !isAddingMarker;
@@ -2632,7 +2649,6 @@ function toggleTracking() {
 
 function startTracking() {
     console.log('=== 開始位置追蹤 ===');
-    console.log('自動轉向設置:', autoRotateMap);
     
     if ('geolocation' in navigator) {
         // 更新狀態顯示
@@ -2659,13 +2675,7 @@ function startTracking() {
                 }
                 
                 // 處理自動轉向
-                const newPosition = {
-                    lat: position.coords.latitude,
-                    lng: position.coords.longitude
-                };
-                handleAutoRotate(newPosition);
-                
-                // 保存當前位置作為下次計算的參考（在handleAutoRotate之後）
+                // 保存當前位置作為下次計算的參考
                 lastPosition = currentPosition ? {
                     lat: currentPosition.lat,
                     lng: currentPosition.lng
@@ -2746,14 +2756,7 @@ function startTracking() {
                                 }
                             }
                             
-                            // 處理自動轉向
-                            const newPosition = {
-                                lat: position.coords.latitude,
-                                lng: position.coords.longitude
-                            };
-                            handleAutoRotate(newPosition);
-                            
-                            // 保存當前位置作為下次計算的參考（在handleAutoRotate之後）
+                            // 保存當前位置作為下次計算的參考
                             lastPosition = currentPosition ? {
                                 lat: currentPosition.lat,
                                 lng: currentPosition.lng
@@ -2915,74 +2918,9 @@ function calculateBearing(lat1, lng1, lat2, lng2) {
 }
 
 // 旋轉地圖函數
-function rotateMap(bearing) {
-    try {
-        if (!map || !map.getContainer()) {
-            console.warn('地圖容器不可用');
-            return;
-        }
-        
-        const mapContainer = map.getContainer();
-        const mapPane = mapContainer.querySelector('.leaflet-map-pane');
-        
-        if (mapPane) {
-            // 使用CSS變換旋轉地圖
-            mapPane.style.transform = `rotate(${bearing}deg)`;
-            mapPane.style.transformOrigin = 'center center';
-            console.log(`地圖已旋轉到: ${bearing}度`);
-        } else {
-            console.warn('找不到地圖面板元素');
-        }
-    } catch (error) {
-        console.error('旋轉地圖時發生錯誤:', error);
-    }
-}
 
-// 統一的自動轉向處理函數
-function handleAutoRotate(newPosition) {
-    try {
-        if (!autoRotateMap || !newPosition) {
-            console.log('自動轉向已關閉或無新位置');
-            return;
-        }
-        
-        // 如果沒有上一個位置（第一次定位），設置初始方向為北方
-        if (!lastPosition) {
-            console.log('第一次定位，設置初始方向為北方（0度）');
-            currentBearing = 0;
-            rotateMap(currentBearing);
-            console.log('初始地圖方向設置完成: 0度');
-            return;
-        }
-        
-        const bearing = calculateBearing(
-            lastPosition.lat, lastPosition.lng,
-            newPosition.lat, newPosition.lng
-        );
-        
-        // 只有在移動距離足夠時才更新方向（避免GPS漂移造成的誤差）
-        const distance = calculateDistance(
-            lastPosition.lat, lastPosition.lng,
-            newPosition.lat, newPosition.lng
-        );
-        
-        console.log(`位置更新: 距離=${distance.toFixed(2)}m, 計算方向=${bearing.toFixed(2)}°`);
-        
-        if (distance > 5) { // 移動超過5公尺才更新方向
-            currentBearing = bearing;
-            console.log(`自動轉向: 距離=${distance.toFixed(2)}m, 方向=${bearing.toFixed(2)}°`);
-            
-            // 設置地圖方向
-            rotateMap(currentBearing);
-            console.log('設置地圖方向:', currentBearing);
-        } else {
-            console.log('移動距離不足，不更新方向');
-        }
-    } catch (error) {
-        console.error('自動轉向處理錯誤:', error);
-        // 發生錯誤時不影響定位功能
-    }
-}
+
+
 
 // 距離檢查定時器
 let proximityCheckTimer = null;
@@ -3314,6 +3252,7 @@ function updateGroupsList() {
         groupDiv.innerHTML = `
             <div class="group-name" onclick="selectGroup('${group.id}')">${group.name}</div>
             <div class="group-actions">
+                <button onclick="editGroupName('${group.id}')">編輯</button>
                 <button onclick="addSubgroup('${group.id}')">新增群組</button>
                 <button onclick="deleteGroup('${group.id}')">刪除</button>
             </div>
@@ -3328,6 +3267,7 @@ function updateGroupsList() {
             subgroupDiv.innerHTML = `
                 <div class="subgroup-name" onclick="selectGroup('${group.id}', '${subgroup.id}')">${subgroup.name}</div>
                 <div class="subgroup-actions">
+                    <button onclick="editSubgroupName('${group.id}', '${subgroup.id}')">編輯</button>
                     <button onclick="deleteSubgroup('${group.id}', '${subgroup.id}')">刪除</button>
                 </div>
             `;
@@ -3517,53 +3457,9 @@ function testPopupFunction() {
 // 將測試函數添加到全局範圍
 window.testPopupFunction = testPopupFunction;
 
-// 測試自動轉向功能
-function testAutoRotate() {
-    console.log('=== 測試自動轉向功能 ===');
-    
-    // 確保自動轉向功能已開啟
-    if (!autoRotateMap) {
-        console.log('自動轉向功能未開啟，正在開啟...');
-        document.getElementById('autoRotateMap').checked = true;
-        autoRotateMap = true;
-    }
-    
-    // 模擬位置變化（距離更大以確保觸發旋轉）
-    const testPositions = [
-        { lat: 25.0330, lng: 121.5654 }, // 起始位置
-        { lat: 25.0340, lng: 121.5670 }, // 向東北移動（約15公尺）
-        { lat: 25.0350, lng: 121.5680 }, // 繼續向東北移動（約15公尺）
-        { lat: 25.0360, lng: 121.5670 }, // 向北移動（約15公尺）
-        { lat: 25.0350, lng: 121.5650 }, // 向西南移動（約20公尺）
-        { lat: 25.0330, lng: 121.5654 }  // 回到起始位置
-    ];
-    
-    let index = 0;
-    
-    // 重置lastPosition以確保測試從頭開始
-    lastPosition = null;
-    
-    const interval = setInterval(() => {
-        if (index >= testPositions.length) {
-            clearInterval(interval);
-            console.log('測試完成，重置地圖方向');
-            // 測試完成後重置地圖方向
-            rotateMap(0);
-            currentBearing = 0;
-            return;
-        }
-        
-        const pos = testPositions[index];
-        console.log(`測試位置 ${index + 1}:`, pos);
-        
-        // 調用自動轉向處理函數
-        handleAutoRotate(pos);
-        
-        index++;
-    }, 3000); // 每3秒測試一個位置，給更多時間觀察旋轉效果
-}
 
-window.testAutoRotate = testAutoRotate;
+
+
 
 // 資料持久化
 function saveData() {
@@ -3705,6 +3601,8 @@ window.focusMarker = focusMarker;
 window.setTrackingTarget = setTrackingTarget;
 window.clearTrackingTarget = clearTrackingTarget;
 window.showOnlyThisMarker = showOnlyThisMarker;
+window.editGroupName = editGroupName;
+window.editSubgroupName = editSubgroupName;
 
 function saveCurrentSettings() {
     try {
@@ -3763,7 +3661,6 @@ function saveCurrentSettings() {
             
             // 地圖設定
             keepMapCentered: keepMapCentered,
-            autoRotateMap: autoRotateMap,
             
             // 標註點和群組資料
             markers: markersToSave,
@@ -3824,10 +3721,7 @@ function loadSavedSettings() {
             document.getElementById('keepMapCentered').checked = settings.keepMapCentered;
             keepMapCentered = settings.keepMapCentered;
         }
-        if (settings.autoRotateMap !== undefined) {
-            document.getElementById('autoRotateMap').checked = settings.autoRotateMap;
-            autoRotateMap = settings.autoRotateMap;
-        }
+
         
         // 載入標註點和群組資料（如果存在）
         if (settings.markers && settings.groups) {
@@ -4388,5 +4282,7 @@ document.addEventListener('DOMContentLoaded', function() {
         } catch (error) {
             console.error('Error requesting location permission:', error);
         }
+        
+
     }, 100);
 });
