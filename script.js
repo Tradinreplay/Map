@@ -3640,7 +3640,47 @@ function testAutoRotate() {
     }
 }
 
+// 確保函數在全域範圍內可用
 window.testAutoRotate = testAutoRotate;
+
+// 添加調試函數來檢查函數是否可用
+window.checkTestFunction = function() {
+    console.log('testAutoRotate function available:', typeof window.testAutoRotate);
+    console.log('testAutoRotate function:', window.testAutoRotate);
+    return typeof window.testAutoRotate === 'function';
+};
+
+// 添加簡單的地圖旋轉測試函數
+window.testMapRotation = function() {
+    console.log('=== 測試地圖旋轉功能 ===');
+    
+    if (!map) {
+        console.error('地圖尚未初始化');
+        return false;
+    }
+    
+    const testAngles = [0, 45, 90, 135, 180, 225, 270, 315, 0];
+    let angleIndex = 0;
+    
+    console.log('開始測試地圖旋轉...');
+    
+    const rotateTest = setInterval(() => {
+        if (angleIndex >= testAngles.length) {
+            clearInterval(rotateTest);
+            console.log('地圖旋轉測試完成');
+            return;
+        }
+        
+        const angle = testAngles[angleIndex];
+        console.log(`測試旋轉角度: ${angle}度`);
+        const success = rotateMap(angle);
+        console.log(`旋轉結果: ${success ? '成功' : '失敗'}`);
+        
+        angleIndex++;
+    }, 1000);
+    
+    return true;
+};
 
 // 資料持久化
 function saveData() {
@@ -4467,5 +4507,9 @@ document.addEventListener('DOMContentLoaded', function() {
         } catch (error) {
             console.error('Error requesting location permission:', error);
         }
+        
+        // 確保測試函數在全域範圍內可用
+        window.testAutoRotate = testAutoRotate;
+        console.log('testAutoRotate function exposed to global scope');
     }, 100);
 });
