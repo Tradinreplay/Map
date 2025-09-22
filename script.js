@@ -1316,8 +1316,8 @@ function handleCenterClick() {
     // 更新設定面板中的複選框
     document.getElementById('keepMapCentered').checked = keepMapCentered;
     
-    // 保存設定
-    saveCurrentSettings();
+    // 只保存設定，不保存標註點資料
+    saveSettingsOnly();
 }
 
 // 將函數暴露到全局作用域，讓HTML的onclick可以訪問
@@ -3726,6 +3726,30 @@ function saveCurrentSettings() {
     } catch (error) {
         console.error('Error saving settings:', error);
         showNotification('儲存設定時發生錯誤', 'error');
+        return false;
+    }
+}
+
+// 只保存設定，不保存標註點資料
+function saveSettingsOnly() {
+    try {
+        // 從localStorage讀取現有設定
+        const existingSettings = JSON.parse(localStorage.getItem('userSettings') || '{}');
+        
+        // 只更新地圖相關設定，保留其他資料
+        const updatedSettings = {
+            ...existingSettings,
+            keepMapCentered: keepMapCentered,
+            savedAt: new Date().toISOString()
+        };
+        
+        // 保存到localStorage
+        localStorage.setItem('userSettings', JSON.stringify(updatedSettings));
+        
+        console.log('Settings only saved:', { keepMapCentered });
+        return true;
+    } catch (error) {
+        console.error('Error saving settings only:', error);
         return false;
     }
 }
