@@ -674,17 +674,6 @@ body {
     transform: scale(0.8) !important;
 }
 
-/* 地圖旋轉功能專用樣式 */
-.leaflet-map-pane {
-    transition: transform 0.3s ease-in-out !important;
-    transform-origin: center center !important;
-}
-
-/* 確保地圖旋轉時不影響其他元素 */
-.leaflet-map-pane * {
-    transform-origin: inherit !important;
-}
-
 
 
 /* 全螢幕按鈕 */
