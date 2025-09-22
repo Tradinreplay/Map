@@ -568,10 +568,13 @@ function initEventListeners() {
                 }
                 modal.style.display = 'none';
                 
-                // 如果是標記模態視窗，重置添加標記模式
-                if (modal.id === 'markerModal') {
+                // 如果是標記模態視窗且當前正在添加標記模式，才關閉標記模式
+                if (modal.id === 'markerModal' && isAddingMarker) {
                     isAddingMarker = false;
-                    toggleAddMarkerMode();
+                    const btn = document.getElementById('addMarkerBtn');
+                    btn.classList.remove('active');
+                    btn.innerHTML = '<span>📍</span>標註模式';
+                    map.getContainer().style.cursor = '';
                 }
             }
         });
@@ -2860,12 +2863,10 @@ function stopTracking() {
         lastAlerts.clear();
         lastAlertTimes.clear();
         
-        // 清除追蹤目標
-        trackingTarget = null;
+        // 不自動清除追蹤目標，讓用戶可以手動取消
+        // trackingTarget 保持不變，用戶可以通過標註點的按鈕手動取消追蹤
         
-
-        
-        showNotification('位置追蹤已停止，所有提醒已取消');
+        showNotification('位置追蹤已停止，所有提醒已取消。如需取消追蹤目標，請點擊標註點的取消追蹤按鈕。');
     }
 }
 
