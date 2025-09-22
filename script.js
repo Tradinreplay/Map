@@ -2952,22 +2952,41 @@ function rotateMap(bearing) {
     try {
         if (!map || !map.getContainer()) {
             console.warn('地圖容器不可用');
-            return;
+            return false;
         }
         
         const mapContainer = map.getContainer();
+        console.log('地圖容器:', mapContainer);
+        
         const mapPane = mapContainer.querySelector('.leaflet-map-pane');
+        console.log('地圖面板:', mapPane);
         
         if (mapPane) {
             // 使用CSS變換旋轉地圖
-            mapPane.style.transform = `rotate(${bearing}deg)`;
+            const transformValue = `rotate(${bearing}deg)`;
+            mapPane.style.transform = transformValue;
             mapPane.style.transformOrigin = 'center center';
+            mapPane.style.transition = 'transform 0.3s ease-in-out';
+            
             console.log(`地圖已旋轉到: ${bearing}度`);
+            console.log('應用的transform值:', transformValue);
+            console.log('實際的transform值:', mapPane.style.transform);
+            
+            // 驗證旋轉是否成功應用
+            setTimeout(() => {
+                const currentTransform = window.getComputedStyle(mapPane).transform;
+                console.log('計算後的transform值:', currentTransform);
+            }, 100);
+            
+            return true;
         } else {
             console.warn('找不到地圖面板元素');
+            console.log('可用的子元素:', Array.from(mapContainer.children).map(el => el.className));
+            return false;
         }
     } catch (error) {
         console.error('旋轉地圖時發生錯誤:', error);
+        return false;
     }
 }
 
@@ -3556,46 +3575,69 @@ window.testPopupFunction = testPopupFunction;
 function testAutoRotate() {
     console.log('=== 測試自動轉向功能 ===');
     
-    // 確保自動轉向功能已開啟
-    if (!autoRotateMap) {
-        console.log('自動轉向功能未開啟，正在開啟...');
-        document.getElementById('autoRotateMap').checked = true;
-        autoRotateMap = true;
-    }
+    // 首先測試基本的地圖旋轉功能
+    console.log('測試基本地圖旋轉功能...');
+    const testAngles = [0, 45, 90, 135, 180, 225, 270, 315, 0];
+    let angleIndex = 0;
     
-    // 模擬位置變化（距離更大以確保觸發旋轉）
-    const testPositions = [
-        { lat: 25.0330, lng: 121.5654 }, // 起始位置
-        { lat: 25.0340, lng: 121.5670 }, // 向東北移動（約15公尺）
-        { lat: 25.0350, lng: 121.5680 }, // 繼續向東北移動（約15公尺）
-        { lat: 25.0360, lng: 121.5670 }, // 向北移動（約15公尺）
-        { lat: 25.0350, lng: 121.5650 }, // 向西南移動（約20公尺）
-        { lat: 25.0330, lng: 121.5654 }  // 回到起始位置
-    ];
-    
-    let index = 0;
-    
-    // 重置lastPosition以確保測試從頭開始
-    lastPosition = null;
-    
-    const interval = setInterval(() => {
-        if (index >= testPositions.length) {
-            clearInterval(interval);
-            console.log('測試完成，重置地圖方向');
-            // 測試完成後重置地圖方向
-            rotateMap(0);
-            currentBearing = 0;
+    const rotateTest = setInterval(() => {
+        if (angleIndex >= testAngles.length) {
+            clearInterval(rotateTest);
+            console.log('基本旋轉測試完成，開始位置變化測試...');
+            startPositionTest();
             return;
         }
         
-        const pos = testPositions[index];
-        console.log(`測試位置 ${index + 1}:`, pos);
+        const angle = testAngles[angleIndex];
+        console.log(`測試旋轉角度: ${angle}度`);
+        const success = rotateMap(angle);
+        console.log(`旋轉結果: ${success ? '成功' : '失敗'}`);
         
-        // 調用自動轉向處理函數
-        handleAutoRotate(pos);
+        angleIndex++;
+    }, 1000);
+    
+    function startPositionTest() {
+        // 確保自動轉向功能已開啟
+        if (!autoRotateMap) {
+            console.log('自動轉向功能未開啟，正在開啟...');
+            document.getElementById('autoRotateMap').checked = true;
+            autoRotateMap = true;
+        }
         
-        index++;
-    }, 3000); // 每3秒測試一個位置，給更多時間觀察旋轉效果
+        // 模擬位置變化（距離更大以確保觸發旋轉）
+        const testPositions = [
+            { lat: 25.0330, lng: 121.5654 }, // 起始位置
+            { lat: 25.0340, lng: 121.5670 }, // 向東北移動（約15公尺）
+            { lat: 25.0350, lng: 121.5680 }, // 繼續向東北移動（約15公尺）
+            { lat: 25.0360, lng: 121.5670 }, // 向北移動（約15公尺）
+            { lat: 25.0350, lng: 121.5650 }, // 向西南移動（約20公尺）
+            { lat: 25.0330, lng: 121.5654 }  // 回到起始位置
+        ];
+        
+        let index = 0;
+        
+        // 重置lastPosition以確保測試從頭開始
+        lastPosition = null;
+        
+        const interval = setInterval(() => {
+            if (index >= testPositions.length) {
+                clearInterval(interval);
+                console.log('位置變化測試完成，重置地圖方向');
+                // 測試完成後重置地圖方向
+                rotateMap(0);
+                currentBearing = 0;
+                return;
+            }
+            
+            const pos = testPositions[index];
+            console.log(`測試位置 ${index + 1}:`, pos);
+            
+            // 調用自動轉向處理函數
+            handleAutoRotate(pos);
+            
+            index++;
+        }, 3000); // 每3秒測試一個位置，給更多時間觀察旋轉效果
+    }
 }
 
 window.testAutoRotate = testAutoRotate;
