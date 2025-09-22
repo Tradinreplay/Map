@@ -587,8 +587,11 @@ document.getElementById('createGroupForm').addEventListener('submit', handleCrea
         autoRotateMap = e.target.checked;
         // 如果關閉自動轉向，重置地圖方向
         if (!autoRotateMap) {
-            map.setBearing(0);
+            rotateMap(0);
             currentBearing = 0;
+            console.log('自動轉向已關閉，地圖方向重置為北方');
+        } else {
+            console.log('自動轉向已開啟');
         }
         saveData();
     });
@@ -2650,17 +2653,17 @@ function startTracking() {
                 }
                 
                 // 處理自動轉向
-                // 保存當前位置作為下次計算的參考
-                lastPosition = currentPosition ? {
-                    lat: currentPosition.lat,
-                    lng: currentPosition.lng
-                } : null;
-                
                 const newPosition = {
                     lat: position.coords.latitude,
                     lng: position.coords.longitude
                 };
                 handleAutoRotate(newPosition);
+                
+                // 保存當前位置作為下次計算的參考（在handleAutoRotate之後）
+                lastPosition = currentPosition ? {
+                    lat: currentPosition.lat,
+                    lng: currentPosition.lng
+                } : null;
                 
                 currentPosition = {
                     lat: position.coords.latitude,
@@ -2737,18 +2740,18 @@ function startTracking() {
                                 }
                             }
                             
-                            // 保存當前位置作為下次計算的參考
-                            lastPosition = currentPosition ? {
-                                lat: currentPosition.lat,
-                                lng: currentPosition.lng
-                            } : null;
-                            
                             // 處理自動轉向
                             const newPosition = {
                                 lat: position.coords.latitude,
                                 lng: position.coords.longitude
                             };
                             handleAutoRotate(newPosition);
+                            
+                            // 保存當前位置作為下次計算的參考（在handleAutoRotate之後）
+                            lastPosition = currentPosition ? {
+                                lat: currentPosition.lat,
+                                lng: currentPosition.lng
+                            } : null;
                             
                             currentPosition = {
                                 lat: position.coords.latitude,
@@ -2905,10 +2908,44 @@ function calculateBearing(lat1, lng1, lat2, lng2) {
     return (θ * 180/Math.PI + 360) % 360;
 }
 
+// 旋轉地圖函數
+function rotateMap(bearing) {
+    try {
+        if (!map || !map.getContainer()) {
+            console.warn('地圖容器不可用');
+            return;
+        }
+        
+        const mapContainer = map.getContainer();
+        const mapPane = mapContainer.querySelector('.leaflet-map-pane');
+        
+        if (mapPane) {
+            // 使用CSS變換旋轉地圖
+            mapPane.style.transform = `rotate(${bearing}deg)`;
+            mapPane.style.transformOrigin = 'center center';
+            console.log(`地圖已旋轉到: ${bearing}度`);
+        } else {
+            console.warn('找不到地圖面板元素');
+        }
+    } catch (error) {
+        console.error('旋轉地圖時發生錯誤:', error);
+    }
+}
+
 // 統一的自動轉向處理函數
 function handleAutoRotate(newPosition) {
     try {
-        if (!autoRotateMap || !lastPosition || !newPosition) {
+        if (!autoRotateMap || !newPosition) {
+            console.log('自動轉向已關閉或無新位置');
+            return;
+        }
+        
+        // 如果沒有上一個位置（第一次定位），設置初始方向為北方
+        if (!lastPosition) {
+            console.log('第一次定位，設置初始方向為北方（0度）');
+            currentBearing = 0;
+            rotateMap(currentBearing);
+            console.log('初始地圖方向設置完成: 0度');
             return;
         }
         
@@ -2923,18 +2960,17 @@ function handleAutoRotate(newPosition) {
             newPosition.lat, newPosition.lng
         );
         
+        console.log(`位置更新: 距離=${distance.toFixed(2)}m, 計算方向=${bearing.toFixed(2)}°`);
+        
         if (distance > 5) { // 移動超過5公尺才更新方向
             currentBearing = bearing;
             console.log(`自動轉向: 距離=${distance.toFixed(2)}m, 方向=${bearing.toFixed(2)}°`);
             
-            // 安全地設置地圖旋轉
-             if (map && typeof map.setBearing === 'function') {
-                 console.log('設置地圖方向:', currentBearing);
-                 map.setBearing(currentBearing);
-                 console.log('地圖方向設置完成');
-             } else {
-                 console.warn('地圖對象或setBearing方法不可用');
-             }
+            // 設置地圖方向
+            rotateMap(currentBearing);
+            console.log('設置地圖方向:', currentBearing);
+        } else {
+            console.log('移動距離不足，不更新方向');
         }
     } catch (error) {
         console.error('自動轉向處理錯誤:', error);
@@ -3474,33 +3510,46 @@ window.testPopupFunction = testPopupFunction;
 function testAutoRotate() {
     console.log('=== 測試自動轉向功能 ===');
     
-    // 模擬位置變化
+    // 確保自動轉向功能已開啟
+    if (!autoRotateMap) {
+        console.log('自動轉向功能未開啟，正在開啟...');
+        document.getElementById('autoRotateMap').checked = true;
+        autoRotateMap = true;
+    }
+    
+    // 模擬位置變化（距離更大以確保觸發旋轉）
     const testPositions = [
         { lat: 25.0330, lng: 121.5654 }, // 起始位置
-        { lat: 25.0340, lng: 121.5664 }, // 向東北移動
-        { lat: 25.0350, lng: 121.5674 }, // 繼續向東北移動
+        { lat: 25.0340, lng: 121.5670 }, // 向東北移動（約15公尺）
+        { lat: 25.0350, lng: 121.5680 }, // 繼續向東北移動（約15公尺）
+        { lat: 25.0360, lng: 121.5670 }, // 向北移動（約15公尺）
+        { lat: 25.0350, lng: 121.5650 }, // 向西南移動（約20公尺）
+        { lat: 25.0330, lng: 121.5654 }  // 回到起始位置
     ];
     
     let index = 0;
+    
+    // 重置lastPosition以確保測試從頭開始
+    lastPosition = null;
+    
     const interval = setInterval(() => {
         if (index >= testPositions.length) {
             clearInterval(interval);
-            console.log('測試完成');
+            console.log('測試完成，重置地圖方向');
+            // 測試完成後重置地圖方向
+            rotateMap(0);
+            currentBearing = 0;
             return;
         }
         
         const pos = testPositions[index];
         console.log(`測試位置 ${index + 1}:`, pos);
         
-        // 模擬位置更新
-        if (lastPosition) {
-            handleAutoRotate(pos);
-        }
-        lastPosition = { lat: currentPosition?.lat || pos.lat, lng: currentPosition?.lng || pos.lng };
-        currentPosition = pos;
+        // 調用自動轉向處理函數
+        handleAutoRotate(pos);
         
         index++;
-    }, 2000);
+    }, 3000); // 每3秒測試一個位置，給更多時間觀察旋轉效果
 }
 
 window.testAutoRotate = testAutoRotate;
