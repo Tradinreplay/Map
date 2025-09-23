@@ -1569,96 +1569,6 @@ function initDragFunctionality() {
     addMobileTouchSupport(centerBtn, 'handleCenterClick');
 }
 
-// 初始化側邊欄調整功能
-function initSidebarResize() {
-    const sidebar = document.querySelector('.sidebar');
-    const resizeHandle = document.querySelector('.resize-handle');
-    
-    if (!sidebar || !resizeHandle) {
-        console.warn('Sidebar or resize handle not found');
-        return;
-    }
-    
-    let isResizing = false;
-    let startX = 0;
-    let startWidth = 0;
-    
-    // 載入保存的寬度
-    const savedWidth = localStorage.getItem('sidebarWidth');
-    if (savedWidth) {
-        sidebar.style.width = savedWidth + 'px';
-    }
-    
-    // 滑鼠按下事件
-    resizeHandle.addEventListener('mousedown', (e) => {
-        isResizing = true;
-        startX = e.clientX;
-        startWidth = parseInt(document.defaultView.getComputedStyle(sidebar).width, 10);
-        document.body.style.cursor = 'col-resize';
-        document.body.style.userSelect = 'none';
-        
-        // 防止文字選取
-        e.preventDefault();
-    });
-    
-    // 滑鼠移動事件
-    document.addEventListener('mousemove', (e) => {
-        if (!isResizing) return;
-        
-        const width = startWidth + e.clientX - startX;
-        const minWidth = 250;
-        const maxWidth = 600;
-        
-        if (width >= minWidth && width <= maxWidth) {
-            sidebar.style.width = width + 'px';
-        }
-    });
-    
-    // 滑鼠放開事件
-    document.addEventListener('mouseup', () => {
-        if (isResizing) {
-            isResizing = false;
-            document.body.style.cursor = '';
-            document.body.style.userSelect = '';
-            
-            // 保存寬度
-            const currentWidth = parseInt(document.defaultView.getComputedStyle(sidebar).width, 10);
-            localStorage.setItem('sidebarWidth', currentWidth);
-        }
-    });
-    
-    // 觸控支援
-    resizeHandle.addEventListener('touchstart', (e) => {
-        isResizing = true;
-        startX = e.touches[0].clientX;
-        startWidth = parseInt(document.defaultView.getComputedStyle(sidebar).width, 10);
-        e.preventDefault();
-    });
-    
-    document.addEventListener('touchmove', (e) => {
-        if (!isResizing) return;
-        
-        const width = startWidth + e.touches[0].clientX - startX;
-        const minWidth = 250;
-        const maxWidth = 600;
-        
-        if (width >= minWidth && width <= maxWidth) {
-            sidebar.style.width = width + 'px';
-        }
-        e.preventDefault();
-    });
-    
-    document.addEventListener('touchend', () => {
-        if (isResizing) {
-            isResizing = false;
-            
-            // 保存寬度
-            const currentWidth = parseInt(document.defaultView.getComputedStyle(sidebar).width, 10);
-            localStorage.setItem('sidebarWidth', currentWidth);
-        }
-    });
-}
-
 // 為手機添加觸控事件支持
 function addMobileTouchSupport(element, functionName) {
     let touchStartTime = 0;
@@ -5327,15 +5237,6 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('Drag functionality initialized');
     } catch (error) {
         console.error('Error initializing drag functionality:', error);
-    }
-    
-    // 初始化側邊欄調整功能
-    console.log('Initializing sidebar resize functionality...');
-    try {
-        initSidebarResize();
-        console.log('Sidebar resize functionality initialized');
-    } catch (error) {
-        console.error('Error initializing sidebar resize functionality:', error);
     }
     
     // 延遲執行其他初始化函數
