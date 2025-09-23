@@ -3169,16 +3169,23 @@ function showMarkerModal(lat, lng, existingMarker = null) {
             removeAllMarkerImages();
         }
         
-        // 處理視頻顯示
-        if (existingMarker.videoData) {
+        // 處理視頻顯示 - 支援新的videos陣列格式和舊的videoData格式
+        const videoPreviewContainer = document.getElementById('videoPreviewContainer');
+        if (videoPreviewContainer) {
+            videoPreviewContainer.innerHTML = '';
+        }
+        
+        if (existingMarker.videos && Array.isArray(existingMarker.videos) && existingMarker.videos.length > 0) {
+            // 新格式：videos陣列
+            existingMarker.videos.forEach((videoData, index) => {
+                displayVideoPreview(videoData);
+            });
+        } else if (existingMarker.videoData) {
+            // 舊格式：單個videoData
             form.dataset.videoData = existingMarker.videoData;
             displayVideoPreview(existingMarker.videoData);
         } else {
-            // 清空視頻預覽
-            const videoPreviewContainer = document.getElementById('videoPreviewContainer');
-            if (videoPreviewContainer) {
-                videoPreviewContainer.innerHTML = '';
-            }
+            // 沒有視頻數據
             delete form.dataset.videoData;
         }
         
@@ -3325,7 +3332,12 @@ function saveMarker(e) {
             marker.color = color;
             marker.icon = icon;
             marker.imageData = imageData;
-            marker.videoData = videoData;
+            
+            // 處理視頻數據 - 保留現有的videos陣列，只更新videoData（兼容舊格式）
+            if (videoData) {
+                marker.videoData = videoData;
+            }
+            // 注意：不要覆蓋marker.videos，因為它可能包含通過錄影功能添加的多個視頻
             
             // 添加到新的組別/群組
             group.addMarker(marker);
@@ -4800,7 +4812,8 @@ function saveData() {
             subgroupId: marker.subgroupId,
             color: marker.color,
             icon: marker.icon,
-            imageData: marker.imageData
+            imageData: marker.imageData,
+            videos: marker.videos // 添加錄影數據保存
             // 不包含 leafletMarker 屬性
         }));
         
@@ -4856,8 +4869,8 @@ function loadData() {
             });
             
             // 重建標記
-            markers = data.markers.map(markerData => 
-                new Marker(
+            markers = data.markers.map(markerData => {
+                const marker = new Marker(
                     markerData.id,
                     markerData.name,
                     markerData.description,
@@ -4868,8 +4881,13 @@ function loadData() {
                     markerData.color || 'red',
                     markerData.icon || '📍',
                     markerData.imageData || null
-                )
-            );
+                );
+                // 載入錄影數據
+                if (markerData.videos) {
+                    marker.videos = markerData.videos;
+                }
+                return marker;
+            });
             
             // 重建關聯關係
             markers.forEach(marker => {

@@ -1480,7 +1480,7 @@ form input:focus, form textarea:focus, form select:focus {
     
     /* 手機版地圖圖層控制位置調整 */
     .leaflet-control-layers {
-        top: 120px !important; /* 手機版顯示在浮動控制面板下方 */
+        top: 12px !important; /* 手機版顯示在浮動控制面板下方 */
     }
     
     .control-btn {
@@ -3990,7 +3990,7 @@ input:checked + .slider:before {
 /* 圖層控制器懸浮按鈕樣式 */
 #layersControl {
     position: absolute !important;
-    top: 156px; /* 在自動居中按鈕下方 */
+    top: 12px; /* 左上角位置 */
     left: 12px;
     cursor: move;
     user-select: none;
