@@ -805,7 +805,7 @@ document.getElementById('createGroupForm').addEventListener('submit', handleCrea
 
 // 圖片處理相關函數
 // 圖片壓縮函數
-function compressImage(file, maxSizeKB = 50) {
+function compressImage(file, maxSizeKB = 25) {
     return new Promise((resolve) => {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
@@ -872,8 +872,8 @@ function handleImageUpload(event) {
     const existingImages = JSON.parse(form.dataset.imageData || '[]');
     const totalImages = existingImages.length + files.length;
     
-    if (totalImages > 3) {
-        showNotification('最多只能上傳3張圖片', 'warning');
+    if (totalImages > 6) {
+        showNotification('最多只能上傳6張圖片', 'warning');
         return;
     }
     
