@@ -1266,6 +1266,27 @@ let currentVideoBlob = null;
 // 開始錄影
 async function startVideoRecording() {
     try {
+        // 關閉所有可能打開的模態框
+        const markerModal = document.getElementById('markerModal');
+        if (markerModal && markerModal.style.display !== 'none') {
+            markerModal.style.display = 'none';
+        }
+        
+        // 關閉圖片模態框
+        const imageModal = document.getElementById('imagePreviewModal');
+        if (imageModal && imageModal.style.display !== 'none') {
+            imageModal.style.display = 'none';
+        }
+        
+        // 關閉視頻模態框
+        const videoModal = document.getElementById('videoPreviewModal');
+        if (videoModal && videoModal.style.display !== 'none') {
+            videoModal.style.display = 'none';
+        }
+        
+        // 關閉所有彈出窗口
+        map.closePopup();
+        
         const stream = await navigator.mediaDevices.getUserMedia({ 
             video: { 
                 facingMode: 'environment',
@@ -2981,7 +3002,8 @@ function showMarkerModal(lat, lng, existingMarker = null) {
             form.dataset.imageData = JSON.stringify(imageData);
             displayMultipleImagePreviews(imageData);
         } else {
-            resetMediaUpload();
+            // 只清除圖片預覽，不影響視頻
+            removeAllMarkerImages();
         }
         
         // 處理視頻顯示

@@ -1016,6 +1016,8 @@ body {
     display: flex;
     flex-direction: column;
     gap: 8px;
+    /* 確保不會與地圖圖層控制重疊 */
+    margin-top: 60px; /* 為地圖圖層控制留出空間 */
 }
 
 .control-btn {
@@ -1475,6 +1477,7 @@ form input:focus, form textarea:focus, form select:focus {
         right: 8px;
         gap: 6px;
         flex-wrap: wrap;
+        margin-top: 50px; /* 手機端為地圖圖層控制留出空間 */
     }
     
     .control-btn {
