@@ -2563,12 +2563,15 @@ function setTrackingTarget(markerId) {
         // 清除之前的追蹤目標提醒
         if (trackingTarget) {
             stopRepeatedAlert(trackingTarget.id);
+            // 清除之前追蹤目標的群組按鈕效果
+            clearGroupButtonHighlight();
         }
         
         trackingTarget = marker;
         showNotification(`已設定 "${marker.name}" 為追蹤目標`);
         
-
+        // 立即為相關群組按鈕添加追蹤圖標
+        showGroupTrackingIcon(marker.groupId, marker.subgroupId);
         
         // 如果正在追蹤位置，開始距離檢查定時器
         if (isTracking && currentPosition) {
@@ -2590,10 +2593,11 @@ function clearTrackingTarget() {
         // 停止重複提醒
         stopRepeatedAlert(trackingTarget.id);
         
+        // 立即清除所有群組按鈕效果
+        clearGroupButtonHighlight();
+        
         // 清除追蹤目標
         trackingTarget = null;
-        
-
         
         // 顯示通知
         showNotification(`已取消追蹤 "${targetName}"`);
@@ -3644,45 +3648,77 @@ window.testGroupTrackingAlert = testGroupTrackingAlert;
 // 群組按鈕提示管理
 let groupAlertTimers = new Map(); // 記錄群組提示的定時器
 
-// 高亮群組按鈕
-function highlightGroupButton(groupId, subgroupId = null) {
-    // 清除之前的提示
+// 顯示群組追蹤圖標（開啟追蹤時立即顯示）
+function showGroupTrackingIcon(groupId, subgroupId = null) {
+    // 清除之前的追蹤圖標
     clearGroupButtonHighlight();
     
-    if (!groupId) return;
-    
-    // 找到對應的群組元素
-    const groupElement = document.querySelector(`[data-group-id="${groupId}"]`);
-    if (groupElement) {
-        // 添加群組高亮效果
-        groupElement.classList.add('tracking-alert');
-        
-        // 如果有子群組，也高亮子群組
-        if (subgroupId) {
-            const subgroupElement = groupElement.querySelector(`[data-subgroup-id="${subgroupId}"]`);
-            if (subgroupElement) {
-                subgroupElement.classList.add('tracking-alert');
-            }
+    if (subgroupId) {
+        // 為子群組按鈕添加追蹤圖標
+        const subgroupElement = document.querySelector(`[data-subgroup-id="${subgroupId}"]`);
+        if (subgroupElement) {
+            subgroupElement.classList.add('tracking-active');
         }
-        
-        // 設置自動清除定時器（10秒後清除）
-        const timerId = setTimeout(() => {
-            clearGroupButtonHighlight();
-        }, 10000);
-        
-        groupAlertTimers.set(groupId + (subgroupId || ''), timerId);
-        
-        // 滾動到該群組按鈕位置
-        groupElement.scrollIntoView({ 
-            behavior: 'smooth', 
-            block: 'center' 
-        });
+    } else {
+        // 為群組按鈕添加追蹤圖標
+        const groupElement = document.querySelector(`[data-group-id="${groupId}"]`);
+        if (groupElement) {
+            groupElement.classList.add('tracking-active');
+        }
     }
 }
 
-// 清除群組按鈕高亮
+// 高亮群組按鈕（靠近時添加脈衝動畫）
+function highlightGroupButton(groupId, subgroupId = null) {
+    // 清除之前的脈衝動畫
+    clearSpecificGroupHighlight(groupId, subgroupId);
+    
+    if (!groupId) return;
+    
+    if (subgroupId) {
+        // 為子群組按鈕添加脈衝動畫
+        const subgroupElement = document.querySelector(`[data-subgroup-id="${subgroupId}"]`);
+        if (subgroupElement) {
+            subgroupElement.classList.add('tracking-alert');
+            
+            // 滾動到該元素
+            subgroupElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            
+            // 10秒後自動清除脈衝動畫（但保留圖標）
+            const timerId = setTimeout(() => {
+                clearSpecificGroupHighlight(null, subgroupId);
+            }, 10000);
+            
+            groupAlertTimers.set(groupId + (subgroupId || ''), timerId);
+        }
+    } else {
+        // 為群組按鈕添加脈衝動畫
+        const groupElement = document.querySelector(`[data-group-id="${groupId}"]`);
+        if (groupElement) {
+            groupElement.classList.add('tracking-alert');
+            
+            // 滾動到該元素
+            groupElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            
+            // 10秒後自動清除脈衝動畫（但保留圖標）
+            const timerId = setTimeout(() => {
+                clearSpecificGroupHighlight(groupId, null);
+            }, 10000);
+            
+            groupAlertTimers.set(groupId + (subgroupId || ''), timerId);
+        }
+    }
+}
+
+// 清除群組按鈕高亮（清除所有追蹤效果）
 function clearGroupButtonHighlight() {
-    // 清除所有高亮效果
+    // 清除所有追蹤圖標
+    const activeElements = document.querySelectorAll('.tracking-active');
+    activeElements.forEach(element => {
+        element.classList.remove('tracking-active');
+    });
+    
+    // 清除所有脈衝動畫
     const alertElements = document.querySelectorAll('.tracking-alert');
     alertElements.forEach(element => {
         element.classList.remove('tracking-alert');
@@ -3695,7 +3731,7 @@ function clearGroupButtonHighlight() {
     groupAlertTimers.clear();
 }
 
-// 手動清除特定群組的高亮
+// 手動清除特定群組的脈衝動畫（保留圖標）
 function clearSpecificGroupHighlight(groupId, subgroupId = null) {
     const key = groupId + (subgroupId || '');
     
@@ -3705,23 +3741,57 @@ function clearSpecificGroupHighlight(groupId, subgroupId = null) {
         groupAlertTimers.delete(key);
     }
     
-    // 清除高亮效果
-    const groupElement = document.querySelector(`[data-group-id="${groupId}"]`);
-    if (groupElement) {
-        groupElement.classList.remove('tracking-alert');
-        
-        if (subgroupId) {
-            const subgroupElement = groupElement.querySelector(`[data-subgroup-id="${subgroupId}"]`);
-            if (subgroupElement) {
-                subgroupElement.classList.remove('tracking-alert');
-            }
+    // 只清除脈衝動畫，保留追蹤圖標
+    if (subgroupId) {
+        const subgroupElement = document.querySelector(`[data-subgroup-id="${subgroupId}"]`);
+        if (subgroupElement) {
+            subgroupElement.classList.remove('tracking-alert');
         }
+    } else if (groupId) {
+        const groupElement = document.querySelector(`[data-group-id="${groupId}"]`);
+        if (groupElement) {
+            groupElement.classList.remove('tracking-alert');
+        }
+    }
+}
+
+// 測試新的追蹤UI邏輯
+function testNewTrackingUI() {
+    console.log('測試新的追蹤UI邏輯...');
+    
+    // 模擬設置追蹤目標（顯示圖標）
+    if (groups.length > 0) {
+        const testGroup = groups[0];
+        console.log('測試群組追蹤圖標:', testGroup.id);
+        showGroupTrackingIcon(testGroup.id);
+        
+        // 3秒後測試脈衝動畫
+        setTimeout(() => {
+            console.log('測試群組脈衝動畫');
+            highlightGroupButton(testGroup.id);
+        }, 3000);
+        
+        // 8秒後測試清除脈衝動畫（保留圖標）
+        setTimeout(() => {
+            console.log('測試清除脈衝動畫（保留圖標）');
+            clearSpecificGroupHighlight(testGroup.id);
+        }, 8000);
+        
+        // 12秒後測試完全清除
+        setTimeout(() => {
+            console.log('測試完全清除追蹤效果');
+            clearGroupButtonHighlight();
+        }, 12000);
+    } else {
+        console.log('沒有群組可供測試');
     }
 }
 
 // 暴露函數到全域
 window.highlightGroupButton = highlightGroupButton;
 window.clearGroupButtonHighlight = clearGroupButtonHighlight;
+window.showGroupTrackingIcon = showGroupTrackingIcon;
+window.testNewTrackingUI = testNewTrackingUI;
 window.clearSpecificGroupHighlight = clearSpecificGroupHighlight;
 
 // 測試群組按鈕提示功能

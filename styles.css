@@ -2155,7 +2155,32 @@ form input:focus, form textarea:focus, form select:focus {
     box-shadow: 0 4px 20px rgba(245, 101, 101, 0.4);
 }
 
-/* 群組追蹤提示樣式 */
+/* 群組追蹤提示樣式 - 分離圖標和動畫 */
+
+/* 追蹤中的群組按鈕 - 只顯示圖標和邊框 */
+.group-item.tracking-active {
+    border: 2px solid #ff6b6b;
+    border-radius: 12px;
+    background: linear-gradient(135deg, rgba(255, 107, 107, 0.05) 0%, rgba(255, 107, 107, 0.02) 100%);
+    position: relative;
+    overflow: hidden;
+}
+
+.group-item.tracking-active::before {
+    content: '🔔';
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    font-size: 16px;
+    z-index: 10;
+}
+
+.group-item.tracking-active .group-name {
+    color: #ff6b6b;
+    font-weight: bold;
+}
+
+/* 靠近時的群組按鈕 - 添加脈衝動畫 */
 .group-item.tracking-alert {
     animation: groupTrackingPulse 2s ease-in-out infinite;
     border: 2px solid #ff6b6b;
@@ -2182,6 +2207,30 @@ form input:focus, form textarea:focus, form select:focus {
     text-shadow: 0 1px 3px rgba(255, 107, 107, 0.3);
 }
 
+/* 追蹤中的子群組按鈕 - 只顯示圖標和邊框 */
+.subgroup-item.tracking-active {
+    border: 2px solid #4ecdc4;
+    border-radius: 8px;
+    background: linear-gradient(135deg, rgba(78, 205, 196, 0.05) 0%, rgba(78, 205, 196, 0.02) 100%);
+    position: relative;
+    margin: 4px 0;
+}
+
+.subgroup-item.tracking-active::before {
+    content: '📍';
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    font-size: 14px;
+    z-index: 10;
+}
+
+.subgroup-item.tracking-active .subgroup-name {
+    color: #4ecdc4;
+    font-weight: bold;
+}
+
+/* 靠近時的子群組按鈕 - 添加脈衝動畫 */
 .subgroup-item.tracking-alert {
     animation: subgroupTrackingPulse 2s ease-in-out infinite;
     border: 2px solid #4ecdc4;
