@@ -3913,3 +3913,99 @@ input:checked + .slider:before {
     background: #f6e05e;
     color: white;
 }
+
+/* 標註點選擇對話框樣式 */
+.marker-selection-list {
+    max-height: 400px;
+    overflow-y: auto;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 8px;
+}
+
+.marker-selection-item {
+    padding: 12px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: white;
+}
+
+.marker-selection-item:hover {
+    background: #f7fafc;
+    border-color: #4299e1;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.marker-selection-item:last-child {
+    margin-bottom: 0;
+}
+
+.marker-info strong {
+    display: block;
+    color: #2d3748;
+    font-size: 14px;
+    margin-bottom: 4px;
+}
+
+.marker-info small {
+    display: block;
+    color: #718096;
+    font-size: 12px;
+    margin-bottom: 4px;
+}
+
+.marker-location {
+    font-size: 11px;
+    color: #a0aec0;
+    font-family: monospace;
+}
+
+/* 手機版標註點選擇對話框優化 */
+@media (max-width: 768px) {
+    .marker-selection-list {
+        max-height: 300px;
+    }
+    
+    .marker-selection-item {
+        padding: 10px;
+    }
+    
+    .marker-info strong {
+        font-size: 13px;
+    }
+    
+    .marker-info small {
+        font-size: 11px;
+    }
+    
+    .marker-location {
+        font-size: 10px;
+    }
+}
+
+/* 圖層控制器拖動樣式 */
+#layersControl {
+    position: absolute !important;
+    cursor: move;
+    user-select: none;
+    z-index: 1000;
+}
+
+#layersControl.dragging {
+    opacity: 0.8;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* 確保圖層控制器在拖動時不會被其他元素遮擋 */
+.leaflet-control-layers {
+    transition: opacity 0.2s ease;
+}
+
+.leaflet-control-layers.dragging {
+    opacity: 0.8;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}

@@ -412,7 +412,15 @@ function initMap() {
     };
     
     // 添加圖層控制器
-    L.control.layers(baseMaps).addTo(map);
+    const layersControl = L.control.layers(baseMaps).addTo(map);
+    
+    // 為圖層控制器添加ID以便拖動
+    setTimeout(() => {
+        const layersControlElement = document.querySelector('.leaflet-control-layers');
+        if (layersControlElement) {
+            layersControlElement.id = 'layersControl';
+        }
+    }, 100);
     
     // 地圖點擊事件
     map.on('click', function(e) {
@@ -1266,66 +1274,123 @@ let currentVideoBlob = null;
 // 自動儲存錄影到標註點附件
 async function autoSaveRecordingToMarker(videoBlob) {
     try {
-        // 獲取當前位置
-        if (!currentPosition) {
-            showNotification('無法獲取當前位置，請手動創建標註點', 'warning');
+        // 如果沒有標註點，提示用戶先創建標註點
+        if (markers.length === 0) {
+            showNotification('請先創建標註點，然後再錄影', 'warning');
             return;
         }
         
-        // 將視頻轉換為base64
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            const videoData = e.target.result;
-            
-            // 創建新的標註點
-            const timestamp = new Date().toLocaleString('zh-TW');
-            const markerId = generateId();
-            
-            const newMarker = new Marker(
-                markerId,
-                `錄影標註 ${timestamp}`,
-                `錄影時間: ${timestamp}`,
-                currentPosition.lat,
-                currentPosition.lng,
-                currentGroup ? currentGroup.id : null,
-                currentSubgroup ? currentSubgroup.id : null,
-                '#ff4444', // 紅色表示錄影標註
-                '🎥'
-            );
-            
-            // 設置視頻數據
-            newMarker.videoData = videoData;
-            
-            // 添加到標記列表
-            markers.push(newMarker);
-            
-            // 如果有選中的群組，添加到群組中
-            if (currentGroup) {
-                currentGroup.addMarker(newMarker);
-                if (currentSubgroup) {
-                    currentSubgroup.addMarker(newMarker);
-                }
-            }
-            
-            // 添加到地圖
-            addMarkerToMap(newMarker);
-            
-            // 更新UI
-            updateMarkersList();
-            updateGroupsList();
-            
-            // 保存數據
-            saveData();
-            
-            showNotification(`錄影已自動儲存到標註點: ${newMarker.name}`, 'success');
-        };
-        
-        reader.readAsDataURL(videoBlob);
+        // 顯示標註點選擇對話框
+        showMarkerSelectionModal(videoBlob);
         
     } catch (error) {
         console.error('自動儲存錄影失敗:', error);
-        showNotification('自動儲存錄影失敗，請手動創建標註點', 'error');
+        showNotification('自動儲存錄影失敗', 'error');
     }
+}
+
+// 顯示標註點選擇對話框
+function showMarkerSelectionModal(videoBlob) {
+    // 創建模態框
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.style.display = 'block';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>選擇標註點</h3>
+                <span class="close" onclick="closeMarkerSelectionModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p>請選擇要將錄影保存到哪個標註點：</p>
+                <div class="marker-selection-list" id="markerSelectionList">
+                    ${generateMarkerSelectionList()}
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" onclick="closeMarkerSelectionModal()">取消</button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // 儲存 videoBlob 到全域變數以供後續使用
+    window.pendingVideoBlob = videoBlob;
+}
+
+// 生成標註點選擇列表
+function generateMarkerSelectionList() {
+    return markers.map(marker => {
+        const group = groups.find(g => g.id === marker.groupId);
+        const groupName = group ? group.name : '未分組';
+        const subgroup = group && marker.subgroupId ? 
+            group.subgroups.find(sg => sg.id === marker.subgroupId) : null;
+        const subgroupName = subgroup ? ` > ${subgroup.name}` : '';
+        
+        return `
+            <div class="marker-selection-item" onclick="selectMarkerForVideo('${marker.id}')">
+                <div class="marker-info">
+                    <strong>${marker.name}</strong>
+                    <small>${groupName}${subgroupName}</small>
+                    <div class="marker-location">${marker.lat.toFixed(6)}, ${marker.lng.toFixed(6)}</div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+// 選擇標註點並保存錄影
+function selectMarkerForVideo(markerId) {
+    const marker = markers.find(m => m.id === markerId);
+    const videoBlob = window.pendingVideoBlob;
+    
+    if (!marker || !videoBlob) {
+        showNotification('選擇標註點失敗', 'error');
+        return;
+    }
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const videoBase64 = e.target.result;
+        
+        // 初始化 videos 陣列（如果不存在）
+        if (!marker.videos) {
+            marker.videos = [];
+        }
+        
+        // 添加錄影到標註點
+        marker.videos.push(videoBase64);
+        
+        // 更新地圖上的標記彈出窗口
+        if (marker.leafletMarker) {
+            updateMarkerPopup(marker);
+        }
+        
+        // 更新UI
+        updateMarkersList();
+        updateGroupsList();
+        
+        // 保存數據
+        saveData();
+        
+        showNotification(`錄影已保存到標註點: ${marker.name}`, 'success');
+        
+        // 關閉選擇對話框
+        closeMarkerSelectionModal();
+    };
+    
+    reader.readAsDataURL(videoBlob);
+}
+
+// 關閉標註點選擇對話框
+function closeMarkerSelectionModal() {
+    const modal = document.querySelector('.modal');
+    if (modal) {
+        modal.remove();
+    }
+    // 清理全域變數
+    window.pendingVideoBlob = null;
 }
 
 // 開始錄影
@@ -2149,6 +2214,14 @@ function initDragFunctionality() {
     makeDraggable(fullscreenBtn);
     makeDraggable(locationBtn);
     makeDraggable(centerBtn);
+    
+    // 為圖層控制器添加拖動功能
+    setTimeout(() => {
+        const layersControl = document.getElementById('layersControl');
+        if (layersControl) {
+            makeDraggable(layersControl);
+        }
+    }, 200);
     
     // 為手機添加額外的觸控事件處理
     addMobileTouchSupport(fullscreenBtn, 'handleFullscreenClick');
@@ -4850,6 +4923,8 @@ window.clearTrackingTarget = clearTrackingTarget;
 window.showOnlyThisMarker = showOnlyThisMarker;
 window.editGroupName = editGroupName;
 window.editSubgroupName = editSubgroupName;
+window.closeMarkerSelectionModal = closeMarkerSelectionModal;
+window.selectMarkerForVideo = selectMarkerForVideo;
 
 function saveCurrentSettings() {
     try {
