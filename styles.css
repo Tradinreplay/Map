@@ -719,7 +719,6 @@ body {
     box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08) !important;
     padding: 4px !important;
     font-size: 12px !important;
-    top: 140px !important; /* 顯示在浮動控制面板下方 */
 }
 
 .leaflet-control-layers-toggle {
@@ -1017,6 +1016,8 @@ body {
     display: flex;
     flex-direction: column;
     gap: 8px;
+    /* 確保不會與地圖圖層控制重疊 */
+    margin-top: 60px; /* 為地圖圖層控制留出空間 */
 }
 
 .control-btn {
@@ -1476,11 +1477,7 @@ form input:focus, form textarea:focus, form select:focus {
         right: 8px;
         gap: 6px;
         flex-wrap: wrap;
-    }
-    
-    /* 手機版地圖圖層控制位置調整 */
-    .leaflet-control-layers {
-        top: 12px !important; /* 手機版顯示在浮動控制面板下方 */
+        margin-top: 50px; /* 手機端為地圖圖層控制留出空間 */
     }
     
     .control-btn {
@@ -3912,138 +3909,4 @@ input:checked + .slider:before {
 .group-details-marker-item .btn-edit:hover {
     background: #f6e05e;
     color: white;
-}
-
-/* 標註點選擇對話框樣式 */
-.marker-selection-list {
-    max-height: 400px;
-    overflow-y: auto;
-    border: 1px solid #e2e8f0;
-    border-radius: 8px;
-    padding: 8px;
-}
-
-.marker-selection-item {
-    padding: 12px;
-    border: 1px solid #e2e8f0;
-    border-radius: 6px;
-    margin-bottom: 8px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    background: white;
-}
-
-.marker-selection-item:hover {
-    background: #f7fafc;
-    border-color: #4299e1;
-    transform: translateY(-1px);
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.marker-selection-item:last-child {
-    margin-bottom: 0;
-}
-
-.marker-info strong {
-    display: block;
-    color: #2d3748;
-    font-size: 14px;
-    margin-bottom: 4px;
-}
-
-.marker-info small {
-    display: block;
-    color: #718096;
-    font-size: 12px;
-    margin-bottom: 4px;
-}
-
-.marker-location {
-    font-size: 11px;
-    color: #a0aec0;
-    font-family: monospace;
-}
-
-/* 手機版標註點選擇對話框優化 */
-@media (max-width: 768px) {
-    .marker-selection-list {
-        max-height: 300px;
-    }
-    
-    .marker-selection-item {
-        padding: 10px;
-    }
-    
-    .marker-info strong {
-        font-size: 13px;
-    }
-    
-    .marker-info small {
-        font-size: 11px;
-    }
-    
-    .marker-location {
-        font-size: 10px;
-    }
-}
-
-/* 圖層控制器懸浮按鈕樣式 */
-#layersControl {
-    position: absolute !important;
-    top: 12px; /* 左上角位置 */
-    left: 12px;
-    cursor: move;
-    user-select: none;
-    z-index: 1002;
-    background: rgba(255, 255, 255, 0.9) !important;
-    border: 2px solid rgba(108, 117, 125, 0.3) !important;
-    border-radius: 10px !important;
-    backdrop-filter: blur(10px);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-}
-
-#layersControl:hover {
-    background: rgba(255, 255, 255, 0.95) !important;
-    border-color: rgba(108, 117, 125, 0.5) !important;
-    transform: translateY(-2px) scale(1.02);
-    box-shadow: 0 6px 25px rgba(0, 0, 0, 0.15);
-}
-
-#layersControl.dragging {
-    opacity: 0.9;
-    transform: scale(1.05);
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
-    background: rgba(255, 255, 255, 0.95) !important;
-}
-
-/* 圖層控制器內部樣式調整 */
-.leaflet-control-layers {
-    background: transparent !important;
-    border: none !important;
-    border-radius: 0 !important;
-    box-shadow: none !important;
-    margin: 0 !important;
-}
-
-.leaflet-control-layers-toggle {
-    background: transparent !important;
-    border: none !important;
-    width: 32px !important;
-    height: 32px !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    font-size: 16px !important;
-    color: #6c757d !important;
-}
-
-.leaflet-control-layers-list {
-    background: rgba(255, 255, 255, 0.95) !important;
-    border: 1px solid rgba(108, 117, 125, 0.2) !important;
-    border-radius: 8px !important;
-    backdrop-filter: blur(10px);
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15) !important;
-    margin-top: 5px !important;
-    padding: 8px !important;
 }

@@ -412,15 +412,7 @@ function initMap() {
     };
     
     // 添加圖層控制器
-    const layersControl = L.control.layers(baseMaps).addTo(map);
-    
-    // 為圖層控制器添加ID以便拖動
-    setTimeout(() => {
-        const layersControlElement = document.querySelector('.leaflet-control-layers');
-        if (layersControlElement) {
-            layersControlElement.id = 'layersControl';
-        }
-    }, 100);
+    L.control.layers(baseMaps).addTo(map);
     
     // 地圖點擊事件
     map.on('click', function(e) {
@@ -1271,128 +1263,6 @@ let mediaRecorder = null;
 let recordedChunks = [];
 let currentVideoBlob = null;
 
-// 自動儲存錄影到標註點附件
-async function autoSaveRecordingToMarker(videoBlob) {
-    try {
-        // 如果沒有標註點，提示用戶先創建標註點
-        if (markers.length === 0) {
-            showNotification('請先創建標註點，然後再錄影', 'warning');
-            return;
-        }
-        
-        // 顯示標註點選擇對話框
-        showMarkerSelectionModal(videoBlob);
-        
-    } catch (error) {
-        console.error('儲存錄影失敗:', error);
-        showNotification('儲存錄影失敗', 'error');
-    }
-}
-
-// 顯示標註點選擇對話框
-function showMarkerSelectionModal(videoBlob) {
-    // 創建模態框
-    const modal = document.createElement('div');
-    modal.className = 'modal';
-    modal.style.display = 'block';
-    modal.innerHTML = `
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>選擇標註點</h3>
-                <span class="close" onclick="closeMarkerSelectionModal()">&times;</span>
-            </div>
-            <div class="modal-body">
-                <p>請選擇要將錄影保存到哪個標註點：</p>
-                <div class="marker-selection-list" id="markerSelectionList">
-                    ${generateMarkerSelectionList()}
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" onclick="closeMarkerSelectionModal()">取消</button>
-            </div>
-        </div>
-    `;
-    
-    document.body.appendChild(modal);
-    
-    // 儲存 videoBlob 到全域變數以供後續使用
-    window.pendingVideoBlob = videoBlob;
-}
-
-// 生成標註點選擇列表
-function generateMarkerSelectionList() {
-    return markers.map(marker => {
-        const group = groups.find(g => g.id === marker.groupId);
-        const groupName = group ? group.name : '未分組';
-        const subgroup = group && marker.subgroupId ? 
-            group.subgroups.find(sg => sg.id === marker.subgroupId) : null;
-        const subgroupName = subgroup ? ` > ${subgroup.name}` : '';
-        
-        return `
-            <div class="marker-selection-item" onclick="selectMarkerForVideo('${marker.id}')">
-                <div class="marker-info">
-                    <strong>${marker.name}</strong>
-                    <small>${groupName}${subgroupName}</small>
-                    <div class="marker-location">${marker.lat.toFixed(6)}, ${marker.lng.toFixed(6)}</div>
-                </div>
-            </div>
-        `;
-    }).join('');
-}
-
-// 選擇標註點並保存錄影
-function selectMarkerForVideo(markerId) {
-    const marker = markers.find(m => m.id === markerId);
-    const videoBlob = window.pendingVideoBlob;
-    
-    if (!marker || !videoBlob) {
-        showNotification('選擇標註點失敗', 'error');
-        return;
-    }
-    
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        const videoBase64 = e.target.result;
-        
-        // 初始化 videos 陣列（如果不存在）
-        if (!marker.videos) {
-            marker.videos = [];
-        }
-        
-        // 添加錄影到標註點
-        marker.videos.push(videoBase64);
-        
-        // 更新地圖上的標記彈出窗口
-        if (marker.leafletMarker) {
-            updateMarkerPopup(marker);
-        }
-        
-        // 更新UI
-        updateMarkersList();
-        updateGroupsList();
-        
-        // 保存數據
-        saveData();
-        
-        showNotification(`錄影已保存到標註點: ${marker.name}`, 'success');
-        
-        // 關閉選擇對話框
-        closeMarkerSelectionModal();
-    };
-    
-    reader.readAsDataURL(videoBlob);
-}
-
-// 關閉標註點選擇對話框
-function closeMarkerSelectionModal() {
-    const modal = document.querySelector('.modal');
-    if (modal) {
-        modal.remove();
-    }
-    // 清理全域變數
-    window.pendingVideoBlob = null;
-}
-
 // 開始錄影
 async function startVideoRecording() {
     try {
@@ -1457,9 +1327,6 @@ async function startVideoRecording() {
                     } else {
                         showNotification(`錄影完成！檔案大小: ${compressedSizeMB}MB`, 'success');
                     }
-                    
-                    // 自動儲存錄影到標註點附件
-                    autoSaveRecordingToMarker(compressedBlob);
                 })
                 .catch(error => {
                     console.error('錄影壓縮失敗:', error);
@@ -1467,9 +1334,6 @@ async function startVideoRecording() {
                     currentVideoBlob = blob;
                     displayVideoPreview(blob);
                     showNotification('錄影完成，但壓縮失敗', 'warning');
-                    
-                    // 即使壓縮失敗也自動儲存到標註點
-                    autoSaveRecordingToMarker(blob);
                 });
             
             // 停止所有軌道
@@ -1619,22 +1483,14 @@ function displayVideoPreview(videoBlob) {
 }
 
 // 打開影片模態框
-function openVideoModal(videoData) {
+function openVideoModal(videoBlob) {
     const modal = document.getElementById('videoPreviewModal');
     const video = modal.querySelector('#videoModalPlayer');
     const title = modal.querySelector('#videoModalTitle');
     
-    // 檢查是否為 Blob 對象或 base64 字符串
-    if (videoData instanceof Blob) {
-        video.src = URL.createObjectURL(videoData);
-    } else if (typeof videoData === 'string') {
-        video.src = videoData;
-    } else {
-        console.error('不支援的視頻數據格式');
-        return;
-    }
-    
+    video.src = URL.createObjectURL(videoBlob);
     title.textContent = '標記點影片';
+    
     modal.style.display = 'block';
     
     // 添加關閉事件
@@ -1642,9 +1498,7 @@ function openVideoModal(videoData) {
     closeBtn.onclick = () => {
         modal.style.display = 'none';
         video.pause();
-        if (videoData instanceof Blob) {
-            URL.revokeObjectURL(video.src);
-        }
+        URL.revokeObjectURL(video.src);
     };
     
     // 點擊模態框外部關閉
@@ -1652,26 +1506,20 @@ function openVideoModal(videoData) {
         if (e.target === modal) {
             modal.style.display = 'none';
             video.pause();
-            if (videoData instanceof Blob) {
-                URL.revokeObjectURL(video.src);
-            }
+            URL.revokeObjectURL(video.src);
         }
     };
     
-    // 刪除影片按鈕 - 只在編輯模式下顯示
+    // 刪除影片按鈕
     const deleteBtn = modal.querySelector('#deleteVideoBtn');
-    if (deleteBtn) {
-        deleteBtn.onclick = () => {
-            currentVideoBlob = null;
-            displayVideoPreview(null);
-            modal.style.display = 'none';
-            video.pause();
-            if (videoData instanceof Blob) {
-                URL.revokeObjectURL(video.src);
-            }
-            showNotification('影片已刪除', 'success');
-        };
-    }
+    deleteBtn.onclick = () => {
+        currentVideoBlob = null;
+        displayVideoPreview(null);
+        modal.style.display = 'none';
+        video.pause();
+        URL.revokeObjectURL(video.src);
+        showNotification('影片已刪除', 'success');
+    };
 }
 
 // 添加重置功能（用於測試）
@@ -2215,14 +2063,6 @@ function initDragFunctionality() {
     makeDraggable(locationBtn);
     makeDraggable(centerBtn);
     
-    // 為圖層控制器添加拖動功能
-    setTimeout(() => {
-        const layersControl = document.getElementById('layersControl');
-        if (layersControl) {
-            makeDraggable(layersControl);
-        }
-    }, 200);
-    
     // 為手機添加額外的觸控事件處理
     addMobileTouchSupport(fullscreenBtn, 'handleFullscreenClick');
     addMobileTouchSupport(locationBtn, 'handleLocationClick');
@@ -2563,12 +2403,9 @@ function makeDraggable(element) {
         const elementWidth = element.offsetWidth;
         const elementHeight = element.offsetHeight;
         
-        // 設置邊界邊距，確保元素不會完全消失
-        const margin = 10;
-        
-        // 限制在視窗範圍內，保留邊距
-        const constrainedX = Math.max(margin - elementWidth + 50, Math.min(newX, windowWidth - 50));
-        const constrainedY = Math.max(margin, Math.min(newY, windowHeight - elementHeight - margin));
+        // 限制在視窗範圍內
+        const constrainedX = Math.max(0, Math.min(newX, windowWidth - elementWidth));
+        const constrainedY = Math.max(0, Math.min(newY, windowHeight - elementHeight));
         
         // 應用新位置
         element.style.left = constrainedX + 'px';
@@ -3169,23 +3006,16 @@ function showMarkerModal(lat, lng, existingMarker = null) {
             removeAllMarkerImages();
         }
         
-        // 處理視頻顯示 - 支援新的videos陣列格式和舊的videoData格式
-        const videoPreviewContainer = document.getElementById('videoPreviewContainer');
-        if (videoPreviewContainer) {
-            videoPreviewContainer.innerHTML = '';
-        }
-        
-        if (existingMarker.videos && Array.isArray(existingMarker.videos) && existingMarker.videos.length > 0) {
-            // 新格式：videos陣列
-            existingMarker.videos.forEach((videoData, index) => {
-                displayVideoPreview(videoData);
-            });
-        } else if (existingMarker.videoData) {
-            // 舊格式：單個videoData
+        // 處理視頻顯示
+        if (existingMarker.videoData) {
             form.dataset.videoData = existingMarker.videoData;
             displayVideoPreview(existingMarker.videoData);
         } else {
-            // 沒有視頻數據
+            // 清空視頻預覽
+            const videoPreviewContainer = document.getElementById('videoPreviewContainer');
+            if (videoPreviewContainer) {
+                videoPreviewContainer.innerHTML = '';
+            }
             delete form.dataset.videoData;
         }
         
@@ -3332,12 +3162,7 @@ function saveMarker(e) {
             marker.color = color;
             marker.icon = icon;
             marker.imageData = imageData;
-            
-            // 處理視頻數據 - 保留現有的videos陣列，只更新videoData（兼容舊格式）
-            if (videoData) {
-                marker.videoData = videoData;
-            }
-            // 注意：不要覆蓋marker.videos，因為它可能包含通過錄影功能添加的多個視頻
+            marker.videoData = videoData;
             
             // 添加到新的組別/群組
             group.addMarker(marker);
@@ -3582,28 +3407,9 @@ function updateMarkerPopup(marker) {
         }
     }
     
-    // 視頻顯示（支援多個錄影）
+    // 視頻顯示
     let videoDisplay = '';
-    if (marker.videos && marker.videos.length > 0) {
-        const videoElements = marker.videos.map((videoData, index) => 
-            `<div style="position: relative; display: inline-block; margin: 2px;">
-                <video style="max-width: 80px; max-height: 60px; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); cursor: pointer; object-fit: cover;" 
-                       onclick="openVideoModal('${videoData}')" 
-                       muted>
-                    <source src="${videoData}" type="video/mp4">
-                </video>
-                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; font-size: 16px; pointer-events: none; text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">▶</div>
-            </div>`
-        ).join('');
-        
-        videoDisplay = `<div style="margin-bottom: 8px; text-align: center;">
-            <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 4px;">
-                ${videoElements}
-            </div>
-            <div style="font-size: 11px; color: #888; margin-top: 4px;">點擊播放錄影 (${marker.videos.length}個)</div>
-        </div>`;
-    } else if (marker.videoData) {
-        // 向後兼容舊的單個視頻格式
+    if (marker.videoData) {
         videoDisplay = `<div style="margin-bottom: 8px; text-align: center;">
             <div style="position: relative; display: inline-block;">
                 <video style="max-width: 120px; max-height: 80px; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); cursor: pointer; object-fit: cover;" 
@@ -3611,7 +3417,7 @@ function updateMarkerPopup(marker) {
                        muted>
                     <source src="${marker.videoData}" type="video/mp4">
                 </video>
-                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; font-size: 20px; pointer-events: none; text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">▶</div>
+                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; font-size: 20px; pointer-events: none;">▶</div>
             </div>
             <div style="font-size: 11px; color: #888; margin-top: 4px;">點擊播放視頻</div>
         </div>`;
@@ -4812,8 +4618,7 @@ function saveData() {
             subgroupId: marker.subgroupId,
             color: marker.color,
             icon: marker.icon,
-            imageData: marker.imageData,
-            videos: marker.videos // 添加錄影數據保存
+            imageData: marker.imageData
             // 不包含 leafletMarker 屬性
         }));
         
@@ -4869,8 +4674,8 @@ function loadData() {
             });
             
             // 重建標記
-            markers = data.markers.map(markerData => {
-                const marker = new Marker(
+            markers = data.markers.map(markerData => 
+                new Marker(
                     markerData.id,
                     markerData.name,
                     markerData.description,
@@ -4881,13 +4686,8 @@ function loadData() {
                     markerData.color || 'red',
                     markerData.icon || '📍',
                     markerData.imageData || null
-                );
-                // 載入錄影數據
-                if (markerData.videos) {
-                    marker.videos = markerData.videos;
-                }
-                return marker;
-            });
+                )
+            );
             
             // 重建關聯關係
             markers.forEach(marker => {
@@ -4963,8 +4763,6 @@ window.clearTrackingTarget = clearTrackingTarget;
 window.showOnlyThisMarker = showOnlyThisMarker;
 window.editGroupName = editGroupName;
 window.editSubgroupName = editSubgroupName;
-window.closeMarkerSelectionModal = closeMarkerSelectionModal;
-window.selectMarkerForVideo = selectMarkerForVideo;
 
 function saveCurrentSettings() {
     try {
