@@ -725,10 +725,44 @@ body {
 
 
 
+/* 切換功能欄大小按鈕 */
+.toggle-status-btn {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    width: 36px;
+    height: 36px;
+    background: rgba(255, 255, 255, 0.9);
+    border: 2px solid rgba(156, 39, 176, 0.3);
+    border-radius: 10px;
+    cursor: pointer;
+    z-index: 1003;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    color: #9c27b0;
+    user-select: none;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    backdrop-filter: blur(10px);
+}
+
+.toggle-status-btn:hover {
+    background: rgba(156, 39, 176, 0.1);
+    border-color: rgba(156, 39, 176, 0.5);
+    transform: translateY(-2px) scale(1.05);
+    box-shadow: 0 6px 25px rgba(156, 39, 176, 0.15);
+}
+
+.toggle-status-btn:active {
+    transform: translateY(-1px) scale(0.98);
+    box-shadow: 0 4px 15px rgba(156, 39, 176, 0.25);
+}
+
 /* 全螢幕按鈕 */
 .fullscreen-btn {
     position: absolute;
-    top: 12px;
+    top: 60px; /* 移到切換按鈕下方 */
     left: 12px;
     width: 36px;
     height: 36px;
@@ -762,7 +796,7 @@ body {
 /* 定位點按鈕 */
 .location-btn {
     position: absolute;
-    top: 60px; /* 在全螢幕按鈕下方 */
+    top: 108px; /* 在全螢幕按鈕下方 */
     left: 12px;
     width: 36px;
     height: 36px;
@@ -1047,14 +1081,16 @@ body {
     animation: modalSlideIn 0.3s ease;
 }
 
-/* 行動設備優化 - 縮小模態框 */
+/* 行動設備優化 - 縮小模態框並往上移動 */
 @media (max-width: 768px) {
     .modal-content {
-        width: clamp(280px, 85vw, 350px);
-        margin: 2vh auto;
-        padding: 12px;
-        max-height: 85vh;
+        width: clamp(280px, 90vw, 350px);
+        margin: 5vh auto 2vh auto;
+        padding: 16px;
+        max-height: 80vh;
         font-size: 14px;
+        position: relative;
+        top: -10vh;
     }
     
     .modal-content h2 {
@@ -3884,28 +3920,9 @@ input:checked + .slider:before {
     overflow: hidden;
 }
 
-/* 快速添加按鈕圖示 */
-#quickAddBtn::after {
-    content: '➕';
-    font-size: 16px;
-    z-index: 2;
-    position: relative;
-}
-
-/* 快速定位按鈕圖示 */
-#quickCenterBtn::after {
-    content: '🎯';
-    font-size: 16px;
-    z-index: 2;
-    position: relative;
-}
-
-/* 快速列表按鈕圖示 */
-#quickListBtn::after {
-    content: '📋';
-    font-size: 16px;
-    z-index: 2;
-    position: relative;
+/* 狀態列按鈕圖示樣式 - 使用HTML中的圖示 */
+.status-btn {
+    font-size: 18px;
 }
 
 .status-btn::before {

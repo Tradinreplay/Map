@@ -607,6 +607,9 @@ document.getElementById('createGroupForm').addEventListener('submit', handleCrea
 // 測試通知按鈕
     document.getElementById('testNotificationBtn').addEventListener('click', testNotification);
     
+    // 切換功能欄大小按鈕
+    document.getElementById('toggleStatusBarBtn').addEventListener('click', toggleStatusBarSize);
+    
     // 組別詳情模態框按鈕事件監聽器
     document.getElementById('showAllGroupMarkersBtn').addEventListener('click', showAllMarkersInGroup);
     document.getElementById('hideAllGroupMarkersBtn').addEventListener('click', hideAllMarkersInGroup);
@@ -5438,3 +5441,64 @@ function initMobileStatusBar() {
     // 定期更新標記數量（作為備用方案）
     setInterval(updateMarkerCount, 2000);
 }
+
+// 切換功能欄大小的函數
+function toggleStatusBarSize() {
+    const statusBar = document.getElementById('mobileStatusBar');
+    const toggleIcon = document.getElementById('toggleStatusIcon');
+    
+    if (!statusBar) return;
+    
+    const currentHeight = parseInt(statusBar.style.height) || 80;
+    
+    if (currentHeight <= 60) {
+        // 當前是收縮狀態，展開到大尺寸
+        setStatusBarHeight(150);
+        toggleIcon.textContent = '📐'; // 改變圖示表示可以收縮
+        showNotification('功能欄已展開', 'success');
+    } else if (currentHeight >= 120) {
+        // 當前是展開狀態，收縮到最小
+        setStatusBarHeight(50);
+        toggleIcon.textContent = '📏'; // 改變圖示表示可以展開
+        showNotification('功能欄已收縮', 'success');
+    } else {
+        // 當前是中等狀態，展開到大尺寸
+        setStatusBarHeight(150);
+        toggleIcon.textContent = '📐';
+        showNotification('功能欄已展開', 'success');
+    }
+}
+
+// 從initMobileStatusBar函數中提取setStatusBarHeight函數，使其可以被外部調用
+function setStatusBarHeight(height) {
+    const statusBar = document.getElementById('mobileStatusBar');
+    if (!statusBar) return;
+    
+    const minHeight = 50;
+    const maxHeight = 200;
+    
+    // 限制高度範圍
+    height = Math.max(minHeight, Math.min(maxHeight, height));
+    
+    statusBar.style.height = `${height}px`;
+    
+    // 根據高度添加相應的class
+    statusBar.classList.remove('collapsed', 'expanded');
+    if (height <= 60) {
+        statusBar.classList.add('collapsed');
+    } else if (height >= 120) {
+        statusBar.classList.add('expanded');
+    }
+    
+    // 更新容器的padding-bottom
+    const container = document.querySelector('.container');
+    if (container) {
+        container.style.paddingBottom = `${height}px`;
+    }
+    
+    // 保存高度設置
+    localStorage.setItem('mobileStatusBarHeight', height.toString());
+}
+
+// 將函數暴露到全局作用域
+window.toggleStatusBarSize = toggleStatusBarSize;
