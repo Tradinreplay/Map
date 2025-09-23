@@ -888,10 +888,10 @@ function handleImageUpload(event) {
             return;
         }
         
-        // 檢查文件大小（限制為5MB）
-        const maxSize = 5 * 1024 * 1024; // 5MB
+        // 檢查文件大小（限制為10MB）
+        const maxSize = 10 * 1024 * 1024; // 10MB
         if (file.size > maxSize) {
-            showNotification('圖片文件過大，請選擇小於5MB的圖片', 'warning');
+            showNotification('圖片文件過大，請選擇小於10MB的圖片', 'warning');
             return;
         }
         
