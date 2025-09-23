@@ -1280,68 +1280,12 @@ async function autoSaveRecordingToMarker(videoBlob) {
             return;
         }
         
-        // 找到最近的標註點
-        let nearestMarker = null;
-        let minDistance = Infinity;
-        
-        if (currentPosition) {
-            // 如果有當前位置，找到最近的標註點
-            markers.forEach(marker => {
-                const distance = calculateDistance(
-                    currentPosition.lat, 
-                    currentPosition.lng, 
-                    marker.lat, 
-                    marker.lng
-                );
-                if (distance < minDistance) {
-                    minDistance = distance;
-                    nearestMarker = marker;
-                }
-            });
-        } else {
-            // 如果沒有當前位置，使用第一個標註點
-            nearestMarker = markers[0];
-        }
-        
-        if (nearestMarker) {
-            // 直接保存到最近的標註點
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const videoBase64 = e.target.result;
-                
-                // 初始化 videos 陣列（如果不存在）
-                if (!nearestMarker.videos) {
-                    nearestMarker.videos = [];
-                }
-                
-                // 添加錄影到標註點
-                nearestMarker.videos.push(videoBase64);
-                
-                // 更新地圖上的標記彈出窗口
-                if (nearestMarker.leafletMarker) {
-                    updateMarkerPopup(nearestMarker);
-                }
-                
-                // 更新UI
-                updateMarkersList();
-                updateGroupsList();
-                
-                // 保存數據
-                saveData();
-                
-                const distanceText = currentPosition ? 
-                    ` (距離: ${minDistance.toFixed(0)}公尺)` : '';
-                showNotification(`錄影已自動保存到最近的標註點: ${nearestMarker.name}${distanceText}`, 'success');
-            };
-            
-            reader.readAsDataURL(videoBlob);
-        } else {
-            showNotification('找不到可用的標註點', 'error');
-        }
+        // 顯示標註點選擇對話框
+        showMarkerSelectionModal(videoBlob);
         
     } catch (error) {
-        console.error('自動儲存錄影失敗:', error);
-        showNotification('自動儲存錄影失敗', 'error');
+        console.error('儲存錄影失敗:', error);
+        showNotification('儲存錄影失敗', 'error');
     }
 }
 
@@ -3626,9 +3570,28 @@ function updateMarkerPopup(marker) {
         }
     }
     
-    // 視頻顯示
+    // 視頻顯示（支援多個錄影）
     let videoDisplay = '';
-    if (marker.videoData) {
+    if (marker.videos && marker.videos.length > 0) {
+        const videoElements = marker.videos.map((videoData, index) => 
+            `<div style="position: relative; display: inline-block; margin: 2px;">
+                <video style="max-width: 80px; max-height: 60px; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); cursor: pointer; object-fit: cover;" 
+                       onclick="openVideoModal('${videoData}')" 
+                       muted>
+                    <source src="${videoData}" type="video/mp4">
+                </video>
+                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; font-size: 16px; pointer-events: none; text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">▶</div>
+            </div>`
+        ).join('');
+        
+        videoDisplay = `<div style="margin-bottom: 8px; text-align: center;">
+            <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 4px;">
+                ${videoElements}
+            </div>
+            <div style="font-size: 11px; color: #888; margin-top: 4px;">點擊播放錄影 (${marker.videos.length}個)</div>
+        </div>`;
+    } else if (marker.videoData) {
+        // 向後兼容舊的單個視頻格式
         videoDisplay = `<div style="margin-bottom: 8px; text-align: center;">
             <div style="position: relative; display: inline-block;">
                 <video style="max-width: 120px; max-height: 80px; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); cursor: pointer; object-fit: cover;" 
@@ -3636,7 +3599,7 @@ function updateMarkerPopup(marker) {
                        muted>
                     <source src="${marker.videoData}" type="video/mp4">
                 </video>
-                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; font-size: 20px; pointer-events: none;">▶</div>
+                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; font-size: 20px; pointer-events: none; text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">▶</div>
             </div>
             <div style="font-size: 11px; color: #888; margin-top: 4px;">點擊播放視頻</div>
         </div>`;
