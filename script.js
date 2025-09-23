@@ -3170,7 +3170,21 @@ function stopRepeatedAlert(markerId) {
 }
 
 function showLocationAlert(marker, distance) {
-    const message = `您已接近標記點 "${marker.name}"，距離約 ${Math.round(distance)} 公尺`;
+    // 獲取群組和子群組信息
+    let groupInfo = '';
+    const group = groups.find(g => g.id === marker.groupId);
+    if (group) {
+        groupInfo = `[${group.name}`;
+        if (marker.subgroupId) {
+            const subgroup = group.subgroups.find(sg => sg.id === marker.subgroupId);
+            if (subgroup) {
+                groupInfo += ` > ${subgroup.name}`;
+            }
+        }
+        groupInfo += '] ';
+    }
+    
+    const message = `${groupInfo}您已接近標記點 "${marker.name}"，距離約 ${Math.round(distance)} 公尺`;
     
     // 嘗試多種通知方式以確保手機瀏覽器能收到通知
     
@@ -3577,6 +3591,52 @@ function testNotification() {
     // 顯示測試訊息
     showNotification('🔔 測試通知已發送！請檢查您的瀏覽器通知', 'info');
 }
+
+// 測試群組追蹤提示功能
+function testGroupTrackingAlert() {
+    // 創建測試群組
+    const testGroup = new Group('test-group-' + Date.now(), '測試群組');
+    const testSubgroup = new Subgroup('test-subgroup-' + Date.now(), '測試子群組', testGroup.id);
+    testGroup.addSubgroup(testSubgroup);
+    groups.push(testGroup);
+    
+    // 創建測試標記（屬於群組）
+    const testMarkerWithGroup = {
+        id: 'test-marker-group',
+        name: '群組測試標記',
+        description: '這是一個屬於群組的測試標記',
+        lat: currentPosition ? currentPosition.lat : 25.0330,
+        lng: currentPosition ? currentPosition.lng : 121.5654,
+        groupId: testGroup.id
+    };
+    
+    // 創建測試標記（屬於子群組）
+    const testMarkerWithSubgroup = {
+        id: 'test-marker-subgroup',
+        name: '子群組測試標記',
+        description: '這是一個屬於子群組的測試標記',
+        lat: currentPosition ? currentPosition.lat : 25.0330,
+        lng: currentPosition ? currentPosition.lng : 121.5654,
+        groupId: testGroup.id,
+        subgroupId: testSubgroup.id
+    };
+    
+    // 測試群組標記的距離提醒
+    console.log('測試群組標記追蹤提示...');
+    showLocationAlert(testMarkerWithGroup, 75);
+    
+    // 延遲測試子群組標記
+    setTimeout(() => {
+        console.log('測試子群組標記追蹤提示...');
+        showLocationAlert(testMarkerWithSubgroup, 45);
+    }, 3000);
+    
+    // 顯示測試訊息
+    showNotification('🧪 群組追蹤提示測試已開始！將依序測試群組和子群組標記', 'info');
+}
+
+// 將測試函數暴露到全域
+window.testGroupTrackingAlert = testGroupTrackingAlert;
 
 // 添加測試popup功能
 function testPopupFunction() {
