@@ -719,6 +719,7 @@ body {
     box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08) !important;
     padding: 4px !important;
     font-size: 12px !important;
+    top: 140px !important; /* 顯示在浮動控制面板下方 */
 }
 
 .leaflet-control-layers-toggle {
@@ -1016,8 +1017,6 @@ body {
     display: flex;
     flex-direction: column;
     gap: 8px;
-    /* 確保不會與地圖圖層控制重疊 */
-    margin-top: 60px; /* 為地圖圖層控制留出空間 */
 }
 
 .control-btn {
@@ -1477,7 +1476,11 @@ form input:focus, form textarea:focus, form select:focus {
         right: 8px;
         gap: 6px;
         flex-wrap: wrap;
-        margin-top: 50px; /* 手機端為地圖圖層控制留出空間 */
+    }
+    
+    /* 手機版地圖圖層控制位置調整 */
+    .leaflet-control-layers {
+        top: 120px !important; /* 手機版顯示在浮動控制面板下方 */
     }
     
     .control-btn {

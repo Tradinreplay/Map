@@ -1263,6 +1263,71 @@ let mediaRecorder = null;
 let recordedChunks = [];
 let currentVideoBlob = null;
 
+// 自動儲存錄影到標註點附件
+async function autoSaveRecordingToMarker(videoBlob) {
+    try {
+        // 獲取當前位置
+        if (!currentPosition) {
+            showNotification('無法獲取當前位置，請手動創建標註點', 'warning');
+            return;
+        }
+        
+        // 將視頻轉換為base64
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const videoData = e.target.result;
+            
+            // 創建新的標註點
+            const timestamp = new Date().toLocaleString('zh-TW');
+            const markerId = generateId();
+            
+            const newMarker = new Marker(
+                markerId,
+                `錄影標註 ${timestamp}`,
+                `錄影時間: ${timestamp}`,
+                currentPosition.lat,
+                currentPosition.lng,
+                currentGroup ? currentGroup.id : null,
+                currentSubgroup ? currentSubgroup.id : null,
+                '#ff4444', // 紅色表示錄影標註
+                '🎥'
+            );
+            
+            // 設置視頻數據
+            newMarker.videoData = videoData;
+            
+            // 添加到標記列表
+            markers.push(newMarker);
+            
+            // 如果有選中的群組，添加到群組中
+            if (currentGroup) {
+                currentGroup.addMarker(newMarker);
+                if (currentSubgroup) {
+                    currentSubgroup.addMarker(newMarker);
+                }
+            }
+            
+            // 添加到地圖
+            addMarkerToMap(newMarker);
+            
+            // 更新UI
+            updateMarkersList();
+            updateGroupsList();
+            
+            // 保存數據
+            saveData();
+            
+            showNotification(`錄影已自動儲存到標註點: ${newMarker.name}`, 'success');
+        };
+        
+        reader.readAsDataURL(videoBlob);
+        
+    } catch (error) {
+        console.error('自動儲存錄影失敗:', error);
+        showNotification('自動儲存錄影失敗，請手動創建標註點', 'error');
+    }
+}
+
 // 開始錄影
 async function startVideoRecording() {
     try {
@@ -1327,6 +1392,9 @@ async function startVideoRecording() {
                     } else {
                         showNotification(`錄影完成！檔案大小: ${compressedSizeMB}MB`, 'success');
                     }
+                    
+                    // 自動儲存錄影到標註點附件
+                    autoSaveRecordingToMarker(compressedBlob);
                 })
                 .catch(error => {
                     console.error('錄影壓縮失敗:', error);
@@ -1334,6 +1402,9 @@ async function startVideoRecording() {
                     currentVideoBlob = blob;
                     displayVideoPreview(blob);
                     showNotification('錄影完成，但壓縮失敗', 'warning');
+                    
+                    // 即使壓縮失敗也自動儲存到標註點
+                    autoSaveRecordingToMarker(blob);
                 });
             
             // 停止所有軌道
@@ -1483,14 +1554,22 @@ function displayVideoPreview(videoBlob) {
 }
 
 // 打開影片模態框
-function openVideoModal(videoBlob) {
+function openVideoModal(videoData) {
     const modal = document.getElementById('videoPreviewModal');
     const video = modal.querySelector('#videoModalPlayer');
     const title = modal.querySelector('#videoModalTitle');
     
-    video.src = URL.createObjectURL(videoBlob);
-    title.textContent = '標記點影片';
+    // 檢查是否為 Blob 對象或 base64 字符串
+    if (videoData instanceof Blob) {
+        video.src = URL.createObjectURL(videoData);
+    } else if (typeof videoData === 'string') {
+        video.src = videoData;
+    } else {
+        console.error('不支援的視頻數據格式');
+        return;
+    }
     
+    title.textContent = '標記點影片';
     modal.style.display = 'block';
     
     // 添加關閉事件
@@ -1498,7 +1577,9 @@ function openVideoModal(videoBlob) {
     closeBtn.onclick = () => {
         modal.style.display = 'none';
         video.pause();
-        URL.revokeObjectURL(video.src);
+        if (videoData instanceof Blob) {
+            URL.revokeObjectURL(video.src);
+        }
     };
     
     // 點擊模態框外部關閉
@@ -1506,20 +1587,26 @@ function openVideoModal(videoBlob) {
         if (e.target === modal) {
             modal.style.display = 'none';
             video.pause();
-            URL.revokeObjectURL(video.src);
+            if (videoData instanceof Blob) {
+                URL.revokeObjectURL(video.src);
+            }
         }
     };
     
-    // 刪除影片按鈕
+    // 刪除影片按鈕 - 只在編輯模式下顯示
     const deleteBtn = modal.querySelector('#deleteVideoBtn');
-    deleteBtn.onclick = () => {
-        currentVideoBlob = null;
-        displayVideoPreview(null);
-        modal.style.display = 'none';
-        video.pause();
-        URL.revokeObjectURL(video.src);
-        showNotification('影片已刪除', 'success');
-    };
+    if (deleteBtn) {
+        deleteBtn.onclick = () => {
+            currentVideoBlob = null;
+            displayVideoPreview(null);
+            modal.style.display = 'none';
+            video.pause();
+            if (videoData instanceof Blob) {
+                URL.revokeObjectURL(video.src);
+            }
+            showNotification('影片已刪除', 'success');
+        };
+    }
 }
 
 // 添加重置功能（用於測試）
