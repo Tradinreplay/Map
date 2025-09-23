@@ -58,6 +58,27 @@ body {
     background: rgba(99, 102, 241, 0.5);
 }
 
+/* 手機豎屏模式下的調整手柄樣式 */
+@media (max-width: 768px) {
+    .resize-handle {
+        top: auto;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        width: 100%;
+        height: 4px;
+        cursor: row-resize;
+    }
+    
+    .resize-handle:hover {
+        background: rgba(99, 102, 241, 0.4);
+    }
+    
+    .resize-handle:active {
+        background: rgba(99, 102, 241, 0.6);
+    }
+}
+
 /* 側邊欄標題區域 */
 .sidebar-header {
     display: flex;
@@ -1184,6 +1205,14 @@ form input:focus, form textarea:focus, form select:focus {
     box-shadow: 0 4px 12px rgba(255, 107, 107, 0.4);
 }
 
+.video-btn {
+    background: linear-gradient(135deg, #10ac84 0%, #00d2d3 100%);
+}
+
+.video-btn:hover {
+    box-shadow: 0 4px 12px rgba(16, 172, 132, 0.4);
+}
+
 /* 多張圖片預覽容器 */
 .image-preview-container {
     display: flex;
@@ -1216,6 +1245,57 @@ form input:focus, form textarea:focus, form select:focus {
     display: block;
     border-radius: 6px;
     object-fit: cover;
+}
+
+/* 影片預覽容器 */
+.video-preview-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.video-preview {
+    position: relative;
+    display: inline-block;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    background: #f8f9fa;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.video-preview:hover {
+    transform: scale(1.02);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.video-preview video {
+    max-width: 150px;
+    max-height: 100px;
+    width: auto;
+    height: auto;
+    display: block;
+    border-radius: 6px;
+    object-fit: cover;
+}
+
+.video-preview .video-overlay {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    pointer-events: none;
 }
 
 .remove-image-btn {
@@ -2840,6 +2920,89 @@ input:checked + .slider:before {
     justify-content: center;
     font-size: 18px;
     font-weight: bold;
+}
+
+/* 影片預覽模態框樣式 */
+.video-modal {
+    z-index: 2000;
+}
+
+.video-modal-content {
+    max-width: 90vw;
+    max-height: 90vh;
+    width: auto;
+    height: auto;
+    padding: 0;
+    border-radius: 12px;
+    overflow: hidden;
+    background: #fff;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.video-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    background: #f8f9fa;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.video-modal-header h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: #2d3748;
+}
+
+.video-modal-body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: #000;
+}
+
+.video-modal-body video {
+    max-width: 100%;
+    max-height: 70vh;
+    width: auto;
+    height: auto;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.video-modal-close {
+    position: absolute;
+    top: 16px;
+    right: 20px;
+    z-index: 2001;
+    background: rgba(0, 0, 0, 0.5);
+    color: white;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    font-weight: bold;
+}
+
+.delete-video-btn {
+    background: #dc3545;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 16px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.delete-video-btn:hover {
+    background: #c82333;
+    transform: translateY(-1px);
 }
 
 .tracking-distance-blink {

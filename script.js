@@ -74,7 +74,7 @@ class Subgroup {
 }
 
 class Marker {
-    constructor(id, name, description, lat, lng, groupId, subgroupId = null, color = 'red', icon = '📍', imageData = null) {
+    constructor(id, name, description, lat, lng, groupId, subgroupId = null, color = 'red', icon = '📍', imageData = null, videoData = null) {
         this.id = id;
         this.name = name;
         this.description = description;
@@ -85,6 +85,7 @@ class Marker {
         this.color = color;
         this.icon = icon;
         this.imageData = imageData; // base64編碼的圖片數據
+        this.videoData = videoData; // base64編碼的視頻數據
         this.leafletMarker = null;
     }
 }
@@ -593,8 +594,13 @@ function initEventListeners() {
         document.getElementById('cameraInput').click();
     });
     
+    document.getElementById('recordVideoBtn').addEventListener('click', function() {
+        startVideoRecording();
+    });
+    
     document.getElementById('markerImages').addEventListener('change', handleImageUpload);
     document.getElementById('cameraInput').addEventListener('change', handleImageUpload);
+    document.getElementById('videoInput').addEventListener('change', handleVideoUpload);
     
     // 初始設定相關事件
     document.getElementById('startUsingBtn').addEventListener('click', handleInitialSetup);
@@ -982,8 +988,28 @@ function removeAllMarkerImages() {
     delete form.dataset.imageData;
 }
 
-function resetImageUpload() {
+function removeAllMarkerVideos() {
+    const videoPreviewContainer = document.getElementById('videoPreviewContainer');
+    const videoInput = document.getElementById('videoInput');
+    const form = document.getElementById('markerForm');
+    
+    // 清除視頻預覽
+    if (videoPreviewContainer) {
+        videoPreviewContainer.innerHTML = '';
+    }
+    
+    // 清除文件輸入
+    if (videoInput) {
+        videoInput.value = '';
+    }
+    
+    // 清除表單數據
+    delete form.dataset.videoData;
+}
+
+function resetMediaUpload() {
     removeAllMarkerImages();
+    removeAllMarkerVideos();
 }
 
 // 圖片模態框預覽功能
@@ -1089,6 +1115,204 @@ function closeImageModal() {
     }
     
     modal.style.display = 'none';
+}
+
+// 錄影相關變數
+let mediaRecorder = null;
+let recordedChunks = [];
+let currentVideoBlob = null;
+
+// 開始錄影
+async function startVideoRecording() {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+            video: { 
+                facingMode: 'environment',
+                width: { ideal: 1280 },
+                height: { ideal: 720 }
+            }, 
+            audio: true 
+        });
+        
+        recordedChunks = [];
+        mediaRecorder = new MediaRecorder(stream, {
+            mimeType: 'video/webm;codecs=vp9'
+        });
+        
+        mediaRecorder.ondataavailable = function(event) {
+            if (event.data.size > 0) {
+                recordedChunks.push(event.data);
+            }
+        };
+        
+        mediaRecorder.onstop = function() {
+            const blob = new Blob(recordedChunks, { type: 'video/webm' });
+            currentVideoBlob = blob;
+            displayVideoPreview(blob);
+            
+            // 停止所有軌道
+            stream.getTracks().forEach(track => track.stop());
+        };
+        
+        // 創建錄影控制界面
+        showRecordingInterface(stream);
+        
+        mediaRecorder.start();
+        
+    } catch (error) {
+        console.error('無法啟動錄影:', error);
+        showNotification('無法啟動錄影功能，請檢查攝像頭權限', 'error');
+    }
+}
+
+// 顯示錄影界面
+function showRecordingInterface(stream) {
+    // 創建錄影模態框
+    const recordingModal = document.createElement('div');
+    recordingModal.id = 'recordingModal';
+    recordingModal.className = 'modal';
+    recordingModal.style.display = 'block';
+    recordingModal.style.zIndex = '3000';
+    
+    recordingModal.innerHTML = `
+        <div class="modal-content" style="max-width: 90vw; max-height: 90vh; padding: 20px;">
+            <h3>錄影中...</h3>
+            <video id="recordingPreview" autoplay muted style="width: 100%; max-width: 500px; border-radius: 8px;"></video>
+            <div style="margin-top: 15px; display: flex; gap: 10px; justify-content: center;">
+                <button id="stopRecordingBtn" class="upload-btn" style="background: #dc3545;">⏹️ 停止錄影</button>
+                <button id="cancelRecordingBtn" class="upload-btn" style="background: #6c757d;">❌ 取消</button>
+            </div>
+            <div id="recordingTimer" style="text-align: center; margin-top: 10px; font-weight: bold; color: #dc3545;">00:00</div>
+        </div>
+    `;
+    
+    document.body.appendChild(recordingModal);
+    
+    // 設置預覽視頻
+    const video = document.getElementById('recordingPreview');
+    video.srcObject = stream;
+    
+    // 開始計時器
+    let startTime = Date.now();
+    const timer = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - startTime) / 1000);
+        const minutes = Math.floor(elapsed / 60).toString().padStart(2, '0');
+        const seconds = (elapsed % 60).toString().padStart(2, '0');
+        document.getElementById('recordingTimer').textContent = `${minutes}:${seconds}`;
+    }, 1000);
+    
+    // 停止錄影按鈕
+    document.getElementById('stopRecordingBtn').addEventListener('click', () => {
+        clearInterval(timer);
+        mediaRecorder.stop();
+        document.body.removeChild(recordingModal);
+    });
+    
+    // 取消錄影按鈕
+    document.getElementById('cancelRecordingBtn').addEventListener('click', () => {
+        clearInterval(timer);
+        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+            mediaRecorder.stop();
+        }
+        stream.getTracks().forEach(track => track.stop());
+        document.body.removeChild(recordingModal);
+    });
+}
+
+// 處理影片上傳
+function handleVideoUpload(event) {
+    const file = event.target.files[0];
+    if (file) {
+        if (file.type.startsWith('video/')) {
+            if (file.size > 50 * 1024 * 1024) { // 50MB 限制
+                showNotification('影片檔案過大，請選擇小於50MB的檔案', 'error');
+                return;
+            }
+            currentVideoBlob = file;
+            displayVideoPreview(file);
+        } else {
+            showNotification('請選擇有效的影片檔案', 'error');
+        }
+    }
+}
+
+// 顯示影片預覽
+function displayVideoPreview(videoBlob) {
+    const previewContainer = document.getElementById('videoPreviewContainer');
+    
+    // 清除現有預覽
+    previewContainer.innerHTML = '';
+    
+    if (videoBlob) {
+        const videoPreview = document.createElement('div');
+        videoPreview.className = 'video-preview';
+        
+        const video = document.createElement('video');
+        video.src = URL.createObjectURL(videoBlob);
+        video.controls = false;
+        video.muted = true;
+        
+        const overlay = document.createElement('div');
+        overlay.className = 'video-overlay';
+        overlay.textContent = '▶️';
+        
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'remove-image-btn';
+        removeBtn.textContent = '×';
+        removeBtn.onclick = () => {
+            currentVideoBlob = null;
+            previewContainer.innerHTML = '';
+        };
+        
+        videoPreview.onclick = () => {
+            openVideoModal(videoBlob);
+        };
+        
+        videoPreview.appendChild(video);
+        videoPreview.appendChild(overlay);
+        videoPreview.appendChild(removeBtn);
+        previewContainer.appendChild(videoPreview);
+    }
+}
+
+// 打開影片模態框
+function openVideoModal(videoBlob) {
+    const modal = document.getElementById('videoPreviewModal');
+    const video = modal.querySelector('#videoModalPlayer');
+    const title = modal.querySelector('#videoModalTitle');
+    
+    video.src = URL.createObjectURL(videoBlob);
+    title.textContent = '標記點影片';
+    
+    modal.style.display = 'block';
+    
+    // 添加關閉事件
+    const closeBtn = modal.querySelector('.video-modal-close');
+    closeBtn.onclick = () => {
+        modal.style.display = 'none';
+        video.pause();
+        URL.revokeObjectURL(video.src);
+    };
+    
+    // 點擊模態框外部關閉
+    modal.onclick = (e) => {
+        if (e.target === modal) {
+            modal.style.display = 'none';
+            video.pause();
+            URL.revokeObjectURL(video.src);
+        }
+    };
+    
+    // 刪除影片按鈕
+    const deleteBtn = modal.querySelector('#deleteVideoBtn');
+    deleteBtn.onclick = () => {
+        currentVideoBlob = null;
+        displayVideoPreview(null);
+        modal.style.display = 'none';
+        video.pause();
+        URL.revokeObjectURL(video.src);
+        showNotification('影片已刪除', 'success');
+    };
 }
 
 // 添加重置功能（用於測試）
@@ -1581,23 +1805,75 @@ function initSidebarResize() {
     
     let isResizing = false;
     let startX = 0;
+    let startY = 0;
     let startWidth = 0;
+    let startHeight = 0;
+    let isMobilePortrait = false;
     
-    // 載入保存的寬度
+    // 檢查是否為手機豎屏模式
+    function checkMobilePortrait() {
+        return window.innerWidth <= 768;
+    }
+    
+    // 更新調整手柄樣式和位置
+    function updateResizeHandle() {
+        isMobilePortrait = checkMobilePortrait();
+        
+        if (isMobilePortrait) {
+            // 手機豎屏：調整手柄在底部，垂直調整
+            resizeHandle.style.top = 'auto';
+            resizeHandle.style.bottom = '0';
+            resizeHandle.style.left = '0';
+            resizeHandle.style.right = '0';
+            resizeHandle.style.width = '100%';
+            resizeHandle.style.height = '4px';
+            resizeHandle.style.cursor = 'row-resize';
+        } else {
+            // 桌面：調整手柄在右側，水平調整
+            resizeHandle.style.top = '0';
+            resizeHandle.style.bottom = 'auto';
+            resizeHandle.style.left = 'auto';
+            resizeHandle.style.right = '0';
+            resizeHandle.style.width = '4px';
+            resizeHandle.style.height = '100%';
+            resizeHandle.style.cursor = 'col-resize';
+        }
+    }
+    
+    // 初始化調整手柄
+    updateResizeHandle();
+    
+    // 監聽視窗大小變化
+    window.addEventListener('resize', updateResizeHandle);
+    
+    // 載入保存的尺寸
     const savedWidth = localStorage.getItem('sidebarWidth');
-    if (savedWidth) {
+    const savedHeight = localStorage.getItem('sidebarHeight');
+    
+    if (savedWidth && !checkMobilePortrait()) {
         sidebar.style.width = savedWidth + 'px';
+    }
+    if (savedHeight && checkMobilePortrait()) {
+        sidebar.style.maxHeight = savedHeight + 'px';
     }
     
     // 滑鼠按下事件
     resizeHandle.addEventListener('mousedown', (e) => {
         isResizing = true;
-        startX = e.clientX;
-        startWidth = parseInt(document.defaultView.getComputedStyle(sidebar).width, 10);
-        document.body.style.cursor = 'col-resize';
-        document.body.style.userSelect = 'none';
+        isMobilePortrait = checkMobilePortrait();
         
-        // 防止文字選取
+        if (isMobilePortrait) {
+            startY = e.clientY;
+            startHeight = parseInt(document.defaultView.getComputedStyle(sidebar).maxHeight, 10) || 
+                         parseInt(document.defaultView.getComputedStyle(sidebar).height, 10);
+            document.body.style.cursor = 'row-resize';
+        } else {
+            startX = e.clientX;
+            startWidth = parseInt(document.defaultView.getComputedStyle(sidebar).width, 10);
+            document.body.style.cursor = 'col-resize';
+        }
+        
+        document.body.style.userSelect = 'none';
         e.preventDefault();
     });
     
@@ -1605,12 +1881,24 @@ function initSidebarResize() {
     document.addEventListener('mousemove', (e) => {
         if (!isResizing) return;
         
-        const width = startWidth + e.clientX - startX;
-        const minWidth = 250;
-        const maxWidth = 600;
-        
-        if (width >= minWidth && width <= maxWidth) {
-            sidebar.style.width = width + 'px';
+        if (isMobilePortrait) {
+            // 手機豎屏：調整高度
+            const height = startHeight + (startY - e.clientY); // 向上拖拉增加高度
+            const minHeight = 200; // 最小高度
+            const maxHeight = window.innerHeight * 0.8; // 最大高度為視窗的80%
+            
+            if (height >= minHeight && height <= maxHeight) {
+                sidebar.style.maxHeight = height + 'px';
+            }
+        } else {
+            // 桌面：調整寬度
+            const width = startWidth + e.clientX - startX;
+            const minWidth = 250;
+            const maxWidth = 600;
+            
+            if (width >= minWidth && width <= maxWidth) {
+                sidebar.style.width = width + 'px';
+            }
         }
     });
     
@@ -1621,30 +1909,58 @@ function initSidebarResize() {
             document.body.style.cursor = '';
             document.body.style.userSelect = '';
             
-            // 保存寬度
-            const currentWidth = parseInt(document.defaultView.getComputedStyle(sidebar).width, 10);
-            localStorage.setItem('sidebarWidth', currentWidth);
+            // 保存尺寸
+            if (isMobilePortrait) {
+                const currentHeight = parseInt(document.defaultView.getComputedStyle(sidebar).maxHeight, 10) ||
+                                    parseInt(document.defaultView.getComputedStyle(sidebar).height, 10);
+                localStorage.setItem('sidebarHeight', currentHeight);
+            } else {
+                const currentWidth = parseInt(document.defaultView.getComputedStyle(sidebar).width, 10);
+                localStorage.setItem('sidebarWidth', currentWidth);
+            }
         }
     });
     
     // 觸控支援
     resizeHandle.addEventListener('touchstart', (e) => {
         isResizing = true;
-        startX = e.touches[0].clientX;
-        startWidth = parseInt(document.defaultView.getComputedStyle(sidebar).width, 10);
+        isMobilePortrait = checkMobilePortrait();
+        
+        if (isMobilePortrait) {
+            startY = e.touches[0].clientY;
+            startHeight = parseInt(document.defaultView.getComputedStyle(sidebar).maxHeight, 10) || 
+                         parseInt(document.defaultView.getComputedStyle(sidebar).height, 10);
+        } else {
+            startX = e.touches[0].clientX;
+            startWidth = parseInt(document.defaultView.getComputedStyle(sidebar).width, 10);
+        }
+        
         e.preventDefault();
     });
     
     document.addEventListener('touchmove', (e) => {
         if (!isResizing) return;
         
-        const width = startWidth + e.touches[0].clientX - startX;
-        const minWidth = 250;
-        const maxWidth = 600;
-        
-        if (width >= minWidth && width <= maxWidth) {
-            sidebar.style.width = width + 'px';
+        if (isMobilePortrait) {
+            // 手機豎屏：調整高度
+            const height = startHeight + (startY - e.touches[0].clientY); // 向上拖拉增加高度
+            const minHeight = 200;
+            const maxHeight = window.innerHeight * 0.8;
+            
+            if (height >= minHeight && height <= maxHeight) {
+                sidebar.style.maxHeight = height + 'px';
+            }
+        } else {
+            // 桌面：調整寬度
+            const width = startWidth + e.touches[0].clientX - startX;
+            const minWidth = 250;
+            const maxWidth = 600;
+            
+            if (width >= minWidth && width <= maxWidth) {
+                sidebar.style.width = width + 'px';
+            }
         }
+        
         e.preventDefault();
     });
     
@@ -1652,9 +1968,15 @@ function initSidebarResize() {
         if (isResizing) {
             isResizing = false;
             
-            // 保存寬度
-            const currentWidth = parseInt(document.defaultView.getComputedStyle(sidebar).width, 10);
-            localStorage.setItem('sidebarWidth', currentWidth);
+            // 保存尺寸
+            if (isMobilePortrait) {
+                const currentHeight = parseInt(document.defaultView.getComputedStyle(sidebar).maxHeight, 10) ||
+                                    parseInt(document.defaultView.getComputedStyle(sidebar).height, 10);
+                localStorage.setItem('sidebarHeight', currentHeight);
+            } else {
+                const currentWidth = parseInt(document.defaultView.getComputedStyle(sidebar).width, 10);
+                localStorage.setItem('sidebarWidth', currentWidth);
+            }
         }
     });
 }
@@ -2404,7 +2726,20 @@ function showMarkerModal(lat, lng, existingMarker = null) {
             form.dataset.imageData = JSON.stringify(imageData);
             displayMultipleImagePreviews(imageData);
         } else {
-            resetImageUpload();
+            resetMediaUpload();
+        }
+        
+        // 處理視頻顯示
+        if (existingMarker.videoData) {
+            form.dataset.videoData = existingMarker.videoData;
+            displayVideoPreview(existingMarker.videoData);
+        } else {
+            // 清空視頻預覽
+            const videoPreviewContainer = document.getElementById('videoPreviewContainer');
+            if (videoPreviewContainer) {
+                videoPreviewContainer.innerHTML = '';
+            }
+            delete form.dataset.videoData;
         }
         
         document.getElementById('deleteMarkerBtn').style.display = 'block';
@@ -2413,7 +2748,7 @@ function showMarkerModal(lat, lng, existingMarker = null) {
     } else {
         // 新增標記
         form.reset();
-        resetImageUpload();
+        resetMediaUpload();
         document.getElementById('deleteMarkerBtn').style.display = 'none';
         
         // 如果有選定的組別，自動設定為默認值
@@ -2497,6 +2832,9 @@ function saveMarker(e) {
         }
     }
     
+    // 获取视频数据
+    const videoData = form.dataset.videoData || null;
+    
     if (!name) {
         showNotification('請填寫標記名稱', 'warning');
         return;
@@ -2547,6 +2885,7 @@ function saveMarker(e) {
             marker.color = color;
             marker.icon = icon;
             marker.imageData = imageData;
+            marker.videoData = videoData;
             
             // 添加到新的組別/群組
             group.addMarker(marker);
@@ -2581,7 +2920,8 @@ function saveMarker(e) {
             subgroupId,
             color,
             icon,
-            imageData
+            imageData,
+            videoData
         );
         
         markers.push(marker);
@@ -2773,7 +3113,7 @@ function updateMarkerPopup(marker) {
                     <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 4px;">
                         ${imageElements}
                     </div>
-                    <div style="font-size: 11px; color: #888; margin-top: 4px;">點擊圖片預覽 (${imagesArray.length}/3)</div>
+                    <div style="font-size: 11px; color: #888; margin-top: 4px;">點擊圖片預覽 (${imagesArray.length}/6)</div>
                 </div>`;
             }
         } catch (e) {
@@ -2790,11 +3130,28 @@ function updateMarkerPopup(marker) {
         }
     }
     
+    // 視頻顯示
+    let videoDisplay = '';
+    if (marker.videoData) {
+        videoDisplay = `<div style="margin-bottom: 8px; text-align: center;">
+            <div style="position: relative; display: inline-block;">
+                <video style="max-width: 120px; max-height: 80px; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); cursor: pointer; object-fit: cover;" 
+                       onclick="openVideoModal('${marker.videoData}')" 
+                       muted>
+                    <source src="${marker.videoData}" type="video/mp4">
+                </video>
+                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; font-size: 20px; pointer-events: none;">▶</div>
+            </div>
+            <div style="font-size: 11px; color: #888; margin-top: 4px;">點擊播放視頻</div>
+        </div>`;
+    }
+    
     const popupContent = `
         <div style="text-align: center; min-width: 200px;">
             <div style="font-size: 18px; margin-bottom: 8px;">${marker.icon} <strong>${marker.name}</strong></div>
             ${marker.description ? `<div style="font-size: 14px; color: #333; margin-bottom: 8px; text-align: left; padding: 0 10px;">${marker.description}</div>` : ''}
             ${imageDisplay}
+            ${videoDisplay}
             ${distanceDisplay}
             <div style="font-size: 12px; color: #666; margin-bottom: 8px;">群組: ${groupName}</div>
             <div style="font-size: 12px; color: #666; margin-bottom: 12px;">子群組: ${subgroupName}</div>
