@@ -612,6 +612,9 @@ document.getElementById('createGroupForm').addEventListener('submit', handleCrea
     document.getElementById('hideAllGroupMarkersBtn').addEventListener('click', hideAllMarkersInGroup);
     document.getElementById('centerToGroupBtn').addEventListener('click', centerToGroupMarkers);
     
+    // 全部詳情按鈕事件監聽器
+    document.getElementById('showAllDetailsBtn').addEventListener('click', showAllDetailsModal);
+    
     // 匯入選項模態框按鈕事件監聽器
     document.getElementById('confirmImportBtn').addEventListener('click', function() {
         const selectedRadio = document.querySelector('input[name="importMode"]:checked');
@@ -779,6 +782,23 @@ document.getElementById('createGroupForm').addEventListener('submit', handleCrea
         if (centerBtn) {
             centerBtn.addEventListener('click', centerToGroupMarkers);
         }
+    }
+    
+    // 全部詳情模態框事件監聽器
+    const allDetailsModal = document.getElementById('allDetailsModal');
+    if (allDetailsModal) {
+        // 關閉按鈕事件
+        const allDetailsCloseBtn = allDetailsModal.querySelector('.close');
+        if (allDetailsCloseBtn) {
+            allDetailsCloseBtn.addEventListener('click', closeAllDetailsModal);
+        }
+        
+        // 點擊模態框背景關閉
+        allDetailsModal.addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeAllDetailsModal();
+            }
+        });
     }
     
 }
@@ -3427,9 +3447,29 @@ function updateMarkersList() {
             markerDiv.classList.add('tracking-target');
         }
         
+        // 獲取群組和子群組信息
+        let groupInfo = '';
+        if (marker.groupId) {
+            const group = groups.find(g => g.id === marker.groupId);
+            if (group) {
+                groupInfo = `<div class="marker-group-info">組別: ${group.name}`;
+                
+                if (marker.subgroupId) {
+                    const subgroup = group.subgroups?.find(sg => sg.id === marker.subgroupId);
+                    if (subgroup) {
+                        groupInfo += ` > ${subgroup.name}`;
+                    }
+                }
+                groupInfo += '</div>';
+            }
+        } else {
+            groupInfo = '<div class="marker-group-info">組別: 未分組</div>';
+        }
+        
         markerDiv.innerHTML = `
             <div class="marker-name" onclick="focusMarker('${marker.id}')">${marker.name}</div>
             <div class="marker-description">${marker.description}</div>
+            ${groupInfo}
         `;
         
         markersList.appendChild(markerDiv);
@@ -4748,11 +4788,18 @@ function showGroupDetailsModal(groupId, subgroupId = null) {
     
     // 設定標註點列表
     if (targetMarkers.length > 0) {
-        markersList.innerHTML = targetMarkers.map(marker => `
+        markersList.innerHTML = targetMarkers.map(marker => {
+            const markerGroup = groups.find(g => g.id === marker.groupId);
+            const markerSubgroup = markerGroup?.subgroups.find(sg => sg.id === marker.subgroupId);
+            
+            return `
             <div class="group-details-marker-item">
                 <div class="marker-info">
                     <div class="marker-name">${marker.name}</div>
                     <div class="marker-description">${marker.description || '無描述'}</div>
+                    <div class="marker-group-info">
+                        群組: ${markerGroup?.name || '未分組'}${markerSubgroup ? ` - ${markerSubgroup.name}` : ''}
+                    </div>
                     <div class="marker-location">位置: ${marker.lat.toFixed(6)}, ${marker.lng.toFixed(6)}</div>
                 </div>
                 <div class="marker-actions">
@@ -4760,7 +4807,8 @@ function showGroupDetailsModal(groupId, subgroupId = null) {
                     <button onclick="editMarker('${marker.id}')" class="btn-edit">編輯</button>
                 </div>
             </div>
-        `).join('');
+        `;
+        }).join('');
     } else {
         markersList.innerHTML = '<p class="no-markers">此群組目前沒有標註點</p>';
     }
@@ -4832,6 +4880,75 @@ function centerToGroupMarkers() {
     showNotification('已居中顯示群組標註點', 'success');
 }
 
+// 顯示全部詳情模態框
+function showAllDetailsModal() {
+    const modal = document.getElementById('allDetailsModal');
+    const totalGroupsCount = document.getElementById('totalGroupsCount');
+    const totalMarkersCount = document.getElementById('totalMarkersCount');
+    const allDetailsContent = document.getElementById('allDetailsContent');
+    
+    // 更新統計資訊
+    totalGroupsCount.textContent = `${groups.length} 個組別`;
+    totalMarkersCount.textContent = `${markers.length} 個標註點`;
+    
+    // 生成所有組別群組內容
+    let contentHTML = '';
+    
+    if (groups.length === 0) {
+        contentHTML = '<div style="text-align: center; color: #718096; padding: 40px;">尚未建立任何組別</div>';
+    } else {
+        groups.forEach(group => {
+            const groupMarkers = markers.filter(m => m.groupId === group.id);
+            const subgroups = group.subgroups || [];
+            
+            contentHTML += `
+                <div class="all-details-group">
+                    <div class="all-details-group-header">
+                        <div class="all-details-group-name">${group.name}</div>
+                        <div class="all-details-group-count">${groupMarkers.length} 個標註點</div>
+                    </div>
+            `;
+            
+            if (subgroups.length > 0) {
+                contentHTML += '<div class="all-details-subgroups">';
+                subgroups.forEach(subgroup => {
+                    const subgroupMarkers = markers.filter(m => m.groupId === group.id && m.subgroupId === subgroup.id);
+                    contentHTML += `
+                        <div class="all-details-subgroup">
+                            <div class="all-details-subgroup-name">${subgroup.name}</div>
+                            <div class="all-details-subgroup-count">${subgroupMarkers.length} 個標註點</div>
+                        </div>
+                    `;
+                });
+                contentHTML += '</div>';
+            } else {
+                // 如果沒有子群組，顯示直接屬於組別的標註點
+                const directMarkers = markers.filter(m => m.groupId === group.id && !m.subgroupId);
+                if (directMarkers.length > 0) {
+                    contentHTML += `
+                        <div class="all-details-subgroups">
+                            <div class="all-details-subgroup">
+                                <div class="all-details-subgroup-name">直接標註點</div>
+                                <div class="all-details-subgroup-count">${directMarkers.length} 個標註點</div>
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+            
+            contentHTML += '</div>';
+        });
+    }
+    
+    allDetailsContent.innerHTML = contentHTML;
+    modal.style.display = 'block';
+}
+
+// 關閉全部詳情模態框
+function closeAllDetailsModal() {
+    document.getElementById('allDetailsModal').style.display = 'none';
+}
+
 // 將函數暴露到全域範圍
 window.handleImportOption = handleImportOption;
 window.closeImportOptionsModal = closeImportOptionsModal;
@@ -4840,6 +4957,8 @@ window.closeGroupDetailsModal = closeGroupDetailsModal;
 window.showAllMarkersInGroup = showAllMarkersInGroup;
 window.hideAllMarkersInGroup = hideAllMarkersInGroup;
 window.centerToGroupMarkers = centerToGroupMarkers;
+window.showAllDetailsModal = showAllDetailsModal;
+window.closeAllDetailsModal = closeAllDetailsModal;
 
 // 初始化 - 在所有函數定義之後
 document.addEventListener('DOMContentLoaded', function() {

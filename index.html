@@ -34,6 +34,7 @@
             <div class="section markers-section">
                 <div class="section-header">
                     <h3>📍 標註點</h3>
+                    <button id="showAllDetailsBtn" class="details-btn" title="顯示所有組別及群組詳情">📋</button>
                 </div>
                 <div id="markersList" class="markers-list"></div>
             </div>
@@ -392,6 +393,25 @@
                     <div id="groupDetailsMarkersList" class="detail-markers-container">
                         <!-- 動態生成的標註點列表 -->
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 全部組別群組詳情浮動視窗 -->
+    <div id="allDetailsModal" class="modal">
+        <div class="modal-content all-details-content">
+            <span class="close">&times;</span>
+            <div class="all-details-header">
+                <h2>📋 所有組別及群組詳情</h2>
+                <div class="all-details-stats">
+                    <span id="totalGroupsCount">0 個組別</span>
+                    <span id="totalMarkersCount">0 個標註點</span>
+                </div>
+            </div>
+            <div class="all-details-body">
+                <div id="allDetailsContent" class="all-details-container">
+                    <!-- 動態生成的所有組別群組內容 -->
                 </div>
             </div>
         </div>
