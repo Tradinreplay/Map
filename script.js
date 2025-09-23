@@ -5051,10 +5051,14 @@ function showGroupDetailsModal(groupId, subgroupId = null) {
             const markerGroup = groups.find(g => g.id === marker.groupId);
             const markerSubgroup = markerGroup?.subgroups.find(sg => sg.id === marker.subgroupId);
             
+            // 檢查是否為當前追蹤目標，決定是否顯示位置圖標
+            const isTrackingTarget = trackingTarget && trackingTarget.id === marker.id;
+            const markerNameDisplay = isTrackingTarget ? `📍 ${marker.name}` : marker.name;
+            
             return `
             <div class="group-details-marker-item">
                 <div class="marker-info">
-                    <div class="marker-name">${marker.name}</div>
+                    <div class="marker-name">${markerNameDisplay}</div>
                     <div class="marker-description">${marker.description || '無描述'}</div>
                     <div class="marker-group-info">
                         群組: ${markerGroup?.name || '未分組'}${markerSubgroup ? ` - ${markerSubgroup.name}` : ''}
