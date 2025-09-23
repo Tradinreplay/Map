@@ -5269,4 +5269,172 @@ document.addEventListener('DOMContentLoaded', function() {
         
 
     }, 100);
+    
+    // 初始化手機狀態列功能
+    initMobileStatusBar();
 });
+
+// 手機狀態列功能
+function initMobileStatusBar() {
+    const statusBar = document.getElementById('mobileStatusBar');
+    const handle = document.getElementById('statusBarHandle');
+    const markerCountElement = document.getElementById('markerCount');
+    
+    if (!statusBar || !handle) return;
+    
+    let isDragging = false;
+    let startY = 0;
+    let startHeight = 0;
+    let currentHeight = 80; // 預設高度
+    
+    // 更新標記數量
+    function updateMarkerCount() {
+        const count = markers.length;
+        if (markerCountElement) {
+            markerCountElement.textContent = `${count} 個標記`;
+        }
+    }
+    
+    // 設置狀態列高度
+    function setStatusBarHeight(height) {
+        const minHeight = 50;
+        const maxHeight = 200;
+        
+        // 限制高度範圍
+        height = Math.max(minHeight, Math.min(maxHeight, height));
+        currentHeight = height;
+        
+        statusBar.style.height = `${height}px`;
+        
+        // 根據高度添加相應的class
+        statusBar.classList.remove('collapsed', 'expanded');
+        if (height <= 60) {
+            statusBar.classList.add('collapsed');
+        } else if (height >= 120) {
+            statusBar.classList.add('expanded');
+        }
+        
+        // 更新容器的padding-bottom
+        const container = document.querySelector('.container');
+        if (container) {
+            container.style.paddingBottom = `${height}px`;
+        }
+        
+        // 保存高度設置
+        localStorage.setItem('mobileStatusBarHeight', height.toString());
+    }
+    
+    // 載入保存的高度設置
+    function loadStatusBarHeight() {
+        const savedHeight = localStorage.getItem('mobileStatusBarHeight');
+        if (savedHeight) {
+            setStatusBarHeight(parseInt(savedHeight));
+        }
+    }
+    
+    // 處理拖拽開始
+    function handleDragStart(e) {
+        isDragging = true;
+        startY = e.type === 'mousedown' ? e.clientY : e.touches[0].clientY;
+        startHeight = currentHeight;
+        
+        statusBar.classList.add('dragging');
+        document.body.style.userSelect = 'none';
+        
+        // 阻止預設行為
+        e.preventDefault();
+    }
+    
+    // 處理拖拽移動
+    function handleDragMove(e) {
+        if (!isDragging) return;
+        
+        const currentY = e.type === 'mousemove' ? e.clientY : e.touches[0].clientY;
+        const deltaY = startY - currentY; // 向上拖拽為正值
+        const newHeight = startHeight + deltaY;
+        
+        setStatusBarHeight(newHeight);
+        
+        e.preventDefault();
+    }
+    
+    // 處理拖拽結束
+    function handleDragEnd(e) {
+        if (!isDragging) return;
+        
+        isDragging = false;
+        statusBar.classList.remove('dragging');
+        document.body.style.userSelect = '';
+        
+        e.preventDefault();
+    }
+    
+    // 添加滑鼠事件監聽器
+    handle.addEventListener('mousedown', handleDragStart);
+    document.addEventListener('mousemove', handleDragMove);
+    document.addEventListener('mouseup', handleDragEnd);
+    
+    // 添加觸控事件監聽器
+    handle.addEventListener('touchstart', handleDragStart, { passive: false });
+    document.addEventListener('touchmove', handleDragMove, { passive: false });
+    document.addEventListener('touchend', handleDragEnd, { passive: false });
+    
+    // 快速操作按鈕事件
+    const quickAddBtn = document.getElementById('quickAddBtn');
+    const quickCenterBtn = document.getElementById('quickCenterBtn');
+    const quickListBtn = document.getElementById('quickListBtn');
+    
+    if (quickAddBtn) {
+        quickAddBtn.addEventListener('click', () => {
+            toggleAddMarkerMode();
+        });
+    }
+    
+    if (quickCenterBtn) {
+        quickCenterBtn.addEventListener('click', () => {
+            centerMapToCurrentLocation();
+        });
+    }
+    
+    if (quickListBtn) {
+        quickListBtn.addEventListener('click', () => {
+            showAllDetailsModal();
+        });
+    }
+    
+    // 雙擊手柄快速切換大小
+    let lastTapTime = 0;
+    handle.addEventListener('click', (e) => {
+        const currentTime = new Date().getTime();
+        const tapLength = currentTime - lastTapTime;
+        
+        if (tapLength < 300 && tapLength > 0) {
+            // 雙擊事件
+            if (currentHeight <= 60) {
+                setStatusBarHeight(120); // 展開
+            } else {
+                setStatusBarHeight(50);  // 收縮
+            }
+        }
+        
+        lastTapTime = currentTime;
+    });
+    
+    // 初始化
+    loadStatusBarHeight();
+    updateMarkerCount();
+    
+    // 監聽標記變化以更新計數
+    const originalAddMarkerToMap = window.addMarkerToMap;
+    const originalDeleteCurrentMarker = window.deleteCurrentMarker;
+    
+    if (originalAddMarkerToMap) {
+        window.addMarkerToMap = function(marker) {
+            originalAddMarkerToMap(marker);
+            updateMarkerCount();
+        };
+    }
+    
+    // 定期更新標記數量（作為備用方案）
+    setInterval(updateMarkerCount, 2000);
+}

@@ -484,6 +484,24 @@
                 <button id="showDuplicatesBtn" class="detail-btn">查看重複詳情</button>
             </div>
         </div>
+        
+        <!-- 手機豎屏下方狀態列 -->
+        <div class="mobile-status-bar" id="mobileStatusBar">
+            <div class="status-bar-handle" id="statusBarHandle">
+                <div class="handle-indicator"></div>
+            </div>
+            <div class="status-bar-content">
+                <div class="status-info">
+                    <span class="status-text">📍 地圖標註系統</span>
+                    <span class="marker-count" id="markerCount">0 個標記</span>
+                </div>
+                <div class="quick-status-actions">
+                    <button class="status-btn" id="quickAddBtn" title="快速添加標記">➕</button>
+                    <button class="status-btn" id="quickCenterBtn" title="回到中心">🎯</button>
+                    <button class="status-btn" id="quickListBtn" title="標記列表">📋</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
