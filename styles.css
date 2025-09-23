@@ -1047,6 +1047,69 @@ body {
     animation: modalSlideIn 0.3s ease;
 }
 
+/* 行動設備優化 - 縮小模態框 */
+@media (max-width: 768px) {
+    .modal-content {
+        width: clamp(280px, 85vw, 350px);
+        margin: 2vh auto;
+        padding: 12px;
+        max-height: 85vh;
+        font-size: 14px;
+    }
+    
+    .modal-content h2 {
+        font-size: 18px;
+        margin-bottom: 12px;
+    }
+    
+    .modal-content h3 {
+        font-size: 16px;
+        margin-bottom: 8px;
+    }
+    
+    .setup-section {
+        margin-bottom: 16px;
+    }
+    
+    .setup-section p {
+        font-size: 13px;
+        margin-bottom: 8px;
+        line-height: 1.4;
+    }
+    
+    .setup-grid {
+        gap: 8px;
+    }
+    
+    .setup-item label {
+        font-size: 13px;
+    }
+    
+    .setup-item input {
+        padding: 8px;
+        font-size: 14px;
+    }
+    
+    .checkbox-label {
+        font-size: 14px;
+        margin: 8px 0;
+    }
+    
+    .permission-note small {
+        font-size: 12px;
+    }
+    
+    .setup-buttons {
+        margin-top: 16px;
+        gap: 8px;
+    }
+    
+    .primary-btn, .secondary-btn {
+        padding: 10px 16px;
+        font-size: 14px;
+    }
+}
+
 @keyframes modalSlideIn {
     from {
         opacity: 0;
@@ -3819,6 +3882,30 @@ input:checked + .slider:before {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     position: relative;
     overflow: hidden;
+}
+
+/* 快速添加按鈕圖示 */
+#quickAddBtn::after {
+    content: '➕';
+    font-size: 16px;
+    z-index: 2;
+    position: relative;
+}
+
+/* 快速定位按鈕圖示 */
+#quickCenterBtn::after {
+    content: '🎯';
+    font-size: 16px;
+    z-index: 2;
+    position: relative;
+}
+
+/* 快速列表按鈕圖示 */
+#quickListBtn::after {
+    content: '📋';
+    font-size: 16px;
+    z-index: 2;
+    position: relative;
 }
 
 .status-btn::before {
