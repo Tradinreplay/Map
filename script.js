@@ -3186,6 +3186,9 @@ function showLocationAlert(marker, distance) {
     
     const message = `${groupInfo}您已接近標記點 "${marker.name}"，距離約 ${Math.round(distance)} 公尺`;
     
+    // 高亮顯示相關的群組按鈕
+    highlightGroupButton(marker.groupId, marker.subgroupId);
+    
     // 嘗試多種通知方式以確保手機瀏覽器能收到通知
     
     // 1. 增強的 Service Worker 通知 (最適合背景運作)
@@ -3637,6 +3640,132 @@ function testGroupTrackingAlert() {
 
 // 將測試函數暴露到全域
 window.testGroupTrackingAlert = testGroupTrackingAlert;
+
+// 群組按鈕提示管理
+let groupAlertTimers = new Map(); // 記錄群組提示的定時器
+
+// 高亮群組按鈕
+function highlightGroupButton(groupId, subgroupId = null) {
+    // 清除之前的提示
+    clearGroupButtonHighlight();
+    
+    if (!groupId) return;
+    
+    // 找到對應的群組元素
+    const groupElement = document.querySelector(`[data-group-id="${groupId}"]`);
+    if (groupElement) {
+        // 添加群組高亮效果
+        groupElement.classList.add('tracking-alert');
+        
+        // 如果有子群組，也高亮子群組
+        if (subgroupId) {
+            const subgroupElement = groupElement.querySelector(`[data-subgroup-id="${subgroupId}"]`);
+            if (subgroupElement) {
+                subgroupElement.classList.add('tracking-alert');
+            }
+        }
+        
+        // 設置自動清除定時器（10秒後清除）
+        const timerId = setTimeout(() => {
+            clearGroupButtonHighlight();
+        }, 10000);
+        
+        groupAlertTimers.set(groupId + (subgroupId || ''), timerId);
+        
+        // 滾動到該群組按鈕位置
+        groupElement.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'center' 
+        });
+    }
+}
+
+// 清除群組按鈕高亮
+function clearGroupButtonHighlight() {
+    // 清除所有高亮效果
+    const alertElements = document.querySelectorAll('.tracking-alert');
+    alertElements.forEach(element => {
+        element.classList.remove('tracking-alert');
+    });
+    
+    // 清除所有定時器
+    groupAlertTimers.forEach(timerId => {
+        clearTimeout(timerId);
+    });
+    groupAlertTimers.clear();
+}
+
+// 手動清除特定群組的高亮
+function clearSpecificGroupHighlight(groupId, subgroupId = null) {
+    const key = groupId + (subgroupId || '');
+    
+    // 清除定時器
+    if (groupAlertTimers.has(key)) {
+        clearTimeout(groupAlertTimers.get(key));
+        groupAlertTimers.delete(key);
+    }
+    
+    // 清除高亮效果
+    const groupElement = document.querySelector(`[data-group-id="${groupId}"]`);
+    if (groupElement) {
+        groupElement.classList.remove('tracking-alert');
+        
+        if (subgroupId) {
+            const subgroupElement = groupElement.querySelector(`[data-subgroup-id="${subgroupId}"]`);
+            if (subgroupElement) {
+                subgroupElement.classList.remove('tracking-alert');
+            }
+        }
+    }
+}
+
+// 暴露函數到全域
+window.highlightGroupButton = highlightGroupButton;
+window.clearGroupButtonHighlight = clearGroupButtonHighlight;
+window.clearSpecificGroupHighlight = clearSpecificGroupHighlight;
+
+// 測試群組按鈕提示功能
+function testGroupButtonAlert() {
+    console.log('開始測試群組按鈕提示功能...');
+    
+    // 確保有群組存在
+    if (groups.length === 0) {
+        console.log('沒有群組，創建測試群組...');
+        const testGroup = new Group('test-group-alert', '測試群組提示');
+        const testSubgroup = new Subgroup('test-subgroup-alert', '測試子群組提示', 'test-group-alert');
+        testGroup.addSubgroup(testSubgroup);
+        groups.push(testGroup);
+        updateGroupsList();
+    }
+    
+    const testGroup = groups[0];
+    console.log(`使用群組: ${testGroup.name} (ID: ${testGroup.id})`);
+    
+    // 測試群組按鈕高亮
+    setTimeout(() => {
+        console.log('測試群組按鈕高亮...');
+        highlightGroupButton(testGroup.id);
+    }, 1000);
+    
+    // 測試子群組按鈕高亮（如果有子群組）
+    if (testGroup.subgroups.length > 0) {
+        setTimeout(() => {
+            console.log('測試子群組按鈕高亮...');
+            highlightGroupButton(testGroup.id, testGroup.subgroups[0].id);
+        }, 6000);
+    }
+    
+    // 測試清除所有高亮
+    setTimeout(() => {
+        console.log('測試清除所有高亮...');
+        clearGroupButtonHighlight();
+    }, 11000);
+    
+    console.log('群組按鈕提示測試已啟動，請觀察群組按鈕的變化');
+}
+
+// 暴露測試函數到全域
+window.testGroupButtonAlert = testGroupButtonAlert;
 
 // 添加測試popup功能
 function testPopupFunction() {

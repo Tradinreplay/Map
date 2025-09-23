@@ -2155,6 +2155,125 @@ form input:focus, form textarea:focus, form select:focus {
     box-shadow: 0 4px 20px rgba(245, 101, 101, 0.4);
 }
 
+/* 群組追蹤提示樣式 */
+.group-item.tracking-alert {
+    animation: groupTrackingPulse 2s ease-in-out infinite;
+    border: 2px solid #ff6b6b;
+    border-radius: 12px;
+    background: linear-gradient(135deg, rgba(255, 107, 107, 0.1) 0%, rgba(255, 107, 107, 0.05) 100%);
+    box-shadow: 0 0 20px rgba(255, 107, 107, 0.3);
+    position: relative;
+    overflow: hidden;
+}
+
+.group-item.tracking-alert::before {
+    content: '🔔';
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    font-size: 16px;
+    animation: alertBounce 1s ease-in-out infinite;
+    z-index: 10;
+}
+
+.group-item.tracking-alert .group-name {
+    color: #ff6b6b;
+    font-weight: bold;
+    text-shadow: 0 1px 3px rgba(255, 107, 107, 0.3);
+}
+
+.subgroup-item.tracking-alert {
+    animation: subgroupTrackingPulse 2s ease-in-out infinite;
+    border: 2px solid #4ecdc4;
+    border-radius: 8px;
+    background: linear-gradient(135deg, rgba(78, 205, 196, 0.1) 0%, rgba(78, 205, 196, 0.05) 100%);
+    box-shadow: 0 0 15px rgba(78, 205, 196, 0.3);
+    position: relative;
+    margin: 4px 0;
+}
+
+.subgroup-item.tracking-alert::before {
+    content: '📍';
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    font-size: 14px;
+    animation: alertBounce 1s ease-in-out infinite;
+    z-index: 10;
+}
+
+.subgroup-item.tracking-alert .subgroup-name {
+    color: #4ecdc4;
+    font-weight: bold;
+    text-shadow: 0 1px 3px rgba(78, 205, 196, 0.3);
+}
+
+/* 追蹤提示動畫 */
+@keyframes groupTrackingPulse {
+    0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 0 20px rgba(255, 107, 107, 0.3);
+    }
+    50% {
+        transform: scale(1.02);
+        box-shadow: 0 0 30px rgba(255, 107, 107, 0.5);
+    }
+}
+
+@keyframes subgroupTrackingPulse {
+    0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 0 15px rgba(78, 205, 196, 0.3);
+    }
+    50% {
+        transform: scale(1.02);
+        box-shadow: 0 0 25px rgba(78, 205, 196, 0.5);
+    }
+}
+
+@keyframes alertBounce {
+    0%, 100% {
+        transform: translateY(0) scale(1);
+    }
+    50% {
+        transform: translateY(-3px) scale(1.1);
+    }
+}
+
+/* 追蹤提示漸變背景效果 */
+.group-item.tracking-alert::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 107, 107, 0.2), transparent);
+    animation: alertSweep 3s ease-in-out infinite;
+    z-index: 1;
+}
+
+.subgroup-item.tracking-alert::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(78, 205, 196, 0.2), transparent);
+    animation: alertSweep 3s ease-in-out infinite;
+    z-index: 1;
+}
+
+@keyframes alertSweep {
+    0% {
+        left: -100%;
+    }
+    100% {
+        left: 100%;
+    }
+}
+
 /* 輸入框樣式 */
 .compact-input {
     width: 100%;
