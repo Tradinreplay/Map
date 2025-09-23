@@ -490,6 +490,12 @@ function initEventListeners() {
     document.getElementById('trackingBtn').addEventListener('click', toggleTracking);
     document.getElementById('centerMapBtn').addEventListener('click', centerMapToCurrentLocation);
     
+    // 手機調整按鍵
+    const resizeSidebarBtn = document.getElementById('resizeSidebarBtn');
+    if (resizeSidebarBtn) {
+        resizeSidebarBtn.addEventListener('click', toggleSidebarSize);
+    }
+    
     // 提醒設定
     document.getElementById('enableNotifications').addEventListener('change', function(e) {
         if (e.target.checked) {
@@ -869,6 +875,141 @@ function compressImage(file, maxSizeKB = 25) {
     });
 }
 
+// 視頻壓縮函數
+function compressVideo(file, maxSizeMB = 10) {
+    return new Promise((resolve, reject) => {
+        const video = document.createElement('video');
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        video.onloadedmetadata = function() {
+            // 計算壓縮後的尺寸
+            let { videoWidth: width, videoHeight: height } = video;
+            const maxDimension = 720; // 最大尺寸
+            
+            if (width > height && width > maxDimension) {
+                height = (height * maxDimension) / width;
+                width = maxDimension;
+            } else if (height > maxDimension) {
+                width = (width * maxDimension) / height;
+                height = maxDimension;
+            }
+            
+            canvas.width = width;
+            canvas.height = height;
+            
+            // 設置視頻播放到第一幀
+            video.currentTime = 0;
+            
+            video.onseeked = function() {
+                // 繪製第一幀到canvas作為縮略圖
+                ctx.drawImage(video, 0, 0, width, height);
+                
+                // 使用MediaRecorder API進行視頻壓縮
+                if (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported('video/webm;codecs=vp8')) {
+                    compressVideoWithMediaRecorder(file, maxSizeMB, width, height)
+                        .then(resolve)
+                        .catch(() => {
+                            // 如果MediaRecorder失敗，返回原始文件但調整大小限制
+                            if (file.size <= maxSizeMB * 1024 * 1024) {
+                                resolve(file);
+                            } else {
+                                showNotification('視頻檔案過大，無法壓縮', 'error');
+                                reject(new Error('Video file too large'));
+                            }
+                        });
+                } else {
+                    // 瀏覽器不支持MediaRecorder，檢查文件大小
+                    if (file.size <= maxSizeMB * 1024 * 1024) {
+                        resolve(file);
+                    } else {
+                        showNotification('瀏覽器不支持視頻壓縮，請選擇較小的檔案', 'error');
+                        reject(new Error('Browser does not support video compression'));
+                    }
+                }
+            };
+        };
+        
+        video.onerror = function() {
+            reject(new Error('Failed to load video'));
+        };
+        
+        video.src = URL.createObjectURL(file);
+        video.load();
+    });
+}
+
+// 使用MediaRecorder進行視頻壓縮
+function compressVideoWithMediaRecorder(file, maxSizeMB, targetWidth, targetHeight) {
+    return new Promise((resolve, reject) => {
+        const video = document.createElement('video');
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        canvas.width = targetWidth;
+        canvas.height = targetHeight;
+        
+        video.onloadedmetadata = function() {
+            const stream = canvas.captureStream(15); // 15 FPS
+            const mediaRecorder = new MediaRecorder(stream, {
+                mimeType: 'video/webm;codecs=vp8',
+                videoBitsPerSecond: Math.min(1000000, (maxSizeMB * 1024 * 1024 * 8) / video.duration) // 動態比特率
+            });
+            
+            const chunks = [];
+            
+            mediaRecorder.ondataavailable = function(event) {
+                if (event.data.size > 0) {
+                    chunks.push(event.data);
+                }
+            };
+            
+            mediaRecorder.onstop = function() {
+                const compressedBlob = new Blob(chunks, { type: 'video/webm' });
+                
+                if (compressedBlob.size <= maxSizeMB * 1024 * 1024) {
+                    resolve(compressedBlob);
+                } else {
+                    // 如果壓縮後仍然太大，返回原始文件
+                    resolve(file);
+                }
+            };
+            
+            mediaRecorder.onerror = function() {
+                reject(new Error('MediaRecorder error'));
+            };
+            
+            // 開始錄製
+            mediaRecorder.start();
+            
+            // 播放視頻並繪製到canvas
+            video.play();
+            
+            const drawFrame = () => {
+                if (!video.paused && !video.ended) {
+                    ctx.drawImage(video, 0, 0, targetWidth, targetHeight);
+                    requestAnimationFrame(drawFrame);
+                } else {
+                    mediaRecorder.stop();
+                }
+            };
+            
+            video.onplay = drawFrame;
+            
+            // 設置最大錄製時間（防止無限錄製）
+            setTimeout(() => {
+                if (mediaRecorder.state === 'recording') {
+                    mediaRecorder.stop();
+                }
+            }, Math.min(video.duration * 1000 + 1000, 30000)); // 最多30秒
+        };
+        
+        video.src = URL.createObjectURL(file);
+        video.muted = true;
+        video.load();
+    });
+}
+
 function handleImageUpload(event) {
     const files = Array.from(event.target.files);
     if (!files.length) return;
@@ -1147,8 +1288,32 @@ async function startVideoRecording() {
         
         mediaRecorder.onstop = function() {
             const blob = new Blob(recordedChunks, { type: 'video/webm' });
-            currentVideoBlob = blob;
-            displayVideoPreview(blob);
+            
+            // 顯示壓縮進度
+            showNotification('正在壓縮錄製的影片，請稍候...', 'info');
+            
+            // 壓縮錄製的視頻
+            compressVideo(blob, 10) // 壓縮到最大10MB
+                .then(compressedBlob => {
+                    currentVideoBlob = compressedBlob;
+                    displayVideoPreview(compressedBlob);
+                    
+                    const originalSizeMB = (blob.size / (1024 * 1024)).toFixed(2);
+                    const compressedSizeMB = (compressedBlob.size / (1024 * 1024)).toFixed(2);
+                    
+                    if (compressedBlob !== blob) {
+                        showNotification(`錄影壓縮完成！原始大小: ${originalSizeMB}MB，壓縮後: ${compressedSizeMB}MB`, 'success');
+                    } else {
+                        showNotification(`錄影完成！檔案大小: ${compressedSizeMB}MB`, 'success');
+                    }
+                })
+                .catch(error => {
+                    console.error('錄影壓縮失敗:', error);
+                    // 如果壓縮失敗，使用原始錄影
+                    currentVideoBlob = blob;
+                    displayVideoPreview(blob);
+                    showNotification('錄影完成，但壓縮失敗', 'warning');
+                });
             
             // 停止所有軌道
             stream.getTracks().forEach(track => track.stop());
@@ -1224,12 +1389,33 @@ function handleVideoUpload(event) {
     const file = event.target.files[0];
     if (file) {
         if (file.type.startsWith('video/')) {
-            if (file.size > 50 * 1024 * 1024) { // 50MB 限制
-                showNotification('影片檔案過大，請選擇小於50MB的檔案', 'error');
+            if (file.size > 100 * 1024 * 1024) { // 100MB 限制（壓縮前）
+                showNotification('影片檔案過大，請選擇小於100MB的檔案', 'error');
                 return;
             }
-            currentVideoBlob = file;
-            displayVideoPreview(file);
+            
+            // 顯示壓縮進度
+            showNotification('正在壓縮影片，請稍候...', 'info');
+            
+            // 壓縮視頻
+            compressVideo(file, 10) // 壓縮到最大10MB
+                .then(compressedFile => {
+                    currentVideoBlob = compressedFile;
+                    displayVideoPreview(compressedFile);
+                    
+                    const originalSizeMB = (file.size / (1024 * 1024)).toFixed(2);
+                    const compressedSizeMB = (compressedFile.size / (1024 * 1024)).toFixed(2);
+                    
+                    if (compressedFile !== file) {
+                        showNotification(`影片壓縮完成！原始大小: ${originalSizeMB}MB，壓縮後: ${compressedSizeMB}MB`, 'success');
+                    } else {
+                        showNotification(`影片上傳完成！檔案大小: ${compressedSizeMB}MB`, 'success');
+                    }
+                })
+                .catch(error => {
+                    console.error('視頻壓縮失敗:', error);
+                    showNotification('影片壓縮失敗，請嘗試選擇較小的檔案', 'error');
+                });
         } else {
             showNotification('請選擇有效的影片檔案', 'error');
         }
@@ -1649,6 +1835,75 @@ function handleCenterClick() {
 window.handleFullscreenClick = handleFullscreenClick;
 window.handleLocationClick = handleLocationClick;
 window.handleCenterClick = handleCenterClick;
+
+// 手機豎屏調整功能框大小
+let sidebarSizeState = 'normal'; // 'normal', 'small', 'large'
+
+function toggleSidebarSize() {
+    const sidebar = document.querySelector('.sidebar');
+    const mapContainer = document.querySelector('.map-container');
+    
+    if (!sidebar || !mapContainer) return;
+    
+    // 循環切換三種大小狀態
+    switch (sidebarSizeState) {
+        case 'normal':
+            sidebarSizeState = 'small';
+            sidebar.style.height = '25vh';
+            mapContainer.style.height = '70vh';
+            showNotification('功能框已縮小', 'info');
+            break;
+        case 'small':
+            sidebarSizeState = 'large';
+            sidebar.style.height = '70vh';
+            mapContainer.style.height = '25vh';
+            showNotification('功能框已放大', 'info');
+            break;
+        case 'large':
+            sidebarSizeState = 'normal';
+            sidebar.style.height = '40vh';
+            mapContainer.style.height = '55vh';
+            showNotification('功能框已恢復正常', 'info');
+            break;
+    }
+    
+    // 觸發地圖重新調整大小
+    setTimeout(() => {
+        if (map) {
+            map.invalidateSize();
+        }
+    }, 300);
+    
+    // 保存設置
+    localStorage.setItem('sidebarSizeState', sidebarSizeState);
+}
+
+// 載入保存的側邊欄大小設置
+function loadSidebarSizeState() {
+    const savedState = localStorage.getItem('sidebarSizeState');
+    if (savedState && window.innerWidth <= 768) {
+        sidebarSizeState = savedState;
+        const sidebar = document.querySelector('.sidebar');
+        const mapContainer = document.querySelector('.map-container');
+        
+        if (sidebar && mapContainer) {
+            switch (sidebarSizeState) {
+                case 'small':
+                    sidebar.style.height = '25vh';
+                    mapContainer.style.height = '70vh';
+                    break;
+                case 'large':
+                    sidebar.style.height = '70vh';
+                    mapContainer.style.height = '25vh';
+                    break;
+                default:
+                    sidebar.style.height = '40vh';
+                    mapContainer.style.height = '55vh';
+                    break;
+            }
+        }
+    }
+}
 
 // 行動裝置檢測函數
 function isMobileDevice() {
@@ -5707,6 +5962,14 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         } catch (error) {
             console.error('Error loading settings:', error);
+        }
+        
+        // 載入側邊欄大小設置
+        try {
+            console.log('Loading sidebar size state...');
+            loadSidebarSizeState();
+        } catch (error) {
+            console.error('Error loading sidebar size state:', error);
         }
         
 

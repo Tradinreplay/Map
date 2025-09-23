@@ -77,6 +77,18 @@ body {
     .resize-handle:active {
         background: rgba(99, 102, 241, 0.6);
     }
+    
+    /* 手機專用調整按鍵 */
+    .mobile-only {
+        display: block !important;
+    }
+}
+
+/* 桌面端隱藏手機專用按鍵 */
+@media (min-width: 769px) {
+    .mobile-only {
+        display: none !important;
+    }
 }
 
 /* 側邊欄標題區域 */
