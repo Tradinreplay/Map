@@ -3853,7 +3853,7 @@ input:checked + .slider:before {
 /* 手機豎屏響應式設計 */
 @media (max-width: 768px) and (orientation: portrait) {
     .mobile-status-bar {
-        display: block;
+        display: block !important;
     }
     
     .container {
@@ -3866,6 +3866,20 @@ input:checked + .slider:before {
     
     .sidebar {
         max-height: calc(45vh - 80px);
+    }
+}
+
+/* 更寬泛的手機豎屏條件 - 確保在各種手機設備上都能顯示 */
+@media (max-width: 900px) and (orientation: portrait) {
+    .mobile-status-bar {
+        display: block !important;
+    }
+}
+
+/* 針對小屏幕設備的額外保障 */
+@media (max-height: 1000px) and (max-width: 600px) {
+    .mobile-status-bar {
+        display: block !important;
     }
 }
 
