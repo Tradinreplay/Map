@@ -1280,8 +1280,64 @@ async function autoSaveRecordingToMarker(videoBlob) {
             return;
         }
         
-        // 顯示標註點選擇對話框
-        showMarkerSelectionModal(videoBlob);
+        // 找到最近的標註點
+        let nearestMarker = null;
+        let minDistance = Infinity;
+        
+        if (currentPosition) {
+            // 如果有當前位置，找到最近的標註點
+            markers.forEach(marker => {
+                const distance = calculateDistance(
+                    currentPosition.lat, 
+                    currentPosition.lng, 
+                    marker.lat, 
+                    marker.lng
+                );
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    nearestMarker = marker;
+                }
+            });
+        } else {
+            // 如果沒有當前位置，使用第一個標註點
+            nearestMarker = markers[0];
+        }
+        
+        if (nearestMarker) {
+            // 直接保存到最近的標註點
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const videoBase64 = e.target.result;
+                
+                // 初始化 videos 陣列（如果不存在）
+                if (!nearestMarker.videos) {
+                    nearestMarker.videos = [];
+                }
+                
+                // 添加錄影到標註點
+                nearestMarker.videos.push(videoBase64);
+                
+                // 更新地圖上的標記彈出窗口
+                if (nearestMarker.leafletMarker) {
+                    updateMarkerPopup(nearestMarker);
+                }
+                
+                // 更新UI
+                updateMarkersList();
+                updateGroupsList();
+                
+                // 保存數據
+                saveData();
+                
+                const distanceText = currentPosition ? 
+                    ` (距離: ${minDistance.toFixed(0)}公尺)` : '';
+                showNotification(`錄影已自動保存到最近的標註點: ${nearestMarker.name}${distanceText}`, 'success');
+            };
+            
+            reader.readAsDataURL(videoBlob);
+        } else {
+            showNotification('找不到可用的標註點', 'error');
+        }
         
     } catch (error) {
         console.error('自動儲存錄影失敗:', error);
@@ -2563,9 +2619,12 @@ function makeDraggable(element) {
         const elementWidth = element.offsetWidth;
         const elementHeight = element.offsetHeight;
         
-        // 限制在視窗範圍內
-        const constrainedX = Math.max(0, Math.min(newX, windowWidth - elementWidth));
-        const constrainedY = Math.max(0, Math.min(newY, windowHeight - elementHeight));
+        // 設置邊界邊距，確保元素不會完全消失
+        const margin = 10;
+        
+        // 限制在視窗範圍內，保留邊距
+        const constrainedX = Math.max(margin - elementWidth + 50, Math.min(newX, windowWidth - 50));
+        const constrainedY = Math.max(margin, Math.min(newY, windowHeight - elementHeight - margin));
         
         // 應用新位置
         element.style.left = constrainedX + 'px';
