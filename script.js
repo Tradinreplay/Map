@@ -74,7 +74,7 @@ class Subgroup {
 }
 
 class Marker {
-    constructor(id, name, description, lat, lng, groupId, subgroupId = null, color = 'red', icon = '📍', imageData = null, videoData = null) {
+    constructor(id, name, description, lat, lng, groupId, subgroupId = null, color = 'red', icon = '📍', imageData = null) {
         this.id = id;
         this.name = name;
         this.description = description;
@@ -85,7 +85,6 @@ class Marker {
         this.color = color;
         this.icon = icon;
         this.imageData = imageData; // base64編碼的圖片數據
-        this.videoData = videoData; // base64編碼的視頻數據
         this.leafletMarker = null;
     }
 }
@@ -490,12 +489,6 @@ function initEventListeners() {
     document.getElementById('trackingBtn').addEventListener('click', toggleTracking);
     document.getElementById('centerMapBtn').addEventListener('click', centerMapToCurrentLocation);
     
-    // 手機調整按鍵
-    const resizeSidebarBtn = document.getElementById('resizeSidebarBtn');
-    if (resizeSidebarBtn) {
-        resizeSidebarBtn.addEventListener('click', toggleSidebarSize);
-    }
-    
     // 提醒設定
     document.getElementById('enableNotifications').addEventListener('change', function(e) {
         if (e.target.checked) {
@@ -600,13 +593,8 @@ function initEventListeners() {
         document.getElementById('cameraInput').click();
     });
     
-    document.getElementById('recordVideoBtn').addEventListener('click', function() {
-        startVideoRecording();
-    });
-    
     document.getElementById('markerImages').addEventListener('change', handleImageUpload);
     document.getElementById('cameraInput').addEventListener('change', handleImageUpload);
-    document.getElementById('videoInput').addEventListener('change', handleVideoUpload);
     
     // 初始設定相關事件
     document.getElementById('startUsingBtn').addEventListener('click', handleInitialSetup);
@@ -875,141 +863,6 @@ function compressImage(file, maxSizeKB = 25) {
     });
 }
 
-// 視頻壓縮函數
-function compressVideo(file, maxSizeMB = 10) {
-    return new Promise((resolve, reject) => {
-        const video = document.createElement('video');
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        
-        video.onloadedmetadata = function() {
-            // 計算壓縮後的尺寸
-            let { videoWidth: width, videoHeight: height } = video;
-            const maxDimension = 720; // 最大尺寸
-            
-            if (width > height && width > maxDimension) {
-                height = (height * maxDimension) / width;
-                width = maxDimension;
-            } else if (height > maxDimension) {
-                width = (width * maxDimension) / height;
-                height = maxDimension;
-            }
-            
-            canvas.width = width;
-            canvas.height = height;
-            
-            // 設置視頻播放到第一幀
-            video.currentTime = 0;
-            
-            video.onseeked = function() {
-                // 繪製第一幀到canvas作為縮略圖
-                ctx.drawImage(video, 0, 0, width, height);
-                
-                // 使用MediaRecorder API進行視頻壓縮
-                if (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported('video/webm;codecs=vp8')) {
-                    compressVideoWithMediaRecorder(file, maxSizeMB, width, height)
-                        .then(resolve)
-                        .catch(() => {
-                            // 如果MediaRecorder失敗，返回原始文件但調整大小限制
-                            if (file.size <= maxSizeMB * 1024 * 1024) {
-                                resolve(file);
-                            } else {
-                                showNotification('視頻檔案過大，無法壓縮', 'error');
-                                reject(new Error('Video file too large'));
-                            }
-                        });
-                } else {
-                    // 瀏覽器不支持MediaRecorder，檢查文件大小
-                    if (file.size <= maxSizeMB * 1024 * 1024) {
-                        resolve(file);
-                    } else {
-                        showNotification('瀏覽器不支持視頻壓縮，請選擇較小的檔案', 'error');
-                        reject(new Error('Browser does not support video compression'));
-                    }
-                }
-            };
-        };
-        
-        video.onerror = function() {
-            reject(new Error('Failed to load video'));
-        };
-        
-        video.src = URL.createObjectURL(file);
-        video.load();
-    });
-}
-
-// 使用MediaRecorder進行視頻壓縮
-function compressVideoWithMediaRecorder(file, maxSizeMB, targetWidth, targetHeight) {
-    return new Promise((resolve, reject) => {
-        const video = document.createElement('video');
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        
-        canvas.width = targetWidth;
-        canvas.height = targetHeight;
-        
-        video.onloadedmetadata = function() {
-            const stream = canvas.captureStream(15); // 15 FPS
-            const mediaRecorder = new MediaRecorder(stream, {
-                mimeType: 'video/webm;codecs=vp8',
-                videoBitsPerSecond: Math.min(1000000, (maxSizeMB * 1024 * 1024 * 8) / video.duration) // 動態比特率
-            });
-            
-            const chunks = [];
-            
-            mediaRecorder.ondataavailable = function(event) {
-                if (event.data.size > 0) {
-                    chunks.push(event.data);
-                }
-            };
-            
-            mediaRecorder.onstop = function() {
-                const compressedBlob = new Blob(chunks, { type: 'video/webm' });
-                
-                if (compressedBlob.size <= maxSizeMB * 1024 * 1024) {
-                    resolve(compressedBlob);
-                } else {
-                    // 如果壓縮後仍然太大，返回原始文件
-                    resolve(file);
-                }
-            };
-            
-            mediaRecorder.onerror = function() {
-                reject(new Error('MediaRecorder error'));
-            };
-            
-            // 開始錄製
-            mediaRecorder.start();
-            
-            // 播放視頻並繪製到canvas
-            video.play();
-            
-            const drawFrame = () => {
-                if (!video.paused && !video.ended) {
-                    ctx.drawImage(video, 0, 0, targetWidth, targetHeight);
-                    requestAnimationFrame(drawFrame);
-                } else {
-                    mediaRecorder.stop();
-                }
-            };
-            
-            video.onplay = drawFrame;
-            
-            // 設置最大錄製時間（防止無限錄製）
-            setTimeout(() => {
-                if (mediaRecorder.state === 'recording') {
-                    mediaRecorder.stop();
-                }
-            }, Math.min(video.duration * 1000 + 1000, 30000)); // 最多30秒
-        };
-        
-        video.src = URL.createObjectURL(file);
-        video.muted = true;
-        video.load();
-    });
-}
-
 function handleImageUpload(event) {
     const files = Array.from(event.target.files);
     if (!files.length) return;
@@ -1129,28 +982,8 @@ function removeAllMarkerImages() {
     delete form.dataset.imageData;
 }
 
-function removeAllMarkerVideos() {
-    const videoPreviewContainer = document.getElementById('videoPreviewContainer');
-    const videoInput = document.getElementById('videoInput');
-    const form = document.getElementById('markerForm');
-    
-    // 清除視頻預覽
-    if (videoPreviewContainer) {
-        videoPreviewContainer.innerHTML = '';
-    }
-    
-    // 清除文件輸入
-    if (videoInput) {
-        videoInput.value = '';
-    }
-    
-    // 清除表單數據
-    delete form.dataset.videoData;
-}
-
-function resetMediaUpload() {
+function resetImageUpload() {
     removeAllMarkerImages();
-    removeAllMarkerVideos();
 }
 
 // 圖片模態框預覽功能
@@ -1256,270 +1089,6 @@ function closeImageModal() {
     }
     
     modal.style.display = 'none';
-}
-
-// 錄影相關變數
-let mediaRecorder = null;
-let recordedChunks = [];
-let currentVideoBlob = null;
-
-// 開始錄影
-async function startVideoRecording() {
-    try {
-        // 關閉所有可能打開的模態框
-        const markerModal = document.getElementById('markerModal');
-        if (markerModal && markerModal.style.display !== 'none') {
-            markerModal.style.display = 'none';
-        }
-        
-        // 關閉圖片模態框
-        const imageModal = document.getElementById('imagePreviewModal');
-        if (imageModal && imageModal.style.display !== 'none') {
-            imageModal.style.display = 'none';
-        }
-        
-        // 關閉視頻模態框
-        const videoModal = document.getElementById('videoPreviewModal');
-        if (videoModal && videoModal.style.display !== 'none') {
-            videoModal.style.display = 'none';
-        }
-        
-        // 關閉所有彈出窗口
-        map.closePopup();
-        
-        const stream = await navigator.mediaDevices.getUserMedia({ 
-            video: { 
-                facingMode: 'environment',
-                width: { ideal: 1280 },
-                height: { ideal: 720 }
-            }, 
-            audio: true 
-        });
-        
-        recordedChunks = [];
-        mediaRecorder = new MediaRecorder(stream, {
-            mimeType: 'video/webm;codecs=vp9'
-        });
-        
-        mediaRecorder.ondataavailable = function(event) {
-            if (event.data.size > 0) {
-                recordedChunks.push(event.data);
-            }
-        };
-        
-        mediaRecorder.onstop = function() {
-            const blob = new Blob(recordedChunks, { type: 'video/webm' });
-            
-            // 顯示壓縮進度
-            showNotification('正在壓縮錄製的影片，請稍候...', 'info');
-            
-            // 壓縮錄製的視頻
-            compressVideo(blob, 10) // 壓縮到最大10MB
-                .then(compressedBlob => {
-                    currentVideoBlob = compressedBlob;
-                    displayVideoPreview(compressedBlob);
-                    
-                    const originalSizeMB = (blob.size / (1024 * 1024)).toFixed(2);
-                    const compressedSizeMB = (compressedBlob.size / (1024 * 1024)).toFixed(2);
-                    
-                    if (compressedBlob !== blob) {
-                        showNotification(`錄影壓縮完成！原始大小: ${originalSizeMB}MB，壓縮後: ${compressedSizeMB}MB`, 'success');
-                    } else {
-                        showNotification(`錄影完成！檔案大小: ${compressedSizeMB}MB`, 'success');
-                    }
-                })
-                .catch(error => {
-                    console.error('錄影壓縮失敗:', error);
-                    // 如果壓縮失敗，使用原始錄影
-                    currentVideoBlob = blob;
-                    displayVideoPreview(blob);
-                    showNotification('錄影完成，但壓縮失敗', 'warning');
-                });
-            
-            // 停止所有軌道
-            stream.getTracks().forEach(track => track.stop());
-        };
-        
-        // 創建錄影控制界面
-        showRecordingInterface(stream);
-        
-        mediaRecorder.start();
-        
-    } catch (error) {
-        console.error('無法啟動錄影:', error);
-        showNotification('無法啟動錄影功能，請檢查攝像頭權限', 'error');
-    }
-}
-
-// 顯示錄影界面
-function showRecordingInterface(stream) {
-    // 創建錄影模態框
-    const recordingModal = document.createElement('div');
-    recordingModal.id = 'recordingModal';
-    recordingModal.className = 'modal';
-    recordingModal.style.display = 'block';
-    recordingModal.style.zIndex = '3000';
-    
-    recordingModal.innerHTML = `
-        <div class="modal-content" style="max-width: 90vw; max-height: 90vh; padding: 20px;">
-            <h3>錄影中...</h3>
-            <video id="recordingPreview" autoplay muted style="width: 100%; max-width: 500px; border-radius: 8px;"></video>
-            <div style="margin-top: 15px; display: flex; gap: 10px; justify-content: center;">
-                <button id="stopRecordingBtn" class="upload-btn" style="background: #dc3545;">⏹️ 停止錄影</button>
-                <button id="cancelRecordingBtn" class="upload-btn" style="background: #6c757d;">❌ 取消</button>
-            </div>
-            <div id="recordingTimer" style="text-align: center; margin-top: 10px; font-weight: bold; color: #dc3545;">00:00</div>
-        </div>
-    `;
-    
-    document.body.appendChild(recordingModal);
-    
-    // 設置預覽視頻
-    const video = document.getElementById('recordingPreview');
-    video.srcObject = stream;
-    
-    // 開始計時器
-    let startTime = Date.now();
-    const timer = setInterval(() => {
-        const elapsed = Math.floor((Date.now() - startTime) / 1000);
-        const minutes = Math.floor(elapsed / 60).toString().padStart(2, '0');
-        const seconds = (elapsed % 60).toString().padStart(2, '0');
-        document.getElementById('recordingTimer').textContent = `${minutes}:${seconds}`;
-    }, 1000);
-    
-    // 停止錄影按鈕
-    document.getElementById('stopRecordingBtn').addEventListener('click', () => {
-        clearInterval(timer);
-        mediaRecorder.stop();
-        document.body.removeChild(recordingModal);
-    });
-    
-    // 取消錄影按鈕
-    document.getElementById('cancelRecordingBtn').addEventListener('click', () => {
-        clearInterval(timer);
-        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-            mediaRecorder.stop();
-        }
-        stream.getTracks().forEach(track => track.stop());
-        document.body.removeChild(recordingModal);
-    });
-}
-
-// 處理影片上傳
-function handleVideoUpload(event) {
-    const file = event.target.files[0];
-    if (file) {
-        if (file.type.startsWith('video/')) {
-            if (file.size > 100 * 1024 * 1024) { // 100MB 限制（壓縮前）
-                showNotification('影片檔案過大，請選擇小於100MB的檔案', 'error');
-                return;
-            }
-            
-            // 顯示壓縮進度
-            showNotification('正在壓縮影片，請稍候...', 'info');
-            
-            // 壓縮視頻
-            compressVideo(file, 10) // 壓縮到最大10MB
-                .then(compressedFile => {
-                    currentVideoBlob = compressedFile;
-                    displayVideoPreview(compressedFile);
-                    
-                    const originalSizeMB = (file.size / (1024 * 1024)).toFixed(2);
-                    const compressedSizeMB = (compressedFile.size / (1024 * 1024)).toFixed(2);
-                    
-                    if (compressedFile !== file) {
-                        showNotification(`影片壓縮完成！原始大小: ${originalSizeMB}MB，壓縮後: ${compressedSizeMB}MB`, 'success');
-                    } else {
-                        showNotification(`影片上傳完成！檔案大小: ${compressedSizeMB}MB`, 'success');
-                    }
-                })
-                .catch(error => {
-                    console.error('視頻壓縮失敗:', error);
-                    showNotification('影片壓縮失敗，請嘗試選擇較小的檔案', 'error');
-                });
-        } else {
-            showNotification('請選擇有效的影片檔案', 'error');
-        }
-    }
-}
-
-// 顯示影片預覽
-function displayVideoPreview(videoBlob) {
-    const previewContainer = document.getElementById('videoPreviewContainer');
-    
-    // 清除現有預覽
-    previewContainer.innerHTML = '';
-    
-    if (videoBlob) {
-        const videoPreview = document.createElement('div');
-        videoPreview.className = 'video-preview';
-        
-        const video = document.createElement('video');
-        video.src = URL.createObjectURL(videoBlob);
-        video.controls = false;
-        video.muted = true;
-        
-        const overlay = document.createElement('div');
-        overlay.className = 'video-overlay';
-        overlay.textContent = '▶️';
-        
-        const removeBtn = document.createElement('button');
-        removeBtn.className = 'remove-image-btn';
-        removeBtn.textContent = '×';
-        removeBtn.onclick = () => {
-            currentVideoBlob = null;
-            previewContainer.innerHTML = '';
-        };
-        
-        videoPreview.onclick = () => {
-            openVideoModal(videoBlob);
-        };
-        
-        videoPreview.appendChild(video);
-        videoPreview.appendChild(overlay);
-        videoPreview.appendChild(removeBtn);
-        previewContainer.appendChild(videoPreview);
-    }
-}
-
-// 打開影片模態框
-function openVideoModal(videoBlob) {
-    const modal = document.getElementById('videoPreviewModal');
-    const video = modal.querySelector('#videoModalPlayer');
-    const title = modal.querySelector('#videoModalTitle');
-    
-    video.src = URL.createObjectURL(videoBlob);
-    title.textContent = '標記點影片';
-    
-    modal.style.display = 'block';
-    
-    // 添加關閉事件
-    const closeBtn = modal.querySelector('.video-modal-close');
-    closeBtn.onclick = () => {
-        modal.style.display = 'none';
-        video.pause();
-        URL.revokeObjectURL(video.src);
-    };
-    
-    // 點擊模態框外部關閉
-    modal.onclick = (e) => {
-        if (e.target === modal) {
-            modal.style.display = 'none';
-            video.pause();
-            URL.revokeObjectURL(video.src);
-        }
-    };
-    
-    // 刪除影片按鈕
-    const deleteBtn = modal.querySelector('#deleteVideoBtn');
-    deleteBtn.onclick = () => {
-        currentVideoBlob = null;
-        displayVideoPreview(null);
-        modal.style.display = 'none';
-        video.pause();
-        URL.revokeObjectURL(video.src);
-        showNotification('影片已刪除', 'success');
-    };
 }
 
 // 添加重置功能（用於測試）
@@ -1857,75 +1426,6 @@ window.handleFullscreenClick = handleFullscreenClick;
 window.handleLocationClick = handleLocationClick;
 window.handleCenterClick = handleCenterClick;
 
-// 手機豎屏調整功能框大小
-let sidebarSizeState = 'normal'; // 'normal', 'small', 'large'
-
-function toggleSidebarSize() {
-    const sidebar = document.querySelector('.sidebar');
-    const mapContainer = document.querySelector('.map-container');
-    
-    if (!sidebar || !mapContainer) return;
-    
-    // 循環切換三種大小狀態
-    switch (sidebarSizeState) {
-        case 'normal':
-            sidebarSizeState = 'small';
-            sidebar.style.height = '25vh';
-            mapContainer.style.height = '70vh';
-            showNotification('功能框已縮小', 'info');
-            break;
-        case 'small':
-            sidebarSizeState = 'large';
-            sidebar.style.height = '70vh';
-            mapContainer.style.height = '25vh';
-            showNotification('功能框已放大', 'info');
-            break;
-        case 'large':
-            sidebarSizeState = 'normal';
-            sidebar.style.height = '40vh';
-            mapContainer.style.height = '55vh';
-            showNotification('功能框已恢復正常', 'info');
-            break;
-    }
-    
-    // 觸發地圖重新調整大小
-    setTimeout(() => {
-        if (map) {
-            map.invalidateSize();
-        }
-    }, 300);
-    
-    // 保存設置
-    localStorage.setItem('sidebarSizeState', sidebarSizeState);
-}
-
-// 載入保存的側邊欄大小設置
-function loadSidebarSizeState() {
-    const savedState = localStorage.getItem('sidebarSizeState');
-    if (savedState && window.innerWidth <= 768) {
-        sidebarSizeState = savedState;
-        const sidebar = document.querySelector('.sidebar');
-        const mapContainer = document.querySelector('.map-container');
-        
-        if (sidebar && mapContainer) {
-            switch (sidebarSizeState) {
-                case 'small':
-                    sidebar.style.height = '25vh';
-                    mapContainer.style.height = '70vh';
-                    break;
-                case 'large':
-                    sidebar.style.height = '70vh';
-                    mapContainer.style.height = '25vh';
-                    break;
-                default:
-                    sidebar.style.height = '40vh';
-                    mapContainer.style.height = '55vh';
-                    break;
-            }
-        }
-    }
-}
-
 // 行動裝置檢測函數
 function isMobileDevice() {
     return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -2067,194 +1567,6 @@ function initDragFunctionality() {
     addMobileTouchSupport(fullscreenBtn, 'handleFullscreenClick');
     addMobileTouchSupport(locationBtn, 'handleLocationClick');
     addMobileTouchSupport(centerBtn, 'handleCenterClick');
-}
-
-// 初始化側邊欄調整功能
-function initSidebarResize() {
-    const sidebar = document.querySelector('.sidebar');
-    const resizeHandle = document.querySelector('.resize-handle');
-    
-    if (!sidebar || !resizeHandle) {
-        console.warn('Sidebar or resize handle not found');
-        return;
-    }
-    
-    let isResizing = false;
-    let startX = 0;
-    let startY = 0;
-    let startWidth = 0;
-    let startHeight = 0;
-    let isMobilePortrait = false;
-    
-    // 檢查是否為手機豎屏模式
-    function checkMobilePortrait() {
-        return window.innerWidth <= 768;
-    }
-    
-    // 更新調整手柄樣式和位置
-    function updateResizeHandle() {
-        isMobilePortrait = checkMobilePortrait();
-        
-        if (isMobilePortrait) {
-            // 手機豎屏：調整手柄在底部，垂直調整
-            resizeHandle.style.top = 'auto';
-            resizeHandle.style.bottom = '0';
-            resizeHandle.style.left = '0';
-            resizeHandle.style.right = '0';
-            resizeHandle.style.width = '100%';
-            resizeHandle.style.height = '4px';
-            resizeHandle.style.cursor = 'row-resize';
-        } else {
-            // 桌面：調整手柄在右側，水平調整
-            resizeHandle.style.top = '0';
-            resizeHandle.style.bottom = 'auto';
-            resizeHandle.style.left = 'auto';
-            resizeHandle.style.right = '0';
-            resizeHandle.style.width = '4px';
-            resizeHandle.style.height = '100%';
-            resizeHandle.style.cursor = 'col-resize';
-        }
-    }
-    
-    // 初始化調整手柄
-    updateResizeHandle();
-    
-    // 監聽視窗大小變化
-    window.addEventListener('resize', updateResizeHandle);
-    
-    // 載入保存的尺寸
-    const savedWidth = localStorage.getItem('sidebarWidth');
-    const savedHeight = localStorage.getItem('sidebarHeight');
-    
-    if (savedWidth && !checkMobilePortrait()) {
-        sidebar.style.width = savedWidth + 'px';
-    }
-    if (savedHeight && checkMobilePortrait()) {
-        sidebar.style.maxHeight = savedHeight + 'px';
-    }
-    
-    // 滑鼠按下事件
-    resizeHandle.addEventListener('mousedown', (e) => {
-        isResizing = true;
-        isMobilePortrait = checkMobilePortrait();
-        
-        if (isMobilePortrait) {
-            startY = e.clientY;
-            startHeight = parseInt(document.defaultView.getComputedStyle(sidebar).maxHeight, 10) || 
-                         parseInt(document.defaultView.getComputedStyle(sidebar).height, 10);
-            document.body.style.cursor = 'row-resize';
-        } else {
-            startX = e.clientX;
-            startWidth = parseInt(document.defaultView.getComputedStyle(sidebar).width, 10);
-            document.body.style.cursor = 'col-resize';
-        }
-        
-        document.body.style.userSelect = 'none';
-        e.preventDefault();
-    });
-    
-    // 滑鼠移動事件
-    document.addEventListener('mousemove', (e) => {
-        if (!isResizing) return;
-        
-        if (isMobilePortrait) {
-            // 手機豎屏：調整高度
-            const height = startHeight + (startY - e.clientY); // 向上拖拉增加高度
-            const minHeight = 200; // 最小高度
-            const maxHeight = window.innerHeight * 0.8; // 最大高度為視窗的80%
-            
-            if (height >= minHeight && height <= maxHeight) {
-                sidebar.style.maxHeight = height + 'px';
-            }
-        } else {
-            // 桌面：調整寬度
-            const width = startWidth + e.clientX - startX;
-            const minWidth = 250;
-            const maxWidth = 600;
-            
-            if (width >= minWidth && width <= maxWidth) {
-                sidebar.style.width = width + 'px';
-            }
-        }
-    });
-    
-    // 滑鼠放開事件
-    document.addEventListener('mouseup', () => {
-        if (isResizing) {
-            isResizing = false;
-            document.body.style.cursor = '';
-            document.body.style.userSelect = '';
-            
-            // 保存尺寸
-            if (isMobilePortrait) {
-                const currentHeight = parseInt(document.defaultView.getComputedStyle(sidebar).maxHeight, 10) ||
-                                    parseInt(document.defaultView.getComputedStyle(sidebar).height, 10);
-                localStorage.setItem('sidebarHeight', currentHeight);
-            } else {
-                const currentWidth = parseInt(document.defaultView.getComputedStyle(sidebar).width, 10);
-                localStorage.setItem('sidebarWidth', currentWidth);
-            }
-        }
-    });
-    
-    // 觸控支援
-    resizeHandle.addEventListener('touchstart', (e) => {
-        isResizing = true;
-        isMobilePortrait = checkMobilePortrait();
-        
-        if (isMobilePortrait) {
-            startY = e.touches[0].clientY;
-            startHeight = parseInt(document.defaultView.getComputedStyle(sidebar).maxHeight, 10) || 
-                         parseInt(document.defaultView.getComputedStyle(sidebar).height, 10);
-        } else {
-            startX = e.touches[0].clientX;
-            startWidth = parseInt(document.defaultView.getComputedStyle(sidebar).width, 10);
-        }
-        
-        e.preventDefault();
-    });
-    
-    document.addEventListener('touchmove', (e) => {
-        if (!isResizing) return;
-        
-        if (isMobilePortrait) {
-            // 手機豎屏：調整高度
-            const height = startHeight + (startY - e.touches[0].clientY); // 向上拖拉增加高度
-            const minHeight = 200;
-            const maxHeight = window.innerHeight * 0.8;
-            
-            if (height >= minHeight && height <= maxHeight) {
-                sidebar.style.maxHeight = height + 'px';
-            }
-        } else {
-            // 桌面：調整寬度
-            const width = startWidth + e.touches[0].clientX - startX;
-            const minWidth = 250;
-            const maxWidth = 600;
-            
-            if (width >= minWidth && width <= maxWidth) {
-                sidebar.style.width = width + 'px';
-            }
-        }
-        
-        e.preventDefault();
-    });
-    
-    document.addEventListener('touchend', () => {
-        if (isResizing) {
-            isResizing = false;
-            
-            // 保存尺寸
-            if (isMobilePortrait) {
-                const currentHeight = parseInt(document.defaultView.getComputedStyle(sidebar).maxHeight, 10) ||
-                                    parseInt(document.defaultView.getComputedStyle(sidebar).height, 10);
-                localStorage.setItem('sidebarHeight', currentHeight);
-            } else {
-                const currentWidth = parseInt(document.defaultView.getComputedStyle(sidebar).width, 10);
-                localStorage.setItem('sidebarWidth', currentWidth);
-            }
-        }
-    });
 }
 
 // 為手機添加觸控事件支持
@@ -3002,21 +2314,7 @@ function showMarkerModal(lat, lng, existingMarker = null) {
             form.dataset.imageData = JSON.stringify(imageData);
             displayMultipleImagePreviews(imageData);
         } else {
-            // 只清除圖片預覽，不影響視頻
-            removeAllMarkerImages();
-        }
-        
-        // 處理視頻顯示
-        if (existingMarker.videoData) {
-            form.dataset.videoData = existingMarker.videoData;
-            displayVideoPreview(existingMarker.videoData);
-        } else {
-            // 清空視頻預覽
-            const videoPreviewContainer = document.getElementById('videoPreviewContainer');
-            if (videoPreviewContainer) {
-                videoPreviewContainer.innerHTML = '';
-            }
-            delete form.dataset.videoData;
+            resetImageUpload();
         }
         
         document.getElementById('deleteMarkerBtn').style.display = 'block';
@@ -3025,7 +2323,7 @@ function showMarkerModal(lat, lng, existingMarker = null) {
     } else {
         // 新增標記
         form.reset();
-        resetMediaUpload();
+        resetImageUpload();
         document.getElementById('deleteMarkerBtn').style.display = 'none';
         
         // 如果有選定的組別，自動設定為默認值
@@ -3109,9 +2407,6 @@ function saveMarker(e) {
         }
     }
     
-    // 获取视频数据
-    const videoData = form.dataset.videoData || null;
-    
     if (!name) {
         showNotification('請填寫標記名稱', 'warning');
         return;
@@ -3162,7 +2457,6 @@ function saveMarker(e) {
             marker.color = color;
             marker.icon = icon;
             marker.imageData = imageData;
-            marker.videoData = videoData;
             
             // 添加到新的組別/群組
             group.addMarker(marker);
@@ -3197,8 +2491,7 @@ function saveMarker(e) {
             subgroupId,
             color,
             icon,
-            imageData,
-            videoData
+            imageData
         );
         
         markers.push(marker);
@@ -3390,7 +2683,7 @@ function updateMarkerPopup(marker) {
                     <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 4px;">
                         ${imageElements}
                     </div>
-                    <div style="font-size: 11px; color: #888; margin-top: 4px;">點擊圖片預覽 (${imagesArray.length}/6)</div>
+                    <div style="font-size: 11px; color: #888; margin-top: 4px;">點擊圖片預覽 (${imagesArray.length}/3)</div>
                 </div>`;
             }
         } catch (e) {
@@ -3407,28 +2700,11 @@ function updateMarkerPopup(marker) {
         }
     }
     
-    // 視頻顯示
-    let videoDisplay = '';
-    if (marker.videoData) {
-        videoDisplay = `<div style="margin-bottom: 8px; text-align: center;">
-            <div style="position: relative; display: inline-block;">
-                <video style="max-width: 120px; max-height: 80px; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); cursor: pointer; object-fit: cover;" 
-                       onclick="openVideoModal('${marker.videoData}')" 
-                       muted>
-                    <source src="${marker.videoData}" type="video/mp4">
-                </video>
-                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; font-size: 20px; pointer-events: none;">▶</div>
-            </div>
-            <div style="font-size: 11px; color: #888; margin-top: 4px;">點擊播放視頻</div>
-        </div>`;
-    }
-    
     const popupContent = `
         <div style="text-align: center; min-width: 200px;">
             <div style="font-size: 18px; margin-bottom: 8px;">${marker.icon} <strong>${marker.name}</strong></div>
             ${marker.description ? `<div style="font-size: 14px; color: #333; margin-bottom: 8px; text-align: left; padding: 0 10px;">${marker.description}</div>` : ''}
             ${imageDisplay}
-            ${videoDisplay}
             ${distanceDisplay}
             <div style="font-size: 12px; color: #666; margin-bottom: 8px;">群組: ${groupName}</div>
             <div style="font-size: 12px; color: #666; margin-bottom: 12px;">子群組: ${subgroupName}</div>
@@ -5963,15 +5239,6 @@ document.addEventListener('DOMContentLoaded', function() {
         console.error('Error initializing drag functionality:', error);
     }
     
-    // 初始化側邊欄調整功能
-    console.log('Initializing sidebar resize functionality...');
-    try {
-        initSidebarResize();
-        console.log('Sidebar resize functionality initialized');
-    } catch (error) {
-        console.error('Error initializing sidebar resize functionality:', error);
-    }
-    
     // 延遲執行其他初始化函數
     setTimeout(() => {
         // 載入設定
@@ -5984,14 +5251,6 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         } catch (error) {
             console.error('Error loading settings:', error);
-        }
-        
-        // 載入側邊欄大小設置
-        try {
-            console.log('Loading sidebar size state...');
-            loadSidebarSizeState();
-        } catch (error) {
-            console.error('Error loading sidebar size state:', error);
         }
         
 
