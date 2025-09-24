@@ -5489,7 +5489,8 @@ function makeFloatingButtonDraggable(element) {
             const touchDuration = endTime - startTime;
             
             // 如果有移動或觸控時間過長，阻止點擊事件
-            if (hasMoved || touchDuration > 300) {
+            // 增加觸控時間閾值以改善手機用戶體驗
+            if (hasMoved || touchDuration > 800) {
                 if (hasMoved) {
                     const rect = element.getBoundingClientRect();
                     saveFloatingButtonPosition(rect.left, rect.top);
