@@ -183,9 +183,9 @@ async function autoGetCurrentLocation() {
     
     // 設定定位選項
     const options = {
-        enableHighAccuracy: isMobileDevice(), // 手機使用高精度
-        timeout: isMobileDevice() ? 20000 : 15000, // 手機增加超時時間
-        maximumAge: 300000 // 5分鐘內的緩存位置可接受
+        enableHighAccuracy: true, // 始終使用高精度定位
+        timeout: 30000, // 增加超時時間到30秒
+        maximumAge: 0 // 不使用緩存，強制獲取新的位置
     };
     
     navigator.geolocation.getCurrentPosition(
@@ -213,11 +213,19 @@ async function autoGetCurrentLocation() {
             console.log('自動定位成功:', currentPosition);
         },
         function(error) {
-            console.log('自動定位失敗:', error);
+            console.error('自動定位失敗:', {
+                code: error.code,
+                message: error.message,
+                timestamp: new Date().toISOString(),
+                userAgent: navigator.userAgent,
+                isSecureContext: window.isSecureContext,
+                protocol: window.location.protocol
+            });
             
             // 根據錯誤類型顯示不同的提示
             let errorMessage = '📍 無法獲取位置';
             let showRetryButton = false;
+            let technicalInfo = '';
             
             switch(error.code) {
                 case error.PERMISSION_DENIED:
@@ -226,22 +234,35 @@ async function autoGetCurrentLocation() {
                     } else {
                         errorMessage = '❌ 位置權限被拒絕。請點擊瀏覽器地址欄的位置圖示重新授權。';
                     }
+                    technicalInfo = '錯誤代碼: PERMISSION_DENIED (1)';
                     break;
                 case error.POSITION_UNAVAILABLE:
                     errorMessage = '📍 位置信息不可用。請檢查GPS是否開啟，或確認網路連接正常。';
+                    technicalInfo = '錯誤代碼: POSITION_UNAVAILABLE (2)';
                     showRetryButton = true;
                     break;
                 case error.TIMEOUT:
-                    errorMessage = '⏰ 定位超時。請確認GPS訊號良好，或稍後再試。';
+                    errorMessage = '⏰ 定位超時（30秒）。請確認GPS訊號良好，或稍後再試。';
+                    technicalInfo = '錯誤代碼: TIMEOUT (3)';
                     showRetryButton = true;
                     break;
                 default:
                     errorMessage = '📍 定位失敗。請檢查網路連接或手動點擊定位按鈕重試。';
+                    technicalInfo = `錯誤代碼: ${error.code}`;
                     showRetryButton = true;
                     break;
             }
             
+            // 檢查是否為HTTPS環境
+            if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
+                errorMessage += '\n⚠️ 注意：定位功能需要HTTPS環境才能正常工作。';
+                technicalInfo += ' | 非HTTPS環境';
+            }
+            
             showNotification(errorMessage, 'warning');
+            
+            // 在控制台顯示技術信息
+            console.warn(`定位失敗詳情: ${technicalInfo} | ${error.message}`);
             
             if (showRetryButton && isMobileDevice()) {
                 // 在手機上顯示重試提示
@@ -1629,9 +1650,15 @@ function getCurrentLocation() {
         function(position) {
             const lat = position.coords.latitude;
             const lng = position.coords.longitude;
+            const accuracy = position.coords.accuracy;
             
             // 更新當前位置
-            currentPosition = { lat, lng };
+            currentPosition = { 
+                lat, 
+                lng, 
+                accuracy: accuracy,
+                timestamp: Date.now()
+            };
             
             // 移動地圖到當前位置
             map.setView([lat, lng], 16);
@@ -1644,21 +1671,53 @@ function getCurrentLocation() {
             locationBtn.disabled = false;
             locationIcon.textContent = '📍';
             
-            showNotification('已定位到您的位置', 'success');
+            // 顯示成功通知，包含精度信息
+            const accuracyText = accuracy ? `，精度: ±${Math.round(accuracy)}公尺` : '';
+            showNotification(`🎯 已定位到您的位置${accuracyText}`, 'success');
+            
+            console.log('手動定位成功:', currentPosition);
         },
         function(error) {
+            console.error('手動定位失敗:', {
+                code: error.code,
+                message: error.message,
+                timestamp: new Date().toISOString(),
+                userAgent: navigator.userAgent,
+                isSecureContext: window.isSecureContext,
+                protocol: window.location.protocol
+            });
+            
             // 處理錯誤
             let errorMessage = '無法獲取位置';
+            let technicalInfo = '';
+            
             switch(error.code) {
                 case error.PERMISSION_DENIED:
-                    errorMessage = '位置權限被拒絕，請在瀏覽器設定中允許位置存取';
+                    if (isMobileDevice()) {
+                        errorMessage = '❌ 位置權限被拒絕。請在手機設定中允許此網站存取位置，或點擊地址欄的位置圖示重新授權。';
+                    } else {
+                        errorMessage = '❌ 位置權限被拒絕。請點擊瀏覽器地址欄的位置圖示重新授權。';
+                    }
+                    technicalInfo = '錯誤代碼: PERMISSION_DENIED (1)';
                     break;
                 case error.POSITION_UNAVAILABLE:
-                    errorMessage = '位置資訊無法取得';
+                    errorMessage = '📍 位置信息不可用。請檢查GPS是否開啟，或確認網路連接正常。';
+                    technicalInfo = '錯誤代碼: POSITION_UNAVAILABLE (2)';
                     break;
                 case error.TIMEOUT:
-                    errorMessage = '位置請求逾時';
+                    errorMessage = '⏰ 定位超時（30秒）。請確認GPS訊號良好，或稍後再試。';
+                    technicalInfo = '錯誤代碼: TIMEOUT (3)';
                     break;
+                default:
+                    errorMessage = '📍 定位失敗。請檢查網路連接或稍後重試。';
+                    technicalInfo = `錯誤代碼: ${error.code}`;
+                    break;
+            }
+            
+            // 檢查是否為HTTPS環境
+            if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
+                errorMessage += '\n⚠️ 注意：定位功能需要HTTPS環境才能正常工作。';
+                technicalInfo += ' | 非HTTPS環境';
             }
             
             // 恢復按鈕狀態
@@ -1667,11 +1726,14 @@ function getCurrentLocation() {
             locationIcon.textContent = '📍';
             
             showNotification(errorMessage, 'error');
+            
+            // 在控制台顯示技術信息
+            console.warn(`手動定位失敗詳情: ${technicalInfo} | ${error.message}`);
         },
         {
-            enableHighAccuracy: true,
-            timeout: 10000,
-            maximumAge: 60000
+            enableHighAccuracy: true, // 始終使用高精度定位
+            timeout: 30000, // 增加超時時間到30秒
+            maximumAge: 0 // 不使用緩存，強制獲取新的位置
         }
     );
 }
@@ -5398,6 +5460,7 @@ function initFloatingSettings() {
     
     // 點擊按鈕開啟設定視窗
     floatingBtn.addEventListener('click', function(e) {
+        console.log('Floating settings button clicked (click event)');
         e.stopPropagation();
         showFloatingSettings();
     });
@@ -5497,14 +5560,17 @@ function makeFloatingButtonDraggable(element) {
             
             // 如果有移動，保存位置並阻止點擊
             if (hasMoved) {
+                console.log('Button was dragged, saving position');
                 const rect = element.getBoundingClientRect();
                 saveFloatingButtonPosition(rect.left, rect.top);
                 e.preventDefault();
                 e.stopPropagation();
             } else if (touchDuration < 500) {
                 // 如果沒有移動且觸控時間短，這是一個有效的點擊
+                console.log('Valid touch click detected, duration:', touchDuration);
                 // 對於觸控事件，手動觸發設定視窗
                 if (e.type === 'touchend') {
+                    console.log('Handling touchend event for settings');
                     e.preventDefault();
                     e.stopPropagation();
                     // 延遲執行以確保觸控事件完全處理
@@ -5516,6 +5582,7 @@ function makeFloatingButtonDraggable(element) {
                 // 對於滑鼠事件，讓正常的點擊事件處理
             } else {
                 // 觸控時間過長，視為長按，阻止點擊
+                console.log('Touch duration too long, preventing click:', touchDuration);
                 e.preventDefault();
                 e.stopPropagation();
             }
@@ -5534,15 +5601,57 @@ function makeFloatingButtonDraggable(element) {
 }
 
 function showFloatingSettings() {
+    console.log('showFloatingSettings called');
     const modal = document.getElementById('floatingSettingsModal');
+    console.log('Modal element found:', !!modal);
     if (modal) {
+        console.log('Current modal display style:', modal.style.display);
+        console.log('Current modal computed style:', window.getComputedStyle(modal).display);
+        
+        // 強制設定樣式
         modal.style.display = 'flex';
+        modal.style.position = 'fixed';
+        modal.style.top = '0';
+        modal.style.left = '0';
+        modal.style.width = '100%';
+        modal.style.height = '100%';
+        modal.style.zIndex = '10010';
+        modal.style.background = 'rgba(0, 0, 0, 0.5)';
+        
+        // 如果處於全螢幕模式，確保modal在正確的容器中
+        if (isFullscreen) {
+            const fullscreenContainer = document.querySelector('.map-container.fullscreen');
+            if (fullscreenContainer) {
+                // 強制將modal移到全螢幕容器中
+                fullscreenContainer.appendChild(modal);
+                
+                // 確保modal的樣式正確
+                setTimeout(() => {
+                    modal.style.position = 'fixed';
+                    modal.style.zIndex = '10010';
+                    modal.style.left = '0';
+                    modal.style.top = '0';
+                    modal.style.width = '100vw';
+                    modal.style.height = '100vh';
+                }, 10);
+            }
+        }
+        
+        console.log('Setting modal display to flex');
+        console.log('Modal display after setting:', modal.style.display);
+        
         setTimeout(() => {
+            console.log('Adding show class to modal');
             modal.classList.add('show');
+            console.log('Modal classes:', modal.className);
+            console.log('Modal visibility:', window.getComputedStyle(modal).visibility);
+            console.log('Modal opacity:', window.getComputedStyle(modal).opacity);
         }, 10);
         
         // 同步設定值
         syncFloatingSettingsValues();
+    } else {
+        console.error('floatingSettingsModal element not found!');
     }
 }
 
@@ -5552,6 +5661,14 @@ function hideFloatingSettings() {
         modal.classList.remove('show');
         setTimeout(() => {
             modal.style.display = 'none';
+            
+            // 如果modal被移到全螢幕容器中，將其移回原來的位置
+            if (isFullscreen) {
+                const fullscreenContainer = document.querySelector('.map-container.fullscreen');
+                if (fullscreenContainer && fullscreenContainer.contains(modal)) {
+                    document.body.appendChild(modal);
+                }
+            }
         }, 300);
     }
 }

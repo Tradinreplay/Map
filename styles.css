@@ -611,6 +611,20 @@ body {
     z-index: 10003 !important;
 }
 
+/* 全螢幕模式下的浮動設定樣式 */
+.map-container.fullscreen .floating-settings-modal {
+    position: fixed !important;
+    z-index: 10010 !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+}
+
+.map-container.fullscreen .floating-settings-btn {
+    z-index: 10011 !important;
+}
+
 .modal-content {
     background-color: white;
     margin: 1vh auto;
@@ -3486,13 +3500,17 @@ input:checked + .slider:before {
     height: 100%;
     background: rgba(0, 0, 0, 0.5);
     backdrop-filter: blur(5px);
-    z-index: 2000;
+    -webkit-backdrop-filter: blur(5px); /* Safari support */
+    z-index: 10010;
     display: flex;
     align-items: center;
     justify-content: center;
     opacity: 0;
     visibility: hidden;
     transition: all 0.3s ease;
+    /* 確保在手機上可以滾動 */
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 .floating-settings-modal.show {
@@ -3503,6 +3521,7 @@ input:checked + .slider:before {
 .floating-settings-content {
     background: rgba(255, 255, 255, 0.95);
     backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px); /* Safari support */
     border-radius: 16px;
     box-shadow: 
         0 20px 40px rgba(0, 0, 0, 0.1),
@@ -3513,6 +3532,9 @@ input:checked + .slider:before {
     overflow: hidden;
     transform: scale(0.9) translateY(20px);
     transition: all 0.3s ease;
+    /* 確保在手機上正確定位 */
+    margin: 20px auto;
+    position: relative;
 }
 
 .floating-settings-modal.show .floating-settings-content {
