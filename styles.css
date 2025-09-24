@@ -1786,7 +1786,7 @@ form input:focus, form textarea:focus, form select:focus {
     max-width: 350px; /* 縮小後的最大寬度 */
     margin: 10vh auto; /* 置中並增加上下邊距，讓它更靠近中央 */
     padding: clamp(4px, 1.3vw, 8px); /* 縮小內邊距 */
-    font-size: 0.9em; /* 稍微縮小字體 */
+    font-size: 0.75em; /* 進一步縮小字體以符合中間顯示 */
 }
 
 /* 縮小初始設定畫面內部元素 */
@@ -1807,7 +1807,39 @@ form input:focus, form textarea:focus, form select:focus {
 #initialSetupModal .primary-btn,
 #initialSetupModal .secondary-btn {
     padding: 8px 18px; /* 縮小按鈕內邊距 */
-    font-size: 0.9em; /* 縮小按鈕字體 */
+    font-size: 1.1em; /* 相對於已縮小的基礎字體稍微放大 */
+}
+
+/* 調整初始設定畫面的標題和內容字體 */
+#initialSetupModal h2 {
+    font-size: 1.4em; /* 相對於縮小後的基礎字體 */
+}
+
+#initialSetupModal .setup-section h3 {
+    font-size: 1.2em; /* 相對於縮小後的基礎字體 */
+}
+
+#initialSetupModal .setup-section p {
+    font-size: 1em; /* 保持基礎字體大小 */
+    line-height: 1.4; /* 調整行高 */
+}
+
+/* 縮小所有浮動視窗的字型，但排除標註點列表內容 */
+.modal .modal-content {
+    font-size: 0.85em; /* 整體縮小字型 */
+}
+
+/* 排除標註點列表內容，保持原始大小 */
+.modal .modal-content .markers-list,
+.modal .modal-content .detail-markers-container,
+.modal .modal-content .group-markers-list .detail-markers-container,
+.modal .modal-content .all-details-container {
+    font-size: 1.18em; /* 恢復到原始大小 (1/0.85 ≈ 1.18) */
+}
+
+/* 但是標註點列表的標題仍然要縮小 */
+.modal .modal-content .group-markers-list h4 {
+    font-size: 0.85em; /* 保持縮小 */
 }
 
 .setup-content {
