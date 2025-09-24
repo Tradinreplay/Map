@@ -149,11 +149,6 @@
         <div class="map-container">
             <div id="map"></div>
             
-            <!-- 切換功能欄大小按鈕 -->
-            <button id="toggleStatusBarBtn" class="toggle-status-btn" title="切換功能欄大小" onclick="toggleStatusBarSize()">
-                <span id="toggleStatusIcon">📏</span>
-            </button>
-            
             <!-- 全螢幕按鈕 -->
             <button id="fullscreenBtn" class="fullscreen-btn" title="全螢幕顯示" onclick="handleFullscreenClick()">
                 <span id="fullscreenIcon">⛶</span>
@@ -487,80 +482,6 @@
                 <button id="confirmImportBtn" class="primary-btn">確認匯入</button>
                 <button id="cancelImportBtn" class="secondary-btn">取消</button>
                 <button id="showDuplicatesBtn" class="detail-btn">查看重複詳情</button>
-            </div>
-        </div>
-        
-        <!-- 手機豎屏設定面板 -->
-        <div class="mobile-settings-panel" id="mobileSettingsPanel">
-            <div class="settings-panel-header">
-                <h3>⚙️ 快速設定</h3>
-                <button class="close-settings-btn" id="closeSettingsBtn">✕</button>
-            </div>
-            <div class="settings-panel-content">
-                <div class="setting-group">
-                    <div class="setting-item">
-                        <label class="setting-label">
-                            <input type="checkbox" id="mobileNotifications" class="setting-checkbox">
-                            <span class="setting-text">位置提醒</span>
-                        </label>
-                    </div>
-                    <div class="setting-item">
-                        <label class="setting-label">
-                            <input type="checkbox" id="mobileHighAccuracy" class="setting-checkbox">
-                            <span class="setting-text">高精度定位</span>
-                        </label>
-                    </div>
-                    <div class="setting-item">
-                        <label class="setting-label">
-                            <input type="checkbox" id="mobileAutoCenter" class="setting-checkbox">
-                            <span class="setting-text">自動居中</span>
-                        </label>
-                    </div>
-                </div>
-                <div class="setting-group">
-                    <div class="setting-item range-setting">
-                        <span class="setting-text">提醒距離</span>
-                        <div class="range-container">
-                            <input type="range" id="mobileAlertDistance" min="10" max="1000" value="100" class="setting-range">
-                            <span class="range-value" id="mobileDistanceValue">100m</span>
-                        </div>
-                    </div>
-                    <div class="setting-item range-setting">
-                        <span class="setting-text">更新頻率</span>
-                        <div class="range-container">
-                            <select id="mobileUpdateFreq" class="setting-select">
-                                <option value="1000">即時 (1秒)</option>
-                                <option value="3000" selected>快速 (3秒)</option>
-                                <option value="5000">標準 (5秒)</option>
-                                <option value="10000">省電 (10秒)</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-                <div class="settings-actions-mobile">
-                    <button class="mobile-action-btn" id="mobileExportBtn">📤 匯出</button>
-                    <button class="mobile-action-btn" id="mobileImportBtn">📥 匯入</button>
-                    <button class="mobile-action-btn" id="mobileResetBtn">🔄 重置</button>
-                </div>
-            </div>
-        </div>
-        
-        <!-- 手機豎屏下方狀態列 -->
-        <div class="mobile-status-bar" id="mobileStatusBar">
-            <div class="status-bar-handle" id="statusBarHandle">
-                <div class="handle-indicator"></div>
-            </div>
-            <div class="status-bar-content">
-                <div class="status-info">
-                    <span class="status-text">📍 地圖標註系統</span>
-                    <span class="marker-count" id="markerCount">0 個標記</span>
-                </div>
-                <div class="quick-status-actions">
-                    <button class="status-btn" id="quickAddBtn" title="快速添加標記">➕</button>
-                    <button class="status-btn" id="quickCenterBtn" title="回到中心">🎯</button>
-                    <button class="status-btn" id="quickListBtn" title="標記列表">📋</button>
-                    <button class="status-btn" id="quickSettingsBtn" title="設定">⚙️</button>
-                </div>
             </div>
         </div>
     </div>
