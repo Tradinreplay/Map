@@ -1808,8 +1808,10 @@ form input:focus, form textarea:focus, form select:focus {
 
 #initialSetupModal .primary-btn,
 #initialSetupModal .secondary-btn {
-    padding: 6px 12px; /* 進一步縮小按鈕內邊距 */
-    font-size: 1em; /* 縮小按鈕字體 */
+    padding: 4px 8px; /* 按比例縮小按鈕內邊距 (原本12px 24px的約30%縮小) */
+    font-size: 0.85em; /* 進一步縮小按鈕字體以符合整體縮小比例 */
+    border-radius: 4px; /* 縮小圓角以符合按鈕大小 */
+    min-width: 60px; /* 設定最小寬度確保按鈕不會太小 */
 }
 
 /* 調整初始設定畫面的標題和內容字體 */
