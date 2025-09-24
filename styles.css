@@ -3918,6 +3918,7 @@ input:checked + .slider:before {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     position: relative;
     overflow: hidden;
+    font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "Segoe UI Symbol", "Android Emoji", "EmojiSymbols", -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
 /* 狀態列按鈕圖示樣式 - 使用HTML中的圖示 */
@@ -4022,6 +4023,7 @@ input:checked + .slider:before {
         width: 32px;
         height: 32px;
         font-size: 14px;
+        font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "Segoe UI Symbol", "Android Emoji", "EmojiSymbols", -apple-system, BlinkMacSystemFont, sans-serif;
     }
     
     .quick-status-actions {
@@ -4076,6 +4078,7 @@ input:checked + .slider:before {
     height: 28px;
     font-size: 12px;
     opacity: 0.9;
+    font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "Segoe UI Symbol", "Android Emoji", "EmojiSymbols", -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
 /* 拖拽時的視覺反饋 */

@@ -1557,6 +1557,7 @@ function initDragFunctionality() {
     const fullscreenBtn = document.getElementById('fullscreenBtn');
     const locationBtn = document.getElementById('locationBtn');
     const centerBtn = document.getElementById('centerBtn');
+    const toggleStatusBarBtn = document.getElementById('toggleStatusBarBtn');
     
     // 載入保存的按鈕位置
     loadButtonPositions();
@@ -1565,11 +1566,13 @@ function initDragFunctionality() {
     makeDraggable(fullscreenBtn);
     makeDraggable(locationBtn);
     makeDraggable(centerBtn);
+    makeDraggable(toggleStatusBarBtn);
     
     // 為手機添加額外的觸控事件處理
     addMobileTouchSupport(fullscreenBtn, 'handleFullscreenClick');
     addMobileTouchSupport(locationBtn, 'handleLocationClick');
     addMobileTouchSupport(centerBtn, 'handleCenterClick');
+    addMobileTouchSupport(toggleStatusBarBtn, 'toggleStatusBarSize');
 }
 
 // 為手機添加觸控事件支持
@@ -5447,25 +5450,41 @@ function toggleStatusBarSize() {
     const statusBar = document.getElementById('mobileStatusBar');
     const toggleIcon = document.getElementById('toggleStatusIcon');
     
-    if (!statusBar) return;
+    if (!statusBar || !toggleIcon) return;
     
     const currentHeight = parseInt(statusBar.style.height) || 80;
     
     if (currentHeight <= 60) {
         // 當前是收縮狀態，展開到大尺寸
         setStatusBarHeight(150);
-        toggleIcon.textContent = '📐'; // 改變圖示表示可以收縮
+        toggleIcon.textContent = '🔽'; // 向下箭頭表示可以收縮
         showNotification('功能欄已展開', 'success');
     } else if (currentHeight >= 120) {
         // 當前是展開狀態，收縮到最小
         setStatusBarHeight(50);
-        toggleIcon.textContent = '📏'; // 改變圖示表示可以展開
+        toggleIcon.textContent = '🔼'; // 向上箭頭表示可以展開
         showNotification('功能欄已收縮', 'success');
     } else {
         // 當前是中等狀態，展開到大尺寸
         setStatusBarHeight(150);
-        toggleIcon.textContent = '📐';
+        toggleIcon.textContent = '🔽'; // 向下箭頭表示可以收縮
         showNotification('功能欄已展開', 'success');
+    }
+}
+
+// 更新切換按鈕圖示的函數
+function updateToggleIcon() {
+    const statusBar = document.getElementById('mobileStatusBar');
+    const toggleIcon = document.getElementById('toggleStatusIcon');
+    
+    if (!statusBar || !toggleIcon) return;
+    
+    const currentHeight = parseInt(statusBar.style.height) || 80;
+    
+    if (currentHeight <= 60) {
+        toggleIcon.textContent = '🔼'; // 收縮狀態，顯示向上箭頭表示可以展開
+    } else {
+        toggleIcon.textContent = '🔽'; // 展開狀態，顯示向下箭頭表示可以收縮
     }
 }
 
@@ -5498,6 +5517,9 @@ function setStatusBarHeight(height) {
     
     // 保存高度設置
     localStorage.setItem('mobileStatusBarHeight', height.toString());
+    
+    // 更新切換按鈕圖示
+    updateToggleIcon();
 }
 
 // 將函數暴露到全局作用域
