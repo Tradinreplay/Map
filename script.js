@@ -89,6 +89,27 @@ class Marker {
     }
 }
 
+// 輔助函數：獲取設定元素（優先使用浮動設定窗口的元素）
+function getSettingsElement(elementId) {
+    // 映射舊的元素ID到新的浮動設定元素ID
+    const elementMapping = {
+        'enableNotifications': 'floatingEnableNotifications',
+        'alertDistance': 'floatingAlertDistance',
+        'alertInterval': 'floatingAlertInterval'
+    };
+    
+    const floatingId = elementMapping[elementId];
+    if (floatingId) {
+        const floatingElement = document.getElementById(floatingId);
+        if (floatingElement) {
+            return floatingElement;
+        }
+    }
+    
+    // 如果浮動元素不存在，嘗試原始元素（向後兼容）
+    return document.getElementById(elementId);
+}
+
 // 初始化控制按鈕
 
 
@@ -489,28 +510,37 @@ function initEventListeners() {
     document.getElementById('trackingBtn').addEventListener('click', toggleTracking);
     document.getElementById('centerMapBtn').addEventListener('click', centerMapToCurrentLocation);
     
-    // 提醒設定
-    document.getElementById('enableNotifications').addEventListener('change', function(e) {
-        if (e.target.checked) {
-            requestNotificationPermission();
-        }
-    });
+    // 提醒設定 - 使用浮動設定窗口的元素
+    const enableNotificationsEl = document.getElementById('floatingEnableNotifications');
+    if (enableNotificationsEl) {
+        enableNotificationsEl.addEventListener('change', function(e) {
+            if (e.target.checked) {
+                requestNotificationPermission();
+            }
+        });
+    }
     
-    document.getElementById('alertDistance').addEventListener('change', function(e) {
-        alertDistance = parseInt(e.target.value);
-        saveData();
-    });
+    const alertDistanceEl = document.getElementById('floatingAlertDistance');
+    if (alertDistanceEl) {
+        alertDistanceEl.addEventListener('change', function(e) {
+            alertDistance = parseInt(e.target.value);
+            saveData();
+        });
+    }
     
     // 提醒間隔設定
-    document.getElementById('alertInterval').addEventListener('change', function(e) {
-        alertInterval = parseInt(e.target.value);
-        saveData();
-        
-        // 如果正在追蹤，重新啟動距離檢查定時器以使用新間隔
-        if (trackingTarget && proximityCheckTimer) {
-            startProximityCheck();
-        }
-    });
+    const alertIntervalEl = document.getElementById('floatingAlertInterval');
+    if (alertIntervalEl) {
+        alertIntervalEl.addEventListener('change', function(e) {
+            alertInterval = parseInt(e.target.value);
+            saveData();
+            
+            // 如果正在追蹤，重新啟動距離檢查定時器以使用新間隔
+            if (trackingTarget && proximityCheckTimer) {
+                startProximityCheck();
+            }
+        });
+    }
     
     // 彈窗控制
     document.querySelectorAll('.close').forEach(closeBtn => {
@@ -657,100 +687,115 @@ document.getElementById('createGroupForm').addEventListener('submit', handleCrea
     });
     
     // 即時定位設定事件監聽器
-    document.getElementById('enableHighAccuracy').addEventListener('change', function(e) {
-        enableHighAccuracy = e.target.checked;
-        saveData();
-    });
+    const enableHighAccuracyEl = document.getElementById('enableHighAccuracy');
+    if (enableHighAccuracyEl) {
+        enableHighAccuracyEl.addEventListener('change', function(e) {
+            enableHighAccuracy = e.target.checked;
+            saveData();
+        });
+    }
     
-    document.getElementById('autoStartTracking').addEventListener('change', function(e) {
-        autoStartTracking = e.target.checked;
-        saveData();
-    });
+    const autoStartTrackingEl = document.getElementById('autoStartTracking');
+    if (autoStartTrackingEl) {
+        autoStartTrackingEl.addEventListener('change', function(e) {
+            autoStartTracking = e.target.checked;
+            saveData();
+        });
+    }
     
-    document.getElementById('keepMapCentered').addEventListener('change', function(e) {
-        keepMapCentered = e.target.checked;
-        saveData();
-    });
+    const keepMapCenteredEl = document.getElementById('keepMapCentered');
+    if (keepMapCenteredEl) {
+        keepMapCenteredEl.addEventListener('change', function(e) {
+            keepMapCentered = e.target.checked;
+            saveData();
+        });
+    }
     
 
     
-    document.getElementById('locationUpdateFrequency').addEventListener('change', function(e) {
-        locationUpdateFrequency = parseInt(e.target.value); // 已經是毫秒
-        
-        // 如果正在追蹤，重新啟動定時器以應用新的更新頻率
-        if (isTracking && locationUpdateTimer) {
-            clearInterval(locationUpdateTimer);
+    const locationUpdateFrequencyEl = document.getElementById('locationUpdateFrequency');
+    if (locationUpdateFrequencyEl) {
+        locationUpdateFrequencyEl.addEventListener('change', function(e) {
+            locationUpdateFrequency = parseInt(e.target.value); // 已經是毫秒
             
-            locationUpdateTimer = setInterval(() => {
-                // 強制重新獲取當前位置
-                if (navigator.geolocation && isTracking) {
-                    navigator.geolocation.getCurrentPosition(
-                        function(position) {
-                            const now = Date.now();
-                            
-                            // 檢查是否真的是新的位置數據
-                            if (!lastLocationUpdate || (now - lastLocationUpdate) >= (locationUpdateFrequency * 0.8)) {
-                                lastLocationUpdate = now;
+            // 如果正在追蹤，重新啟動定時器以應用新的更新頻率
+            if (isTracking && locationUpdateTimer) {
+                clearInterval(locationUpdateTimer);
+                
+                locationUpdateTimer = setInterval(() => {
+                    // 強制重新獲取當前位置
+                    if (navigator.geolocation && isTracking) {
+                        navigator.geolocation.getCurrentPosition(
+                            function(position) {
+                                const now = Date.now();
                                 
-                                // 計算速度（如果有前一個位置）
-                                let speed = null;
-                                if (currentPosition && position.coords.speed !== null) {
-                                    speed = position.coords.speed;
-                                } else if (currentPosition) {
-                                    const timeDiff = (now - currentPosition.timestamp) / 1000; // 秒
-                                    const distance = calculateDistance(
-                                        currentPosition.lat, currentPosition.lng,
-                                        position.coords.latitude, position.coords.longitude
-                                    );
-                                    if (timeDiff > 0) {
-                                        speed = distance / timeDiff; // 公尺/秒
+                                // 檢查是否真的是新的位置數據
+                                if (!lastLocationUpdate || (now - lastLocationUpdate) >= (locationUpdateFrequency * 0.8)) {
+                                    lastLocationUpdate = now;
+                                    
+                                    // 計算速度（如果有前一個位置）
+                                    let speed = null;
+                                    if (currentPosition && position.coords.speed !== null) {
+                                        speed = position.coords.speed;
+                                    } else if (currentPosition) {
+                                        const timeDiff = (now - currentPosition.timestamp) / 1000; // 秒
+                                        const distance = calculateDistance(
+                                            currentPosition.lat, currentPosition.lng,
+                                            position.coords.latitude, position.coords.longitude
+                                        );
+                                        if (timeDiff > 0) {
+                                            speed = distance / timeDiff; // 公尺/秒
+                                        }
                                     }
-                                }
-                                
-                                // 保存當前位置作為下次計算的參考
-                                lastPosition = currentPosition ? {
-                                    lat: currentPosition.lat,
-                                    lng: currentPosition.lng
-                                } : null;
-                                
+                                    
+                                    // 保存當前位置作為下次計算的參考
+                                    lastPosition = currentPosition ? {
+                                        lat: currentPosition.lat,
+                                        lng: currentPosition.lng
+                                    } : null;
+                                    
 
-                                
-                                currentPosition = {
-                                    lat: position.coords.latitude,
-                                    lng: position.coords.longitude,
-                                    accuracy: position.coords.accuracy,
-                                    timestamp: now,
-                                    speed: speed
-                                };
-                                
-                                updateLocationDisplay();
-                                updateCurrentLocationMarker();
-                                refreshAllMarkerPopups(); // 更新所有標記的提示窗距離顯示
-                                updateLocationStatus('追蹤中 (強制更新)');
+                                    
+                                    currentPosition = {
+                                        lat: position.coords.latitude,
+                                        lng: position.coords.longitude,
+                                        accuracy: position.coords.accuracy,
+                                        timestamp: now,
+                                        speed: speed
+                                    };
+                                    
+                                    updateLocationDisplay();
+                                    updateCurrentLocationMarker();
+                                    refreshAllMarkerPopups(); // 更新所有標記的提示窗距離顯示
+                                    updateLocationStatus('追蹤中 (強制更新)');
+                                }
+                            },
+                            function(error) {
+                                console.warn('定時器位置更新失敗:', error);
+                            },
+                            {
+                                enableHighAccuracy: enableHighAccuracy,
+                                timeout: Math.min(locationTimeout, locationUpdateFrequency - 500),
+                                maximumAge: 0 // 強制獲取最新位置
                             }
-                        },
-                        function(error) {
-                            console.warn('定時器位置更新失敗:', error);
-                        },
-                        {
-                            enableHighAccuracy: enableHighAccuracy,
-                            timeout: Math.min(locationTimeout, locationUpdateFrequency - 500),
-                            maximumAge: 0 // 強制獲取最新位置
-                        }
-                    );
-                }
-            }, locationUpdateFrequency);
+                        );
+                    }
+                }, locationUpdateFrequency);
+                
+                showNotification(`更新頻率已變更為 ${locationUpdateFrequency/1000} 秒`);
+            }
             
-            showNotification(`更新頻率已變更為 ${locationUpdateFrequency/1000} 秒`);
-        }
-        
-        saveData();
-    });
+            saveData();
+        });
+    }
     
-    document.getElementById('locationTimeout').addEventListener('change', function(e) {
-        locationTimeout = parseInt(e.target.value) * 1000; // 轉換為毫秒
-        saveData();
-    });
+    const locationTimeoutEl = document.getElementById('locationTimeout');
+    if (locationTimeoutEl) {
+        locationTimeoutEl.addEventListener('change', function(e) {
+            locationTimeout = parseInt(e.target.value) * 1000; // 轉換為毫秒
+            saveData();
+        });
+    }
     
     // 組別詳情模態框事件監聽器
     const groupDetailsModal = document.getElementById('groupDetailsModal');
@@ -1974,9 +2019,13 @@ function handleInitialSetup() {
     alertInterval = parseInt(alertIntervalValue);
     
     // 更新UI中的設定值
-    document.getElementById('alertDistance').value = alertDistance;
-    document.getElementById('alertInterval').value = alertInterval;
-    document.getElementById('enableNotifications').checked = enableNotifications;
+    const alertDistanceEl = getSettingsElement('alertDistance');
+    const alertIntervalEl = getSettingsElement('alertInterval');
+    const enableNotificationsEl = getSettingsElement('enableNotifications');
+    
+    if (alertDistanceEl) alertDistanceEl.value = alertDistance;
+    if (alertIntervalEl) alertIntervalEl.value = alertInterval;
+    if (enableNotificationsEl) enableNotificationsEl.checked = enableNotifications;
     
     // 設定預設組別
     if (defaultGroupId) {
@@ -2543,6 +2592,11 @@ function addMarkerToMap(marker) {
     const customIcon = createCustomMarkerIcon(marker.color || 'red', marker.icon || '📍');
     const leafletMarker = L.marker([marker.lat, marker.lng], { icon: customIcon }).addTo(map);
     
+    // 添加點擊事件，當點擊標示點時關閉浮動設定視窗
+    leafletMarker.on('click', function() {
+        hideFloatingSettings();
+    });
+    
     marker.leafletMarker = leafletMarker;
     
     // 使用統一的popup更新函數
@@ -3092,7 +3146,8 @@ function stopProximityCheck() {
 
 // 接近提醒檢查（僅用於判斷進入/離開範圍）
 function checkProximityAlerts() {
-    if (!currentPosition || !document.getElementById('enableNotifications').checked || !trackingTarget) {
+    const enableNotificationsEl = getSettingsElement('enableNotifications');
+    if (!currentPosition || !enableNotificationsEl || !enableNotificationsEl.checked || !trackingTarget) {
         return;
     }
     
@@ -3135,7 +3190,8 @@ function startRepeatedAlert(markerId, marker) {
     
     // 設定新的定時器，直接按照設定的間隔時間進行通知
     const timer = setInterval(() => {
-        if (!currentPosition || !document.getElementById('enableNotifications').checked) {
+        const enableNotificationsEl = getSettingsElement('enableNotifications');
+    if (!currentPosition || !enableNotificationsEl || !enableNotificationsEl.checked) {
             stopRepeatedAlert(markerId);
             return;
         }
@@ -3564,6 +3620,8 @@ function focusMarker(markerId) {
     const marker = markers.find(m => m.id === markerId);
     if (marker && marker.leafletMarker) {
         closeGroupDetailsModal();
+        // 關閉浮動設定視窗（如果開啟的話）
+        hideFloatingSettings();
         map.setView([marker.lat, marker.lng], 18);
         marker.leafletMarker.openPopup();
     }
@@ -4002,14 +4060,16 @@ function loadData() {
             locationUpdateFrequency = data.locationUpdateFrequency || 3000;
             locationTimeout = data.locationTimeout || 20000;
             
-            document.getElementById('alertDistance').value = alertDistance;
-            document.getElementById('alertInterval').value = alertInterval;
+            const alertDistanceEl = getSettingsElement('alertDistance');
+            const alertIntervalEl = getSettingsElement('alertInterval');
+            if (alertDistanceEl) alertDistanceEl.value = alertDistance;
+            if (alertIntervalEl) alertIntervalEl.value = alertInterval;
             
-            // 更新即時定位設定UI
-            document.getElementById('enableHighAccuracy').checked = enableHighAccuracy;
-            document.getElementById('autoStartTracking').checked = autoStartTracking;
-            document.getElementById('locationUpdateFrequency').value = locationUpdateFrequency; // 已經是毫秒
-            document.getElementById('locationTimeout').value = locationTimeout / 1000; // 轉換為秒
+            // 更新即時定位設定UI（這些元素在主界面中不存在，只在浮動設定窗口中存在）
+            // document.getElementById('enableHighAccuracy').checked = enableHighAccuracy;
+            // document.getElementById('autoStartTracking').checked = autoStartTracking;
+            // document.getElementById('locationUpdateFrequency').value = locationUpdateFrequency; // 已經是毫秒
+            // document.getElementById('locationTimeout').value = locationTimeout / 1000; // 轉換為秒
             
             // 更新UI
             updateGroupsList();
@@ -4043,9 +4103,9 @@ window.editSubgroupName = editSubgroupName;
 function saveCurrentSettings() {
     try {
         // 獲取當前設定值，加入安全檢查
-        const enableNotificationsEl = document.getElementById('enableNotifications');
-        const alertDistanceEl = document.getElementById('alertDistance');
-        const alertIntervalEl = document.getElementById('alertInterval');
+        const enableNotificationsEl = getSettingsElement('enableNotifications');
+        const alertDistanceEl = getSettingsElement('alertDistance');
+        const alertIntervalEl = getSettingsElement('alertInterval');
         
         if (!enableNotificationsEl || !alertDistanceEl || !alertIntervalEl) {
             throw new Error('設定介面元素未找到');
@@ -4165,14 +4225,23 @@ function loadSavedSettings() {
         
         // 應用位置提醒設定到UI
         if (settings.enableNotifications !== undefined) {
-            document.getElementById('enableNotifications').checked = settings.enableNotifications;
+            const enableNotificationsEl = getSettingsElement('enableNotifications');
+            if (enableNotificationsEl) {
+                enableNotificationsEl.checked = settings.enableNotifications;
+            }
         }
         if (settings.alertDistance !== undefined) {
-            document.getElementById('alertDistance').value = settings.alertDistance;
+            const alertDistanceEl = getSettingsElement('alertDistance');
+            if (alertDistanceEl) {
+                alertDistanceEl.value = settings.alertDistance;
+            }
             alertDistance = settings.alertDistance;
         }
         if (settings.alertInterval !== undefined) {
-            document.getElementById('alertInterval').value = settings.alertInterval;
+            const alertIntervalEl = getSettingsElement('alertInterval');
+            if (alertIntervalEl) {
+                alertIntervalEl.value = settings.alertInterval;
+            }
             alertInterval = settings.alertInterval;
         }
         
@@ -4268,9 +4337,18 @@ function resetToDefaultSettings() {
         }
         
         // 重置位置提醒設定為預設值
-        document.getElementById('enableNotifications').checked = true;
-        document.getElementById('alertDistance').value = 100;
-        document.getElementById('alertInterval').value = 30;
+        const enableNotificationsEl = getSettingsElement('enableNotifications');
+        if (enableNotificationsEl) {
+            enableNotificationsEl.checked = true;
+        }
+        const alertDistanceEl = getSettingsElement('alertDistance');
+        if (alertDistanceEl) {
+            alertDistanceEl.value = 100;
+        }
+        const alertIntervalEl = getSettingsElement('alertInterval');
+        if (alertIntervalEl) {
+            alertIntervalEl.value = 30;
+        }
         
         // 更新全域變數
         alertDistance = 100;
@@ -4378,7 +4456,10 @@ async function exportMarkerData() {
             settings: {
                 alertDistance: alertDistance,
                 alertInterval: alertInterval,
-                enableNotifications: document.getElementById('enableNotifications').checked
+                enableNotifications: (() => {
+                    const enableNotificationsEl = getSettingsElement('enableNotifications');
+                    return enableNotificationsEl ? enableNotificationsEl.checked : false;
+                })()
             },
             currentGroup: currentGroup,
             currentSubgroup: currentSubgroup
@@ -4453,7 +4534,11 @@ function importMarkerData(file) {
         reader.readAsText(file);
         
         // 清空檔案輸入，允許重複選擇同一檔案
-        document.getElementById('importFileInput').value = '';
+        // 注意：只有浮動設定視窗有匯入功能
+        const floatingImportInput = document.getElementById('floatingImportFileInput');
+        if (floatingImportInput) {
+            floatingImportInput.value = '';
+        }
         
     } catch (error) {
         console.error('Error importing data:', error);
@@ -4511,7 +4596,10 @@ function performDirectImport(importData) {
         document.getElementById('alertDistance').value = alertDistance;
         document.getElementById('alertInterval').value = alertInterval;
         if (importData.settings.enableNotifications !== undefined) {
-            document.getElementById('enableNotifications').checked = importData.settings.enableNotifications;
+            const enableNotificationsEl = getSettingsElement('enableNotifications');
+            if (enableNotificationsEl) {
+                enableNotificationsEl.checked = importData.settings.enableNotifications;
+            }
         }
     }
     
@@ -4590,33 +4678,12 @@ function initSettingsButtons() {
         });
     }
     
-    // 匯出資料按鈕
-    const exportBtn = document.getElementById('exportDataBtn');
-    if (exportBtn) {
-        exportBtn.addEventListener('click', async function() {
-            await exportMarkerData();
-        });
-    }
-    
-    // 匯入資料按鈕
-    const importBtn = document.getElementById('importDataBtn');
-    const importFileInput = document.getElementById('importFileInput');
-    if (importBtn && importFileInput) {
-        importBtn.addEventListener('click', function() {
-            importFileInput.click();
-        });
-        
-        importFileInput.addEventListener('change', function(event) {
-            const file = event.target.files[0];
-            if (file) {
-                importMarkerData(file);
-            }
-        });
-    }
+    // 注意：主設定面板的匯入匯出按鈕不存在於 HTML 中
+    // 只有浮動設定視窗有這些功能
     
     // 監聽設定變更以即時更新全域變數
-    const alertDistanceInput = document.getElementById('alertDistance');
-    const alertIntervalInput = document.getElementById('alertInterval');
+    const alertDistanceInput = getSettingsElement('alertDistance');
+    const alertIntervalInput = getSettingsElement('alertInterval');
     
     if (alertDistanceInput) {
         alertDistanceInput.addEventListener('change', function() {
@@ -4646,9 +4713,19 @@ function loadSettingsOnInit() {
             const settings = JSON.parse(savedSettings);
             
             // 應用設定到UI
-            document.getElementById('enableNotifications').checked = settings.enableNotifications;
-            document.getElementById('alertDistance').value = settings.alertDistance;
-            document.getElementById('alertInterval').value = settings.alertInterval;
+            const enableNotificationsEl = getSettingsElement('enableNotifications');
+            if (enableNotificationsEl) {
+                enableNotificationsEl.checked = settings.enableNotifications;
+            }
+            const alertDistanceEl = document.getElementById('alertDistance');
+            const alertIntervalEl = document.getElementById('alertInterval');
+            
+            if (alertDistanceEl) {
+                alertDistanceEl.value = settings.alertDistance;
+            }
+            if (alertIntervalEl) {
+                alertIntervalEl.value = settings.alertInterval;
+            }
             
             // 更新全域變數
             alertDistance = settings.alertDistance;
@@ -5223,6 +5300,355 @@ window.centerToGroupMarkers = centerToGroupMarkers;
 window.showAllDetailsModal = showAllDetailsModal;
 window.closeAllDetailsModal = closeAllDetailsModal;
 
+// 浮動設定按鈕功能
+function initFloatingSettings() {
+    const floatingBtn = document.getElementById('floatingSettingsBtn');
+    const floatingModal = document.getElementById('floatingSettingsModal');
+    const closeBtn = document.getElementById('closeFloatingSettings');
+    
+    if (!floatingBtn || !floatingModal || !closeBtn) {
+        console.warn('浮動設定元素未找到');
+        return;
+    }
+    
+    // 使浮動按鈕可拖拽
+    makeFloatingButtonDraggable(floatingBtn);
+    
+    // 點擊按鈕開啟設定視窗
+    floatingBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        showFloatingSettings();
+    });
+    
+    // 點擊關閉按鈕
+    closeBtn.addEventListener('click', function() {
+        hideFloatingSettings();
+    });
+    
+    // 點擊背景關閉視窗
+    floatingModal.addEventListener('click', function(e) {
+        if (e.target === floatingModal) {
+            hideFloatingSettings();
+        }
+    });
+    
+    // 初始化浮動設定的事件監聽器
+    initFloatingSettingsEventListeners();
+    
+    // 載入按鈕位置
+    loadFloatingButtonPosition();
+}
+
+function makeFloatingButtonDraggable(element) {
+    let isDragging = false;
+    let startX, startY, initialX, initialY;
+    let dragThreshold = 5; // 拖拽閾值，避免誤觸
+    let hasMoved = false;
+    
+    function handleStart(e) {
+        isDragging = true;
+        hasMoved = false;
+        
+        const clientX = e.type === 'mousedown' ? e.clientX : e.touches[0].clientX;
+        const clientY = e.type === 'mousedown' ? e.clientY : e.touches[0].clientY;
+        
+        startX = clientX;
+        startY = clientY;
+        
+        const rect = element.getBoundingClientRect();
+        initialX = rect.left;
+        initialY = rect.top;
+        
+        element.style.transition = 'none';
+        e.preventDefault();
+    }
+    
+    function handleMove(e) {
+        if (!isDragging) return;
+        
+        const clientX = e.type === 'mousemove' ? e.clientX : e.touches[0].clientX;
+        const clientY = e.type === 'mousemove' ? e.clientY : e.touches[0].clientY;
+        
+        const deltaX = clientX - startX;
+        const deltaY = clientY - startY;
+        
+        // 檢查是否超過拖拽閾值
+        if (!hasMoved && (Math.abs(deltaX) > dragThreshold || Math.abs(deltaY) > dragThreshold)) {
+            hasMoved = true;
+        }
+        
+        if (hasMoved) {
+            const newX = initialX + deltaX;
+            const newY = initialY + deltaY;
+            
+            // 限制在視窗範圍內
+            const maxX = window.innerWidth - element.offsetWidth;
+            const maxY = window.innerHeight - element.offsetHeight;
+            
+            const constrainedX = Math.max(0, Math.min(newX, maxX));
+            const constrainedY = Math.max(0, Math.min(newY, maxY));
+            
+            element.style.left = constrainedX + 'px';
+            element.style.top = constrainedY + 'px';
+            element.style.right = 'auto';
+            element.style.bottom = 'auto';
+        }
+        
+        e.preventDefault();
+    }
+    
+    function handleEnd(e) {
+        if (isDragging) {
+            isDragging = false;
+            element.style.transition = '';
+            
+            // 如果有移動，保存位置
+            if (hasMoved) {
+                const rect = element.getBoundingClientRect();
+                saveFloatingButtonPosition(rect.left, rect.top);
+                e.preventDefault();
+                e.stopPropagation();
+            }
+        }
+    }
+    
+    // 滑鼠事件
+    element.addEventListener('mousedown', handleStart);
+    document.addEventListener('mousemove', handleMove);
+    document.addEventListener('mouseup', handleEnd);
+    
+    // 觸控事件
+    element.addEventListener('touchstart', handleStart, { passive: false });
+    document.addEventListener('touchmove', handleMove, { passive: false });
+    document.addEventListener('touchend', handleEnd);
+}
+
+function showFloatingSettings() {
+    const modal = document.getElementById('floatingSettingsModal');
+    if (modal) {
+        modal.style.display = 'flex';
+        setTimeout(() => {
+            modal.classList.add('show');
+        }, 10);
+        
+        // 同步設定值
+        syncFloatingSettingsValues();
+    }
+}
+
+function hideFloatingSettings() {
+    const modal = document.getElementById('floatingSettingsModal');
+    if (modal) {
+        modal.classList.remove('show');
+        setTimeout(() => {
+            modal.style.display = 'none';
+        }, 300);
+    }
+}
+
+function syncFloatingSettingsValues() {
+    // 從全域變數同步設定值到浮動設定視窗
+    const floatingEnableNotifications = document.getElementById('floatingEnableNotifications');
+    if (floatingEnableNotifications) {
+        floatingEnableNotifications.checked = Notification.permission === 'granted';
+    }
+    
+    const floatingAlertDistance = document.getElementById('floatingAlertDistance');
+    if (floatingAlertDistance) {
+        floatingAlertDistance.value = alertDistance;
+    }
+    
+    const floatingAlertInterval = document.getElementById('floatingAlertInterval');
+    if (floatingAlertInterval) {
+        floatingAlertInterval.value = alertInterval;
+    }
+    
+    const floatingEnableHighAccuracy = document.getElementById('floatingEnableHighAccuracy');
+    if (floatingEnableHighAccuracy) {
+        floatingEnableHighAccuracy.checked = enableHighAccuracy;
+    }
+    
+    const floatingAutoStartTracking = document.getElementById('floatingAutoStartTracking');
+    if (floatingAutoStartTracking) {
+        floatingAutoStartTracking.checked = autoStartTracking;
+    }
+    
+    const floatingKeepMapCentered = document.getElementById('floatingKeepMapCentered');
+    if (floatingKeepMapCentered) {
+        floatingKeepMapCentered.checked = keepMapCentered;
+    }
+    
+    const floatingLocationUpdateFrequency = document.getElementById('floatingLocationUpdateFrequency');
+    if (floatingLocationUpdateFrequency) {
+        floatingLocationUpdateFrequency.value = locationUpdateFrequency;
+    }
+    
+    const floatingLocationTimeout = document.getElementById('floatingLocationTimeout');
+    if (floatingLocationTimeout) {
+        floatingLocationTimeout.value = locationTimeout / 1000; // 轉換為秒
+    }
+    
+    // 同步位置顯示
+    const currentLocation = document.getElementById('currentLocation');
+    const floatingCurrentLocation = document.getElementById('floatingCurrentLocation');
+    if (currentLocation && floatingCurrentLocation) {
+        floatingCurrentLocation.textContent = currentLocation.textContent;
+    }
+    
+    const locationAccuracy = document.getElementById('locationAccuracy');
+    const floatingLocationAccuracy = document.getElementById('floatingLocationAccuracy');
+    if (locationAccuracy && floatingLocationAccuracy) {
+        floatingLocationAccuracy.textContent = locationAccuracy.textContent;
+    }
+    
+    const locationStatus = document.getElementById('locationStatus');
+    const floatingLocationStatus = document.getElementById('floatingLocationStatus');
+    if (locationStatus && floatingLocationStatus) {
+        floatingLocationStatus.textContent = locationStatus.textContent;
+    }
+}
+
+function initFloatingSettingsEventListeners() {
+    // 浮動設定變更事件監聽器
+    const floatingEnableNotifications = document.getElementById('floatingEnableNotifications');
+    if (floatingEnableNotifications) {
+        floatingEnableNotifications.addEventListener('change', function() {
+            // 直接更新全域變數和相關功能
+            if (this.checked) {
+                requestNotificationPermission();
+            }
+        });
+    }
+    
+    const floatingAlertDistance = document.getElementById('floatingAlertDistance');
+    if (floatingAlertDistance) {
+        floatingAlertDistance.addEventListener('change', function() {
+            alertDistance = parseInt(this.value) || 100;
+            // 重新啟動接近檢查以使用新距離
+            if (isTracking) {
+                stopProximityCheck();
+                startProximityCheck();
+            }
+        });
+    }
+    
+    const floatingAlertInterval = document.getElementById('floatingAlertInterval');
+    if (floatingAlertInterval) {
+        floatingAlertInterval.addEventListener('change', function() {
+            alertInterval = parseInt(this.value) || 30;
+            // 清除現有的重複提醒並重新設定
+            alertTimers.forEach((timer, markerId) => {
+                clearInterval(timer);
+                alertTimers.delete(markerId);
+            });
+        });
+    }
+    
+    const floatingEnableHighAccuracy = document.getElementById('floatingEnableHighAccuracy');
+    if (floatingEnableHighAccuracy) {
+        floatingEnableHighAccuracy.addEventListener('change', function() {
+            enableHighAccuracy = this.checked;
+        });
+    }
+    
+    const floatingAutoStartTracking = document.getElementById('floatingAutoStartTracking');
+    if (floatingAutoStartTracking) {
+        floatingAutoStartTracking.addEventListener('change', function() {
+            autoStartTracking = this.checked;
+        });
+    }
+    
+    const floatingKeepMapCentered = document.getElementById('floatingKeepMapCentered');
+    if (floatingKeepMapCentered) {
+        floatingKeepMapCentered.addEventListener('change', function() {
+            keepMapCentered = this.checked;
+        });
+    }
+    
+    const floatingLocationUpdateFrequency = document.getElementById('floatingLocationUpdateFrequency');
+    if (floatingLocationUpdateFrequency) {
+        floatingLocationUpdateFrequency.addEventListener('change', function() {
+            locationUpdateFrequency = parseInt(this.value) || 3000;
+        });
+    }
+    
+    const floatingLocationTimeout = document.getElementById('floatingLocationTimeout');
+    if (floatingLocationTimeout) {
+        floatingLocationTimeout.addEventListener('change', function() {
+            locationTimeout = parseInt(this.value) * 1000 || 20000; // 轉換為毫秒
+        });
+    }
+    
+    // 按鈕事件監聽器
+    const floatingSaveBtn = document.getElementById('floatingSaveSettingsBtn');
+    if (floatingSaveBtn) {
+        floatingSaveBtn.addEventListener('click', function() {
+            saveCurrentSettings();
+        });
+    }
+    
+    const floatingResetBtn = document.getElementById('floatingResetSettingsBtn');
+    if (floatingResetBtn) {
+        floatingResetBtn.addEventListener('click', function() {
+            resetToDefaultSettings();
+        });
+    }
+    
+    const floatingExportBtn = document.getElementById('floatingExportDataBtn');
+    if (floatingExportBtn) {
+        floatingExportBtn.addEventListener('click', async function() {
+            await exportMarkerData();
+        });
+    }
+    
+    const floatingImportBtn = document.getElementById('floatingImportDataBtn');
+    if (floatingImportBtn) {
+        floatingImportBtn.addEventListener('click', function() {
+            const fileInput = document.getElementById('floatingImportFileInput');
+            if (fileInput) {
+                fileInput.click();
+            }
+        });
+    }
+    
+    // 檔案輸入事件監聽器
+    const floatingFileInput = document.getElementById('floatingImportFileInput');
+    if (floatingFileInput) {
+        floatingFileInput.addEventListener('change', function() {
+            if (this.files.length > 0) {
+                importMarkerData(this.files[0]);
+            }
+        });
+    }
+}
+
+function saveFloatingButtonPosition(x, y) {
+    localStorage.setItem('floatingSettingsButtonPosition', JSON.stringify({ x, y }));
+}
+
+function loadFloatingButtonPosition() {
+    const saved = localStorage.getItem('floatingSettingsButtonPosition');
+    if (saved) {
+        try {
+            const { x, y } = JSON.parse(saved);
+            const btn = document.getElementById('floatingSettingsBtn');
+            if (btn) {
+                btn.style.left = x + 'px';
+                btn.style.top = y + 'px';
+                btn.style.right = 'auto';
+                btn.style.bottom = 'auto';
+            }
+        } catch (error) {
+            console.error('載入浮動按鈕位置失敗:', error);
+        }
+    }
+}
+
+// 將函數暴露到全域
+window.initFloatingSettings = initFloatingSettings;
+window.showFloatingSettings = showFloatingSettings;
+window.hideFloatingSettings = hideFloatingSettings;
+
 // 初始化 - 在所有函數定義之後
 document.addEventListener('DOMContentLoaded', function() {
     console.log('DOMContentLoaded event fired');
@@ -5239,6 +5665,15 @@ document.addEventListener('DOMContentLoaded', function() {
         console.error('Error initializing drag functionality:', error);
     }
     
+    // 初始化浮動設定功能
+    console.log('Initializing floating settings...');
+    try {
+        initFloatingSettings();
+        console.log('Floating settings initialized');
+    } catch (error) {
+        console.error('Error initializing floating settings:', error);
+    }
+    
     // 延遲執行其他初始化函數
     setTimeout(() => {
         // 載入設定
@@ -5253,8 +5688,6 @@ document.addEventListener('DOMContentLoaded', function() {
             console.error('Error loading settings:', error);
         }
         
-
-        
         // 請求定位權限
         try {
             console.log('Calling requestLocationPermission...');
@@ -5267,6 +5700,5 @@ document.addEventListener('DOMContentLoaded', function() {
             console.error('Error requesting location permission:', error);
         }
         
-
     }, 100);
 });

@@ -14,413 +14,15 @@ body {
 }
 
 .container {
-    display: flex;
     height: 100vh;
+    width: 100vw;
 }
 
-/* 側邊欄樣式 - 簡潔現代風格 */
-.sidebar {
-    width: 320px;
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    color: #2d3748;
-    padding: 16px;
-    overflow-y: auto;
-    box-shadow: 
-        0 4px 20px rgba(0, 0, 0, 0.08),
-        0 0 0 1px rgba(255, 255, 255, 0.2);
-    border-right: 1px solid rgba(226, 232, 240, 0.8);
-    position: relative;
-}
 
-/* 側邊欄標題區域 */
-.sidebar-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
-    padding-bottom: 12px;
-    border-bottom: 1px solid rgba(226, 232, 240, 0.6);
-}
 
-.sidebar h1 {
-    font-size: 18px;
-    font-weight: 600;
-    color: #2d3748;
-    margin: 0;
-}
 
-.quick-actions {
-    display: flex;
-    gap: 6px;
-}
 
-.icon-btn {
-    width: 32px;
-    height: 32px;
-    border: none;
-    border-radius: 8px;
-    background: rgba(99, 102, 241, 0.1);
-    color: #6366f1;
-    font-size: 14px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
 
-.icon-btn:hover {
-    background: rgba(99, 102, 241, 0.2);
-    transform: translateY(-1px);
-}
-
-.sidebar h2 {
-    font-size: 22px;
-    font-weight: 600;
-    margin: 20px 0 15px 0;
-    padding-bottom: 8px;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-    color: #1d1d1f;
-    letter-spacing: -0.5px;
-    position: relative;
-}
-
-/* 組別管理 */
-.group-controls {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 15px;
-}
-
-.group-controls input {
-    flex: 1;
-    padding: 8px 12px;
-    border: 2px solid #00ffff;
-    border-radius: 0;
-    font-size: 14px;
-    background: rgba(0, 0, 0, 0.8);
-    color: #00ffff;
-    box-shadow: 
-        inset 0 0 10px rgba(0, 255, 255, 0.2),
-        0 0 5px rgba(0, 255, 255, 0.3);
-    transition: all 0.3s ease;
-}
-
-.group-controls input:focus {
-    outline: none;
-    box-shadow: 
-        inset 0 0 10px rgba(0, 255, 255, 0.4),
-        0 0 15px rgba(0, 255, 255, 0.6);
-    text-shadow: 0 0 5px #00ffff;
-}
-
-.group-controls input::placeholder {
-    color: rgba(0, 255, 255, 0.6);
-}
-
-.group-controls button, #addGroupBtn, #resetBtn {
-    background: rgba(0, 122, 255, 1);
-    color: white;
-    border: none;
-    border-radius: 12px;
-    cursor: pointer;
-    font-size: 16px;
-    font-weight: 500;
-    padding: 12px 20px;
-    transition: all 0.2s ease;
-    box-shadow: 0 2px 8px rgba(0, 122, 255, 0.3);
-}
-
-.group-controls button:hover, #addGroupBtn:hover {
-    background: rgba(0, 122, 255, 0.8);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0, 122, 255, 0.4);
-}
-
-.group-controls button:active, #addGroupBtn:active {
-    transform: translateY(0) scale(0.98);
-    box-shadow: 0 1px 4px rgba(0, 122, 255, 0.4);
-}
-
-.reset-btn {
-    background: rgba(255, 149, 0, 1) !important;
-    box-shadow: 0 2px 8px rgba(255, 149, 0, 0.3) !important;
-}
-
-.reset-btn:hover {
-    background: rgba(255, 149, 0, 0.8) !important;
-    box-shadow: 0 4px 12px rgba(255, 149, 0, 0.4) !important;
-}
-
-/* 設定按鈕樣式 */
-.settings-actions {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    margin-top: 16px;
-    padding-top: 16px;
-    border-top: 1px solid rgba(226, 232, 240, 0.6);
-}
-
-.settings-btn {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 12px;
-    border: none;
-    border-radius: 10px;
-    font-size: 13px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    background: rgba(99, 102, 241, 0.1);
-    color: #6366f1;
-    border: 1px solid rgba(99, 102, 241, 0.2);
-}
-
-.settings-btn:hover {
-    background: rgba(99, 102, 241, 0.15);
-    border-color: rgba(99, 102, 241, 0.3);
-    transform: translateY(-1px);
-    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.2);
-}
-
-.settings-btn:active {
-    transform: translateY(0);
-    box-shadow: 0 1px 4px rgba(99, 102, 241, 0.2);
-}
-
-.save-btn {
-    background: rgba(34, 197, 94, 0.1) !important;
-    color: #22c55e !important;
-    border-color: rgba(34, 197, 94, 0.2) !important;
-}
-
-.save-btn:hover {
-    background: rgba(34, 197, 94, 0.15) !important;
-    border-color: rgba(34, 197, 94, 0.3) !important;
-    box-shadow: 0 2px 8px rgba(34, 197, 94, 0.2) !important;
-}
-
-.load-btn {
-    background: rgba(59, 130, 246, 0.1) !important;
-    color: #3b82f6 !important;
-    border-color: rgba(59, 130, 246, 0.2) !important;
-}
-
-.load-btn:hover {
-    background: rgba(59, 130, 246, 0.15) !important;
-    border-color: rgba(59, 130, 246, 0.3) !important;
-    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.2) !important;
-}
-
-.reset-btn {
-    background: rgba(239, 68, 68, 0.1) !important;
-    color: #ef4444 !important;
-    border-color: rgba(239, 68, 68, 0.2) !important;
-}
-
-.reset-btn:hover {
-    background: rgba(239, 68, 68, 0.15) !important;
-    border-color: rgba(239, 68, 68, 0.3) !important;
-    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.2) !important;
-}
-
-/* 資料匯出匯入按鈕樣式 */
-.data-actions {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    margin-top: 16px;
-    padding-top: 16px;
-    border-top: 1px solid rgba(226, 232, 240, 0.6);
-}
-
-.export-btn {
-    background: rgba(168, 85, 247, 0.1) !important;
-    color: #a855f7 !important;
-    border-color: rgba(168, 85, 247, 0.2) !important;
-}
-
-.export-btn:hover {
-    background: rgba(168, 85, 247, 0.15) !important;
-    border-color: rgba(168, 85, 247, 0.3) !important;
-    box-shadow: 0 2px 8px rgba(168, 85, 247, 0.2) !important;
-}
-
-.import-btn {
-    background: rgba(245, 158, 11, 0.1) !important;
-    color: #f59e0b !important;
-    border-color: rgba(245, 158, 11, 0.2) !important;
-}
-
-.import-btn:hover {
-    background: rgba(245, 158, 11, 0.15) !important;
-    border-color: rgba(245, 158, 11, 0.3) !important;
-    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.2) !important;
-}
-
-.groups-list, .markers-list {
-    max-height: 200px;
-    overflow-y: auto;
-}
-
-/* 組別項目樣式 */
-.group-item {
-    background: rgba(255, 255, 255, 0.6);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    margin: 8px 0;
-    padding: 16px;
-    border-radius: 16px;
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    position: relative;
-    overflow: hidden;
-}
-
-.group-item::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
-    transition: left 0.5s ease;
-}
-
-.group-item:hover {
-    background: rgba(0, 122, 255, 0.08);
-    border-color: rgba(0, 122, 255, 0.2);
-    transform: translateY(-3px) scale(1.02);
-    box-shadow: 0 8px 25px rgba(0, 122, 255, 0.15);
-}
-
-.group-item:hover::before {
-    left: 100%;
-}
-
-.group-item:active {
-    /* 移除底色，只保留反饋效果 */
-    transform: translateY(-1px) scale(0.98);
-    box-shadow: 0 4px 15px rgba(0, 122, 255, 0.25);
-    transition: all 0.1s ease;
-}
-
-.group-item.active {
-    background: rgba(0, 122, 255, 0.1);
-    border-color: rgba(0, 122, 255, 0.3);
-    box-shadow: 0 4px 16px rgba(0, 122, 255, 0.2);
-}
-
-/* 標記項目樣式 */
-.marker-item {
-    background: rgba(255, 255, 255, 0.6);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    margin: 8px 0;
-    padding: 16px;
-    border-radius: 16px;
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    cursor: pointer;
-    transition: all 0.2s ease;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.marker-item:hover {
-    background: rgba(255, 255, 255, 0.8);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
-}
-
-.marker-item:active {
-    background: rgba(255, 255, 255, 0.9);
-    transform: translateY(-1px);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-}
-
-/* 追蹤標示點的醒目樣式 */
-.marker-item.tracking-target {
-    background: linear-gradient(135deg, rgba(255, 59, 48, 0.15) 0%, rgba(255, 149, 0, 0.15) 50%, rgba(255, 204, 0, 0.15) 100%);
-    border: 2px solid rgba(255, 59, 48, 0.6);
-    box-shadow: 
-        0 0 20px rgba(255, 59, 48, 0.3),
-        0 4px 16px rgba(255, 59, 48, 0.2),
-        inset 0 1px 0 rgba(255, 255, 255, 0.3);
-    animation: tracking-pulse 2s ease-in-out infinite;
-    position: relative;
-    overflow: hidden;
-}
-
-.marker-item.tracking-target::before {
-    content: '🎯';
-    position: absolute;
-    top: 8px;
-    right: 8px;
-    font-size: 16px;
-    animation: tracking-icon-bounce 1.5s ease-in-out infinite;
-}
-
-.marker-item.tracking-target::after {
-    content: '';
-    position: absolute;
-    top: -2px;
-    left: -2px;
-    right: -2px;
-    bottom: -2px;
-    background: linear-gradient(45deg, 
-        rgba(255, 59, 48, 0.8) 0%, 
-        rgba(255, 149, 0, 0.8) 25%, 
-        rgba(255, 204, 0, 0.8) 50%, 
-        rgba(255, 149, 0, 0.8) 75%, 
-        rgba(255, 59, 48, 0.8) 100%);
-    border-radius: 18px;
-    z-index: -1;
-    animation: tracking-border-rotate 3s linear infinite;
-}
-
-.marker-item.tracking-target:hover {
-    background: linear-gradient(135deg, rgba(255, 59, 48, 0.25) 0%, rgba(255, 149, 0, 0.25) 50%, rgba(255, 204, 0, 0.25) 100%);
-    transform: translateY(-3px) scale(1.02);
-    box-shadow: 
-        0 0 25px rgba(255, 59, 48, 0.4),
-        0 6px 20px rgba(255, 59, 48, 0.3),
-        inset 0 1px 0 rgba(255, 255, 255, 0.4);
-}
-
-.marker-item.tracking-target .marker-name {
-    font-weight: 600;
-    color: #d73502;
-    text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);
-}
-
-.marker-item.tracking-target .marker-description {
-    color: #bf4f00;
-    font-weight: 500;
-}
-
-/* 標註點群組信息樣式 */
-.marker-group-info {
-    font-size: 12px;
-    color: #6b7280;
-    margin-top: 6px;
-    padding: 4px 8px;
-    background: rgba(107, 114, 128, 0.1);
-    border-radius: 8px;
-    border-left: 3px solid #6b7280;
-    font-weight: 500;
-}
-
-.marker-item.tracking-target .marker-group-info {
-    color: #92400e;
-    background: rgba(146, 64, 14, 0.1);
-    border-left-color: #92400e;
-}
 
 /* 追蹤標示點動畫效果 */
 @keyframes tracking-pulse {
@@ -490,34 +92,7 @@ body {
     box-shadow: 0 2px 8px rgba(52, 199, 89, 0.2);
 }
 
-.group-actions, .subgroup-actions {
-    display: flex;
-    gap: 5px;
-    margin-top: 8px;
-}
 
-.group-actions button, .subgroup-actions button {
-    padding: 6px 12px;
-    font-size: 12px;
-    background: rgba(0, 122, 255, 0.1);
-    color: #007AFF;
-    border: 1px solid rgba(0, 122, 255, 0.3);
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    font-weight: 500;
-}
-
-.group-actions button:hover, .subgroup-actions button:hover {
-    background: rgba(0, 122, 255, 0.2);
-    transform: translateY(-1px);
-    box-shadow: 0 2px 8px rgba(0, 122, 255, 0.2);
-}
-
-.group-actions button:active, .subgroup-actions button:active {
-    transform: translateY(0);
-    background: rgba(0, 122, 255, 0.3);
-}
 
 /* 通知設定 */
 .notification-settings label {
@@ -638,7 +213,8 @@ body {
 
 /* 地圖容器 */
 .map-container {
-    flex: 1;
+    width: 100vw;
+    height: 100vh;
     position: relative;
 }
 
@@ -1266,15 +842,6 @@ form input:focus, form textarea:focus, form select:focus {
 /* 響應式設計 - 增強版 */
 /* 大型平板 (1024px - 1200px) */
 @media (max-width: 1200px) and (min-width: 1025px) {
-    .sidebar {
-        width: 280px;
-        padding: 14px;
-    }
-    
-    .sidebar h1 {
-        font-size: 17px;
-    }
-    
     .compact-input {
         font-size: 13px;
         padding: 9px 11px;
@@ -1283,14 +850,6 @@ form input:focus, form textarea:focus, form select:focus {
 
 /* 中型平板 (768px - 1024px) */
 @media (max-width: 1024px) and (min-width: 769px) {
-    .sidebar {
-        width: 260px;
-        padding: 12px;
-    }
-    
-    .sidebar h1 {
-        font-size: 16px;
-    }
     
     .icon-btn {
         width: 34px;
@@ -1306,28 +865,6 @@ form input:focus, form textarea:focus, form select:focus {
 
 /* 小型平板和大型手機 (768px以下) */
 @media (max-width: 768px) {
-    .container {
-        flex-direction: column;
-    }
-    
-    .sidebar {
-        width: 100%;
-        height: auto;
-        max-height: 45vh;
-        order: 2;
-        overflow-y: auto;
-        padding: 16px;
-        border-right: none;
-        border-top: 1px solid rgba(226, 232, 240, 0.8);
-    }
-    
-    .sidebar-header {
-        padding: 12px 0;
-    }
-    
-    .sidebar h1 {
-        font-size: 18px;
-    }
     
     .quick-actions {
         gap: 8px;
@@ -2053,21 +1590,21 @@ form input:focus, form textarea:focus, form select:focus {
 }
 
 /* 自定義滾動條 */
-.sidebar::-webkit-scrollbar, .groups-list::-webkit-scrollbar, .markers-list::-webkit-scrollbar {
+.groups-list::-webkit-scrollbar, .markers-list::-webkit-scrollbar {
     width: 6px;
 }
 
-.sidebar::-webkit-scrollbar-track, .groups-list::-webkit-scrollbar-track, .markers-list::-webkit-scrollbar-track {
+.groups-list::-webkit-scrollbar-track, .markers-list::-webkit-scrollbar-track {
     background: rgba(255,255,255,0.1);
     border-radius: 3px;
 }
 
-.sidebar::-webkit-scrollbar-thumb, .groups-list::-webkit-scrollbar-thumb, .markers-list::-webkit-scrollbar-thumb {
+.groups-list::-webkit-scrollbar-thumb, .markers-list::-webkit-scrollbar-thumb {
     background: rgba(255,255,255,0.3);
     border-radius: 3px;
 }
 
-.sidebar::-webkit-scrollbar-thumb:hover, .groups-list::-webkit-scrollbar-thumb:hover, .markers-list::-webkit-scrollbar-thumb:hover {
+.groups-list::-webkit-scrollbar-thumb:hover, .markers-list::-webkit-scrollbar-thumb:hover {
     background: rgba(255,255,255,0.5);
 }
 
@@ -2772,10 +2309,7 @@ input:checked + .slider:before {
         top: 16px;
     }
     
-    /* 側邊欄在全螢幕模式下隱藏 */
-    .map-container.fullscreen ~ .sidebar {
-        display: none !important;
-    }
+
     
 
 }
@@ -2968,6 +2502,54 @@ input:checked + .slider:before {
     margin: 2px 0;
     font-weight: 600;
     text-shadow: 0 0 3px rgba(34, 197, 94, 0.5);
+}
+
+/* 追蹤目標標註列表項目的閃爍動畫 */
+@keyframes tracking-marker-blink {
+    0%, 50% {
+        background: rgba(255, 59, 48, 0.2);
+        border-color: rgba(255, 59, 48, 0.6);
+        box-shadow: 0 2px 12px rgba(255, 59, 48, 0.3);
+        opacity: 1;
+    }
+    51%, 100% {
+        background: rgba(255, 59, 48, 0.05);
+        border-color: rgba(255, 59, 48, 0.2);
+        box-shadow: 0 1px 4px rgba(255, 59, 48, 0.1);
+        opacity: 0.7;
+    }
+}
+
+/* 追蹤目標標註列表項目樣式 */
+.marker-item.tracking-target {
+    animation: tracking-marker-blink 1s ease-in-out infinite;
+    position: relative;
+}
+
+.marker-item.tracking-target::before {
+    content: '🎯';
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    font-size: 16px;
+    animation: tracking-icon-blink 1s ease-in-out infinite;
+}
+
+/* 目標圖標閃爍動畫 */
+@keyframes tracking-icon-blink {
+    0%, 50% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    51%, 100% {
+        opacity: 0.3;
+        transform: scale(0.9);
+    }
+}
+
+.marker-item.tracking-target .marker-name {
+    font-weight: 600;
+    color: #d63031;
 }
 
 /* Leaflet 彈出視窗樣式優化 */
@@ -3848,4 +3430,404 @@ input:checked + .slider:before {
 .group-details-marker-item .btn-edit:hover {
     background: #f6e05e;
     color: white;
+}
+
+/* 浮動設定按鈕樣式 */
+.floating-settings-btn {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    width: 50px;
+    height: 50px;
+    border: none;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    font-size: 20px;
+    cursor: pointer;
+    box-shadow: 
+        0 4px 20px rgba(102, 126, 234, 0.4),
+        0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    z-index: 10005;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+}
+
+.floating-settings-btn:hover {
+    transform: translateY(-2px) scale(1.05);
+    box-shadow: 
+        0 6px 25px rgba(102, 126, 234, 0.5),
+        0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.floating-settings-btn:active {
+    transform: translateY(0) scale(0.98);
+}
+
+/* 浮動設定視窗樣式 */
+.floating-settings-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(5px);
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+}
+
+.floating-settings-modal.show {
+    opacity: 1;
+    visibility: visible;
+}
+
+.floating-settings-content {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(20px);
+    border-radius: 16px;
+    box-shadow: 
+        0 20px 40px rgba(0, 0, 0, 0.1),
+        0 0 0 1px rgba(255, 255, 255, 0.2);
+    width: 90%;
+    max-width: 450px;
+    max-height: 80vh;
+    overflow: hidden;
+    transform: scale(0.9) translateY(20px);
+    transition: all 0.3s ease;
+}
+
+.floating-settings-modal.show .floating-settings-content {
+    transform: scale(1) translateY(0);
+}
+
+.floating-settings-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px;
+    border-bottom: 1px solid rgba(226, 232, 240, 0.6);
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.floating-settings-header h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.close-settings-btn {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 24px;
+    cursor: pointer;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.close-settings-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: rotate(90deg);
+}
+
+.floating-settings-body {
+    padding: 24px;
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+/* 設定項目樣式 - 重用現有樣式但調整間距 */
+.floating-settings-body .setting-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    padding: 12px 16px;
+    background: rgba(247, 250, 252, 0.8);
+    border-radius: 12px;
+    border: 1px solid rgba(226, 232, 240, 0.6);
+    transition: all 0.2s ease;
+}
+
+.floating-settings-body .setting-row:hover {
+    background: rgba(237, 242, 247, 0.9);
+    border-color: rgba(99, 102, 241, 0.3);
+}
+
+.floating-settings-body .setting-group {
+    margin: 24px 0;
+    padding: 20px;
+    background: rgba(249, 250, 251, 0.8);
+    border-radius: 12px;
+    border: 1px solid rgba(226, 232, 240, 0.6);
+}
+
+.floating-settings-body .setting-group h4 {
+    margin: 0 0 16px 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: #2d3748;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(226, 232, 240, 0.6);
+}
+
+.floating-settings-body .location-display {
+    margin: 20px 0;
+    padding: 16px;
+    background: rgba(237, 242, 247, 0.8);
+    border-radius: 12px;
+    border: 1px solid rgba(226, 232, 240, 0.6);
+}
+
+.floating-settings-body .location-display div {
+    margin-bottom: 8px;
+    font-size: 14px;
+    color: #4a5568;
+}
+
+.floating-settings-body .settings-actions,
+.floating-settings-body .data-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+    margin: 20px 0;
+}
+
+.floating-settings-body .settings-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px 16px;
+    border: none;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+.floating-settings-body .settings-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.floating-settings-body .settings-btn.save-btn {
+    background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+    box-shadow: 0 2px 8px rgba(72, 187, 120, 0.3);
+}
+
+.floating-settings-body .settings-btn.save-btn:hover {
+    box-shadow: 0 4px 12px rgba(72, 187, 120, 0.4);
+}
+
+.floating-settings-body .settings-btn.load-btn {
+    background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%);
+    box-shadow: 0 2px 8px rgba(66, 153, 225, 0.3);
+}
+
+.floating-settings-body .settings-btn.load-btn:hover {
+    box-shadow: 0 4px 12px rgba(66, 153, 225, 0.4);
+}
+
+.floating-settings-body .settings-btn.reset-btn {
+    background: linear-gradient(135deg, #ed8936 0%, #dd6b20 100%);
+    box-shadow: 0 2px 8px rgba(237, 137, 54, 0.3);
+}
+
+.floating-settings-body .settings-btn.reset-btn:hover {
+    box-shadow: 0 4px 12px rgba(237, 137, 54, 0.4);
+}
+
+.floating-settings-body .settings-btn.export-btn {
+    background: linear-gradient(135deg, #9f7aea 0%, #805ad5 100%);
+    box-shadow: 0 2px 8px rgba(159, 122, 234, 0.3);
+}
+
+.floating-settings-body .settings-btn.export-btn:hover {
+    box-shadow: 0 4px 12px rgba(159, 122, 234, 0.4);
+}
+
+.floating-settings-body .settings-btn.import-btn {
+    background: linear-gradient(135deg, #38b2ac 0%, #319795 100%);
+    box-shadow: 0 2px 8px rgba(56, 178, 172, 0.3);
+}
+
+.floating-settings-body .settings-btn.import-btn:hover {
+    box-shadow: 0 4px 12px rgba(56, 178, 172, 0.4);
+}
+
+/* 響應式設計 */
+@media (max-width: 768px) {
+    .floating-settings-content {
+        width: 95%;
+        max-height: 90vh;
+    }
+    
+    .floating-settings-header {
+        padding: 16px 20px;
+    }
+    
+    .floating-settings-body {
+        padding: 20px;
+    }
+    
+    .floating-settings-btn {
+        width: 45px;
+        height: 45px;
+        font-size: 18px;
+        top: 15px;
+        left: 15px;
+    }
+}
+
+/* 浮動窗口內的快速操作按鈕樣式 */
+.floating-settings-body .quick-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin: 16px 0;
+}
+
+.floating-settings-body .quick-action-btn {
+    padding: 8px 12px;
+    border: none;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: rgba(0, 122, 255, 0.1);
+    color: #007AFF;
+    border: 1px solid rgba(0, 122, 255, 0.3);
+}
+
+.floating-settings-body .quick-action-btn:hover {
+    background: rgba(0, 122, 255, 0.2);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 122, 255, 0.2);
+}
+
+/* 浮動窗口內的組別管理樣式 */
+.floating-settings-body .group-controls {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.floating-settings-body .group-controls input {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    font-size: 14px;
+}
+
+.floating-settings-body .group-controls button {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 8px;
+    background: #007AFF;
+    color: white;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.floating-settings-body .group-controls button:hover {
+    background: #0056CC;
+}
+
+.floating-settings-body .groups-list, 
+.floating-settings-body .markers-list {
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    padding: 8px;
+    background: rgba(255, 255, 255, 0.5);
+}
+
+.floating-settings-body .group-item, 
+.floating-settings-body .marker-item {
+    background: rgba(255, 255, 255, 0.8);
+    margin: 4px 0;
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.floating-settings-body .group-item:hover, 
+.floating-settings-body .marker-item:hover {
+    background: rgba(0, 122, 255, 0.1);
+    border-color: rgba(0, 122, 255, 0.3);
+}
+
+.floating-settings-body .group-item.active {
+    background: rgba(0, 122, 255, 0.2);
+    border-color: rgba(0, 122, 255, 0.5);
+}
+
+.floating-settings-body .group-actions {
+    display: flex;
+    gap: 4px;
+    margin-top: 8px;
+}
+
+.floating-settings-body .group-actions button {
+    padding: 4px 8px;
+    font-size: 11px;
+    background: rgba(0, 122, 255, 0.1);
+    color: #007AFF;
+    border: 1px solid rgba(0, 122, 255, 0.3);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.floating-settings-body .group-actions button:hover {
+    background: rgba(0, 122, 255, 0.2);
+}
+
+.floating-settings-body .marker-name {
+    font-weight: 600;
+    color: #2d3748;
+    margin-bottom: 4px;
+}
+
+.floating-settings-body .marker-description {
+    font-size: 12px;
+    color: #666;
+    margin-bottom: 4px;
+}
+
+.floating-settings-body .marker-group-info {
+    font-size: 11px;
+    color: #888;
+    background: rgba(0, 0, 0, 0.05);
+    padding: 2px 6px;
+    border-radius: 4px;
+    display: inline-block;
 }

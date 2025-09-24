@@ -9,142 +9,6 @@
 </head>
 <body>
     <div class="container">
-        <!-- 側邊欄 -->
-        <div class="sidebar">
-            <div class="sidebar-header">
-                <h1>🗺️ 地圖標註</h1>
-                <div class="quick-actions">
-                    <button id="centerMapBtn" class="icon-btn" title="回到當前位置">📍</button>
-                    <button id="testNotificationBtn" class="icon-btn" title="測試通知">🔔</button>
-                    <button id="showAllMarkersBtn" class="icon-btn" title="顯示所有標記">👁️</button>
-                </div>
-            </div>
-            
-            <!-- 組別管理 -->
-            <div class="section group-section">
-                <div class="section-header">
-                    <h3>📁 組別</h3>
-                    <button id="addGroupBtn" class="add-btn">+</button>
-                </div>
-                <input type="text" id="groupNameInput" placeholder="新組別名稱" class="compact-input">
-                <div id="groupsList" class="groups-list"></div>
-            </div>
-
-            <!-- 標註點列表 -->
-            <div class="section markers-section">
-                <div class="section-header">
-                    <h3>📍 標註點</h3>
-                    <button id="showAllDetailsBtn" class="details-btn" title="顯示所有組別及群組詳情">📋</button>
-                </div>
-                <div id="markersList" class="markers-list"></div>
-            </div>
-
-            <!-- 設定區域 -->
-            <div class="section settings-section collapsed">
-                <div class="section-header clickable" onclick="toggleSection('settings')">
-                    <h3>⚙️ 設定</h3>
-                    <span class="toggle-icon">▼</span>
-                </div>
-                <div class="section-content">
-                    <div class="setting-row">
-                        <label class="switch">
-                            <input type="checkbox" id="enableNotifications" checked>
-                            <span class="slider"></span>
-                        </label>
-                        <span>位置提醒</span>
-                    </div>
-                    <div class="setting-row">
-                        <label>距離</label>
-                        <input type="number" id="alertDistance" value="100" min="10" max="1000" class="compact-input">
-                        <span class="unit">m</span>
-                    </div>
-                    <div class="setting-row">
-                        <label>間隔</label>
-                        <input type="number" id="alertInterval" value="30" min="5" max="300" class="compact-input">
-                        <span class="unit">s</span>
-                    </div>
-                    
-                    <!-- 即時定位設定 -->
-                    <div class="setting-group">
-                        <h4>📍 即時定位設定</h4>
-                        <div class="setting-row">
-                            <label class="switch">
-                                <input type="checkbox" id="enableHighAccuracy" checked>
-                                <span class="slider"></span>
-                            </label>
-                            <span>高精度模式</span>
-                        </div>
-                        <div class="setting-row">
-                            <label class="switch">
-                                <input type="checkbox" id="autoStartTracking">
-                                <span class="slider"></span>
-                            </label>
-                            <span>自動開始追蹤</span>
-                        </div>
-                        <div class="setting-row">
-                            <label class="switch">
-                                <input type="checkbox" id="keepMapCentered">
-                                <span class="slider"></span>
-                            </label>
-                            <span>保持地圖中央</span>
-                        </div>
-
-                        <div class="setting-row">
-                            <label>更新頻率</label>
-                            <select id="locationUpdateFrequency" class="compact-input">
-                                <option value="1000">即時 (1秒)</option>
-                                <option value="3000" selected>快速 (3秒)</option>
-                                <option value="5000">標準 (5秒)</option>
-                                <option value="10000">省電 (10秒)</option>
-                                <option value="30000">超省電 (30秒)</option>
-                            </select>
-                        </div>
-                        <div class="setting-row">
-                            <label>定位超時</label>
-                            <input type="number" id="locationTimeout" value="20" min="5" max="60" class="compact-input">
-                            <span class="unit">s</span>
-                        </div>
-                    </div>
-                    
-                    <div class="location-display">
-                        <div id="currentLocation">定位中...</div>
-                        <div id="locationAccuracy" class="accuracy-display">精度: --</div>
-                        <div id="locationStatus" class="status-display">狀態: 未啟動</div>
-                        <div id="locationSpeed" class="speed-display" style="display: none;">速度: --</div>
-                    </div>
-                    
-                    <!-- 設定管理按鈕 -->
-                    <div class="settings-actions">
-                        <button id="saveSettingsBtn" class="settings-btn save-btn">
-                            <span>💾</span>
-                            儲存目前設定
-                        </button>
-                        <button id="loadSettingsBtn" class="settings-btn load-btn">
-                            <span>📂</span>
-                            載入已儲存設定
-                        </button>
-                        <button id="resetSettingsBtn" class="settings-btn reset-btn">
-                            <span>🔄</span>
-                            重置為預設值
-                        </button>
-                    </div>
-                    
-                    <!-- 資料匯出匯入按鈕 -->
-                    <div class="data-actions">
-                        <button id="exportDataBtn" class="settings-btn export-btn">
-                            <span>📤</span>
-                            匯出標註點
-                        </button>
-                        <button id="importDataBtn" class="settings-btn import-btn">
-                            <span>📥</span>
-                            匯入標註點
-                        </button>
-                        <input type="file" id="importFileInput" accept=".json" style="display: none;">
-                    </div>
-                </div>
-            </div>
-        </div>
-
         <!-- 地圖容器 -->
         <div class="map-container">
             <div id="map"></div>
@@ -162,6 +26,11 @@
             <!-- 自動居中按鈕 -->
             <button id="centerBtn" class="center-btn" title="開啟/關閉自動居中功能" onclick="handleCenterClick()">
                 <span id="centerIcon">🎯</span>
+            </button>
+            
+            <!-- 可移動的設定按鈕 -->
+            <button id="floatingSettingsBtn" class="floating-settings-btn" title="設定">
+                <span>⚙️</span>
             </button>
             
             <!-- 浮動控制面板 -->
@@ -486,8 +355,160 @@
         </div>
     </div>
 
+    <!-- 浮動設定視窗 -->
+    <div id="floatingSettingsModal" class="floating-settings-modal" style="display: none;">
+        <div class="floating-settings-content">
+            <div class="floating-settings-header">
+                <h3>⚙️ 設定</h3>
+                <button id="closeFloatingSettings" class="close-settings-btn">&times;</button>
+            </div>
+            <div class="floating-settings-body">
+                <!-- 快速操作區域 -->
+                <div class="setting-group">
+                    <h4>🚀 快速操作</h4>
+                    <div class="quick-actions-grid">
+                        <button id="centerMapBtn" class="quick-action-btn" title="回到當前位置">
+                            <span>📍</span>
+                            <span>定位</span>
+                        </button>
+                        <button id="testNotificationBtn" class="quick-action-btn" title="測試通知">
+                            <span>🔔</span>
+                            <span>測試通知</span>
+                        </button>
+                        <button id="showAllMarkersBtn" class="quick-action-btn" title="顯示所有標記">
+                            <span>👁️</span>
+                            <span>顯示全部</span>
+                        </button>
+                        <button id="showAllDetailsBtn" class="quick-action-btn" title="顯示所有組別及群組詳情">
+                            <span>📋</span>
+                            <span>詳情</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 組別管理 -->
+                <div class="setting-group">
+                    <h4>📁 組別管理</h4>
+                    <div class="group-management">
+                        <div class="group-input-row">
+                            <input type="text" id="groupNameInput" placeholder="新組別名稱" class="compact-input">
+                            <button id="addGroupBtn" class="add-group-btn">+</button>
+                        </div>
+                        <div id="groupsList" class="groups-list"></div>
+                    </div>
+                </div>
+
+                <!-- 標註點列表 -->
+                <div class="setting-group">
+                    <h4>📍 標註點列表</h4>
+                    <div id="markersList" class="markers-list"></div>
+                </div>
+
+                <!-- 位置提醒設定 -->
+                <div class="setting-group">
+                    <h4>🔔 位置提醒設定</h4>
+                    <div class="setting-row">
+                        <label class="switch">
+                            <input type="checkbox" id="floatingEnableNotifications" checked>
+                            <span class="slider"></span>
+                        </label>
+                        <span>位置提醒</span>
+                    </div>
+                    <div class="setting-row">
+                        <label>距離</label>
+                        <input type="number" id="floatingAlertDistance" value="100" min="10" max="1000" class="compact-input">
+                        <span class="unit">m</span>
+                    </div>
+                    <div class="setting-row">
+                        <label>間隔</label>
+                        <input type="number" id="floatingAlertInterval" value="30" min="5" max="300" class="compact-input">
+                        <span class="unit">s</span>
+                    </div>
+                </div>
+                
+                <!-- 即時定位設定 -->
+                <div class="setting-group">
+                    <h4>📍 即時定位設定</h4>
+                    <div class="setting-row">
+                        <label class="switch">
+                            <input type="checkbox" id="floatingEnableHighAccuracy" checked>
+                            <span class="slider"></span>
+                        </label>
+                        <span>高精度模式</span>
+                    </div>
+                    <div class="setting-row">
+                        <label class="switch">
+                            <input type="checkbox" id="floatingAutoStartTracking">
+                            <span class="slider"></span>
+                        </label>
+                        <span>自動開始追蹤</span>
+                    </div>
+                    <div class="setting-row">
+                        <label class="switch">
+                            <input type="checkbox" id="floatingKeepMapCentered">
+                            <span class="slider"></span>
+                        </label>
+                        <span>保持地圖中央</span>
+                    </div>
+
+                    <div class="setting-row">
+                        <label>更新頻率</label>
+                        <select id="floatingLocationUpdateFrequency" class="compact-input">
+                            <option value="1000">即時 (1秒)</option>
+                            <option value="3000" selected>快速 (3秒)</option>
+                            <option value="5000">標準 (5秒)</option>
+                            <option value="10000">省電 (10秒)</option>
+                            <option value="30000">超省電 (30秒)</option>
+                        </select>
+                    </div>
+                    <div class="setting-row">
+                        <label>定位超時</label>
+                        <input type="number" id="floatingLocationTimeout" value="20" min="5" max="60" class="compact-input">
+                        <span class="unit">s</span>
+                    </div>
+                </div>
+                
+                <div class="location-display">
+                    <div id="floatingCurrentLocation">定位中...</div>
+                    <div id="floatingLocationAccuracy" class="accuracy-display">精度: --</div>
+                    <div id="floatingLocationStatus" class="status-display">狀態: 未啟動</div>
+                    <div id="floatingLocationSpeed" class="speed-display" style="display: none;">速度: --</div>
+                </div>
+                
+                <!-- 設定管理按鈕 -->
+                <div class="settings-actions">
+                    <button id="floatingSaveSettingsBtn" class="settings-btn save-btn">
+                        <span>💾</span>
+                        儲存目前設定
+                    </button>
+                    <button id="floatingLoadSettingsBtn" class="settings-btn load-btn">
+                        <span>📂</span>
+                        載入已儲存設定
+                    </button>
+                    <button id="floatingResetSettingsBtn" class="settings-btn reset-btn">
+                        <span>🔄</span>
+                        重置為預設值
+                    </button>
+                </div>
+                
+                <!-- 資料匯出匯入按鈕 -->
+                <div class="data-actions">
+                    <button id="floatingExportDataBtn" class="settings-btn export-btn">
+                        <span>📤</span>
+                        匯出標註點
+                    </button>
+                    <button id="floatingImportDataBtn" class="settings-btn import-btn">
+                        <span>📥</span>
+                        匯入標註點
+                    </button>
+                    <input type="file" id="floatingImportFileInput" accept=".json" style="display: none;">
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="script.js?v=20240120-2"></script>
+    <script src="script.js?v=20240924-1"></script>
     
     <!-- Service Worker Registration -->
     <script>
