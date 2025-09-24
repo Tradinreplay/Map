@@ -1784,44 +1784,49 @@ form input:focus, form textarea:focus, form select:focus {
 #initialSetupModal .modal-content {
     width: clamp(157px, 48vw, 269px); /* 原本的70% (縮小30%) */
     max-width: 350px; /* 縮小後的最大寬度 */
-    margin: 10vh auto; /* 置中並增加上下邊距，讓它更靠近中央 */
-    padding: clamp(4px, 1.3vw, 8px); /* 縮小內邊距 */
+    margin: 5vh auto; /* 減少上下邊距，讓畫面更靠上 */
+    padding: clamp(3px, 1vw, 6px); /* 進一步縮小內邊距 */
     font-size: 0.75em; /* 進一步縮小字體以符合中間顯示 */
+    max-height: 85vh; /* 限制最大高度 */
+    overflow-y: auto; /* 如果內容過長，允許滾動 */
 }
 
 /* 縮小初始設定畫面內部元素 */
 #initialSetupModal .setup-content {
-    padding: 14px 0; /* 縮小內容區域的內邊距 */
+    padding: 8px 0; /* 大幅縮小內容區域的內邊距 */
 }
 
 #initialSetupModal .setup-section {
-    margin-bottom: 18px; /* 縮小區段間距 */
-    padding-bottom: 14px; /* 縮小區段內邊距 */
+    margin-bottom: 10px; /* 大幅縮小區段間距 */
+    padding-bottom: 8px; /* 大幅縮小區段內邊距 */
 }
 
 #initialSetupModal .setup-buttons {
-    margin-top: 14px; /* 縮小按鈕區域上邊距 */
-    padding-top: 14px; /* 縮小按鈕區域內邊距 */
+    margin-top: 8px; /* 大幅縮小按鈕區域上邊距 */
+    padding-top: 8px; /* 大幅縮小按鈕區域內邊距 */
 }
 
 #initialSetupModal .primary-btn,
 #initialSetupModal .secondary-btn {
-    padding: 8px 18px; /* 縮小按鈕內邊距 */
-    font-size: 1.1em; /* 相對於已縮小的基礎字體稍微放大 */
+    padding: 6px 12px; /* 進一步縮小按鈕內邊距 */
+    font-size: 1em; /* 縮小按鈕字體 */
 }
 
 /* 調整初始設定畫面的標題和內容字體 */
 #initialSetupModal h2 {
-    font-size: 1.4em; /* 相對於縮小後的基礎字體 */
+    font-size: 1.2em; /* 縮小主標題 */
+    margin-bottom: 8px; /* 縮小標題下邊距 */
 }
 
 #initialSetupModal .setup-section h3 {
-    font-size: 1.2em; /* 相對於縮小後的基礎字體 */
+    font-size: 1.1em; /* 縮小副標題 */
+    margin-bottom: 6px; /* 縮小副標題下邊距 */
 }
 
 #initialSetupModal .setup-section p {
-    font-size: 1em; /* 保持基礎字體大小 */
-    line-height: 1.4; /* 調整行高 */
+    font-size: 0.9em; /* 縮小段落字體 */
+    line-height: 1.3; /* 縮小行高 */
+    margin-bottom: 8px; /* 縮小段落下邊距 */
 }
 
 /* 縮小所有浮動視窗的字型，但排除標註點列表內容 */
@@ -1842,6 +1847,79 @@ form input:focus, form textarea:focus, form select:focus {
     font-size: 0.85em; /* 保持縮小 */
 }
 
+/* 針對初始設定畫面的特殊樣式覆蓋 */
+#initialSetupModal .setup-content {
+    padding: 8px 0; /* 已在上面設定 */
+}
+
+#initialSetupModal .setup-section {
+    margin-bottom: 10px; /* 已在上面設定 */
+    padding-bottom: 8px; /* 已在上面設定 */
+    border-bottom: 1px solid #eee;
+}
+
+#initialSetupModal .setup-section:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+#initialSetupModal .setup-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px; /* 縮小網格間距 */
+}
+
+#initialSetupModal .setup-item label {
+    display: block;
+    margin-bottom: 3px; /* 縮小標籤下邊距 */
+    font-weight: 500;
+    color: #555;
+    font-size: 0.9em; /* 縮小標籤字體 */
+}
+
+#initialSetupModal .setup-item input {
+    width: 100%;
+    padding: 4px 8px; /* 縮小輸入框內邊距 */
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 0.9em; /* 縮小輸入框字體 */
+}
+
+#initialSetupModal .checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 6px; /* 縮小間距 */
+    cursor: pointer;
+    font-weight: 500;
+    color: #555;
+    font-size: 0.9em; /* 縮小複選框標籤字體 */
+    margin-bottom: 4px; /* 增加複選框間距 */
+}
+
+#initialSetupModal .checkbox-label input[type="checkbox"] {
+    width: auto;
+    margin: 0;
+}
+
+#initialSetupModal .setup-buttons {
+    display: flex;
+    gap: 8px; /* 縮小按鈕間距 */
+    justify-content: flex-end;
+    margin-top: 8px; /* 已在上面設定 */
+    padding-top: 8px; /* 已在上面設定 */
+    border-top: 1px solid #eee;
+}
+
+#initialSetupModal .permission-note {
+    margin-top: 6px; /* 縮小權限提示上邊距 */
+}
+
+#initialSetupModal .permission-note small {
+    font-size: 0.8em; /* 縮小提示文字 */
+    line-height: 1.2; /* 縮小行高 */
+}
+
+/* 原始樣式保持不變，供其他地方使用 */
 .setup-content {
     padding: 20px 0;
 }
