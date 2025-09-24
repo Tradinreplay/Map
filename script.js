@@ -1429,9 +1429,22 @@ window.handleFullscreenClick = handleFullscreenClick;
 window.handleLocationClick = handleLocationClick;
 window.handleCenterClick = handleCenterClick;
 
-// 行動裝置檢測函數
+// 行動裝置檢測函數 - 改進版本
 function isMobileDevice() {
-    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    // 檢查用戶代理字符串
+    const userAgentCheck = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    
+    // 檢查觸控支持
+    const touchCheck = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    
+    // 檢查螢幕尺寸
+    const screenCheck = window.innerWidth <= 1024;
+    
+    // 檢查指針類型（粗糙指針通常表示觸控設備）
+    const pointerCheck = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+    
+    // 如果任何一個條件符合，就認為是手機設備
+    return userAgentCheck || (touchCheck && screenCheck) || pointerCheck;
 }
 
 function isIOSDevice() {
@@ -5276,12 +5289,55 @@ document.addEventListener('DOMContentLoaded', function() {
 
     }, 100);
     
+    // 強制檢查手機模式並初始化
+    forceMobileInitialization();
+    
     // 初始化手機狀態列功能
     initMobileStatusBar();
     
     // 初始化手機設定面板功能
     initMobileSettingsPanel();
 });
+
+// 強制手機模式初始化函數
+function forceMobileInitialization() {
+    console.log('Forcing mobile initialization...');
+    
+    // 檢查是否為手機設備
+    const isMobile = isMobileDevice();
+    console.log('Is mobile device:', isMobile);
+    
+    if (isMobile) {
+        // 強制顯示手機狀態列
+        const mobileStatusBar = document.getElementById('mobileStatusBar');
+        if (mobileStatusBar) {
+            mobileStatusBar.style.display = 'block';
+            mobileStatusBar.style.visibility = 'visible';
+            console.log('Mobile status bar forced to display');
+        }
+        
+        // 確保設定面板可以顯示
+        const mobileSettingsPanel = document.querySelector('.mobile-settings-panel');
+        if (mobileSettingsPanel) {
+            // 不直接顯示，但確保它可以被顯示
+            mobileSettingsPanel.style.visibility = 'visible';
+            console.log('Mobile settings panel visibility ensured');
+        }
+        
+        // 添加手機模式類到body
+        document.body.classList.add('mobile-mode');
+        
+        // 調整容器布局
+        const container = document.querySelector('.container');
+        if (container) {
+            container.style.paddingBottom = '80px';
+        }
+        
+        console.log('Mobile mode forced successfully');
+    } else {
+        console.log('Not a mobile device, skipping mobile initialization');
+    }
+}
 
 // 手機狀態列功能
 function initMobileStatusBar() {
@@ -5925,6 +5981,74 @@ function generateCompatibilityReport() {
     return report;
 }
 
+// 測試手機瀏覽器功能
+function testMobileBrowserFeatures() {
+    console.log('=== 手機瀏覽器功能測試 ===');
+    
+    // 檢查設備檢測
+    const isMobile = isMobileDevice();
+    console.log('1. 設備檢測:', isMobile ? '✅ 檢測為手機設備' : '❌ 未檢測為手機設備');
+    
+    // 檢查手機狀態列
+    const mobileStatusBar = document.getElementById('mobileStatusBar');
+    const statusBarVisible = mobileStatusBar && window.getComputedStyle(mobileStatusBar).display !== 'none';
+    console.log('2. 手機狀態列:', statusBarVisible ? '✅ 已顯示' : '❌ 未顯示');
+    
+    // 檢查設定按鈕
+    const quickSettingsBtn = document.getElementById('quickSettingsBtn');
+    const settingsBtnVisible = quickSettingsBtn && window.getComputedStyle(quickSettingsBtn).display !== 'none';
+    console.log('3. 設定按鈕:', settingsBtnVisible ? '✅ 已顯示' : '❌ 未顯示');
+    
+    // 檢查設定面板
+    const mobileSettingsPanel = document.querySelector('.mobile-settings-panel');
+    const settingsPanelExists = !!mobileSettingsPanel;
+    console.log('4. 設定面板:', settingsPanelExists ? '✅ 已創建' : '❌ 未創建');
+    
+    // 檢查CSS媒體查詢
+    const mediaQueries = [
+        '(max-width: 768px)',
+        '(pointer: coarse)',
+        '(hover: none) and (pointer: coarse)'
+    ];
+    
+    console.log('5. CSS媒體查詢檢查:');
+    mediaQueries.forEach((query, index) => {
+        const matches = window.matchMedia(query).matches;
+        console.log(`   ${index + 1}. ${query}: ${matches ? '✅ 符合' : '❌ 不符合'}`);
+    });
+    
+    // 檢查body類
+    const hasMobileClass = document.body.classList.contains('mobile-mode');
+    console.log('6. 手機模式類:', hasMobileClass ? '✅ 已添加' : '❌ 未添加');
+    
+    // 檢查容器布局
+    const container = document.querySelector('.container');
+    const containerPadding = container ? window.getComputedStyle(container).paddingBottom : '0px';
+    console.log('7. 容器布局:', containerPadding !== '0px' ? `✅ 已調整 (${containerPadding})` : '❌ 未調整');
+    
+    // 總結
+    const allChecks = [isMobile, statusBarVisible, settingsBtnVisible, settingsPanelExists, hasMobileClass];
+    const passedChecks = allChecks.filter(Boolean).length;
+    console.log(`\n總結: ${passedChecks}/${allChecks.length} 項檢查通過`);
+    
+    if (passedChecks === allChecks.length) {
+        console.log('🎉 所有手機瀏覽器功能正常工作！');
+    } else {
+        console.log('⚠️ 部分功能可能需要調整');
+    }
+    
+    return {
+        isMobile,
+        statusBarVisible,
+        settingsBtnVisible,
+        settingsPanelExists,
+        hasMobileClass,
+        containerPadding,
+        passedChecks,
+        totalChecks: allChecks.length
+    };
+}
+
 // 將函數暴露到全局作用域
 window.toggleStatusBarSize = toggleStatusBarSize;
 window.toggleMobileSettingsPanel = toggleMobileSettingsPanel;
@@ -5932,3 +6056,4 @@ window.showMobileSettingsPanel = showMobileSettingsPanel;
 window.hideMobileSettingsPanel = hideMobileSettingsPanel;
 window.testMobileSettingsPanel = testMobileSettingsPanel;
 window.generateCompatibilityReport = generateCompatibilityReport;
+window.testMobileBrowserFeatures = testMobileBrowserFeatures;

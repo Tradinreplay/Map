@@ -3993,6 +3993,27 @@ input:checked + .slider:before {
     }
 }
 
+/* 手機瀏覽器通用條件 - 基於觸控設備和螢幕尺寸 */
+@media (max-width: 1024px) and (pointer: coarse) {
+    .mobile-status-bar {
+        display: block !important;
+    }
+}
+
+/* 針對手機瀏覽器的寬泛條件 - 確保在所有手機上都能顯示 */
+@media (max-width: 768px) {
+    .mobile-status-bar {
+        display: block !important;
+    }
+}
+
+/* 針對較小的手機螢幕 */
+@media (max-width: 480px) {
+    .mobile-status-bar {
+        display: block !important;
+    }
+}
+
 @media (max-width: 480px) and (orientation: portrait) {
     .mobile-status-bar {
         min-height: 50px;
@@ -4464,5 +4485,67 @@ input:checked + .slider:before {
     .settings-actions-mobile {
         flex-direction: column;
         gap: 8px;
+    }
+}
+
+/* 手機瀏覽器通用條件 - 設定面板 */
+@media (max-width: 1024px) and (pointer: coarse) {
+    .mobile-settings-panel {
+        display: block;
+    }
+}
+
+/* 針對手機瀏覽器的寬泛條件 - 設定面板 */
+@media (max-width: 768px) {
+    .mobile-settings-panel {
+        display: block;
+    }
+    
+    .settings-panel-content {
+        max-height: 70vh;
+        overflow-y: auto;
+    }
+}
+
+/* 針對較小的手機螢幕 - 設定面板 */
+@media (max-width: 480px) {
+    .mobile-settings-panel {
+        display: block;
+    }
+    
+    .settings-panel-content {
+        padding: 16px;
+        max-height: 65vh;
+    }
+    
+    .setting-item {
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+    }
+}
+
+/* 手機模式強制樣式 */
+body.mobile-mode .mobile-status-bar {
+    display: block !important;
+    visibility: visible !important;
+}
+
+body.mobile-mode .mobile-settings-panel {
+    visibility: visible !important;
+}
+
+body.mobile-mode .container {
+    padding-bottom: 80px !important;
+}
+
+/* 確保在所有手機設備上都能正確顯示 */
+@media (hover: none) and (pointer: coarse) {
+    .mobile-status-bar {
+        display: block !important;
+    }
+    
+    .mobile-settings-panel {
+        display: block;
     }
 }
