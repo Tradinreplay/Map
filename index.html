@@ -11,7 +11,6 @@
     <div class="container">
         <!-- 側邊欄 -->
         <div class="sidebar">
-            <div class="resize-handle"></div>
             <div class="sidebar-header">
                 <h1>🗺️ 地圖標註</h1>
                 <div class="quick-actions">
@@ -150,6 +149,11 @@
         <div class="map-container">
             <div id="map"></div>
             
+            <!-- 切換功能欄大小按鈕 -->
+            <button id="toggleStatusBarBtn" class="toggle-status-btn" title="切換功能欄大小" onclick="toggleStatusBarSize()">
+                <span id="toggleStatusIcon">📏</span>
+            </button>
+            
             <!-- 全螢幕按鈕 -->
             <button id="fullscreenBtn" class="fullscreen-btn" title="全螢幕顯示" onclick="handleFullscreenClick()">
                 <span id="fullscreenIcon">⛶</span>
@@ -174,10 +178,6 @@
                 <button id="trackingBtn" class="control-btn">
                     <span>📍</span>
                     開始追蹤
-                </button>
-                <button id="resizeSidebarBtn" class="control-btn mobile-only" title="調整功能框大小">
-                    <span>📏</span>
-                    調整大小
                 </button>
             </div>
             
@@ -207,21 +207,16 @@
                     <textarea id="markerDescription" rows="2"></textarea>
                     
                     <div class="image-upload-section">
-                        <label for="markerImages">圖片與影片 (最多6張圖片 + 1個影片):</label>
+                        <label for="markerImages">圖片 (最多6張):</label>
                         <div class="image-upload-container">
                             <input type="file" id="markerImages" accept="image/*" multiple style="display: none;">
                             <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display: none;">
-                            <input type="file" id="videoInput" accept="video/*" capture="environment" style="display: none;">
                             <div class="upload-buttons">
                                 <button type="button" id="uploadImageBtn" class="upload-btn">📁 選擇檔案</button>
                                 <button type="button" id="cameraBtn" class="upload-btn camera-btn">📷 拍照</button>
-                                <button type="button" id="recordVideoBtn" class="upload-btn video-btn">🎥 錄影</button>
                             </div>
                             <div id="imagePreviewContainer" class="image-preview-container">
                                 <!-- 動態生成的圖片預覽將顯示在這裡 -->
-                            </div>
-                            <div id="videoPreviewContainer" class="video-preview-container">
-                                <!-- 動態生成的影片預覽將顯示在這裡 -->
                             </div>
                         </div>
                     </div>
@@ -373,25 +368,6 @@
         </div>
     </div>
 
-    <!-- 影片預覽模態框 -->
-    <div id="videoPreviewModal" class="modal video-modal">
-        <div class="modal-content video-modal-content">
-            <span class="close video-modal-close">&times;</span>
-            <div class="video-modal-header">
-                <h3 id="videoModalTitle">影片預覽</h3>
-                <div class="video-controls">
-                    <button id="deleteVideoBtn" class="delete-video-btn">🗑️ 刪除影片</button>
-                </div>
-            </div>
-            <div class="video-modal-body">
-                <video id="modalPreviewVideo" controls>
-                    <source src="" type="video/mp4">
-                    您的瀏覽器不支援影片播放。
-                </video>
-            </div>
-        </div>
-    </div>
-
     <!-- 組別/群組詳情浮動視窗 -->
     <div id="groupDetailsModal" class="modal">
         <div class="modal-content group-detail-content">
@@ -511,6 +487,24 @@
                 <button id="confirmImportBtn" class="primary-btn">確認匯入</button>
                 <button id="cancelImportBtn" class="secondary-btn">取消</button>
                 <button id="showDuplicatesBtn" class="detail-btn">查看重複詳情</button>
+            </div>
+        </div>
+        
+        <!-- 手機豎屏下方狀態列 -->
+        <div class="mobile-status-bar" id="mobileStatusBar">
+            <div class="status-bar-handle" id="statusBarHandle">
+                <div class="handle-indicator"></div>
+            </div>
+            <div class="status-bar-content">
+                <div class="status-info">
+                    <span class="status-text">📍 地圖標註系統</span>
+                    <span class="marker-count" id="markerCount">0 個標記</span>
+                </div>
+                <div class="quick-status-actions">
+                    <button class="status-btn" id="quickAddBtn" title="快速添加標記">➕</button>
+                    <button class="status-btn" id="quickCenterBtn" title="回到中心">🎯</button>
+                    <button class="status-btn" id="quickListBtn" title="標記列表">📋</button>
+                </div>
             </div>
         </div>
     </div>
