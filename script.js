@@ -1945,6 +1945,14 @@ function requestLocationPermission() {
                     showNotification('定位成功！', 'success');
                 }
                 
+                // 啟動自動定位功能
+                try {
+                    console.log('啟動自動定位功能...');
+                    autoGetCurrentLocation();
+                } catch (error) {
+                    console.error('啟動自動定位功能時發生錯誤:', error);
+                }
+                
                 resolve(position);
             },
             function(error) {
@@ -5495,6 +5503,13 @@ function makeFloatingButtonDraggable(element) {
                     const rect = element.getBoundingClientRect();
                     saveFloatingButtonPosition(rect.left, rect.top);
                 }
+                e.preventDefault();
+                e.stopPropagation();
+            } else {
+                // 如果沒有移動且觸控時間短，手動觸發點擊事件
+                setTimeout(() => {
+                    showFloatingSettings();
+                }, 10);
                 e.preventDefault();
                 e.stopPropagation();
             }
