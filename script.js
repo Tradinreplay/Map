@@ -5278,6 +5278,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // 初始化手機狀態列功能
     initMobileStatusBar();
+    
+    // 初始化手機設定面板功能
+    initMobileSettingsPanel();
 });
 
 // 手機狀態列功能
@@ -5408,6 +5411,14 @@ function initMobileStatusBar() {
         });
     }
     
+    // 設定按鈕事件
+    const quickSettingsBtn = document.getElementById('quickSettingsBtn');
+    if (quickSettingsBtn) {
+        quickSettingsBtn.addEventListener('click', () => {
+            toggleMobileSettingsPanel();
+        });
+    }
+    
     // 雙擊手柄快速切換大小
     let lastTapTime = 0;
     handle.addEventListener('click', (e) => {
@@ -5522,5 +5533,402 @@ function setStatusBarHeight(height) {
     updateToggleIcon();
 }
 
+// 手機設定面板功能
+function initMobileSettingsPanel() {
+    const settingsPanel = document.getElementById('mobileSettingsPanel');
+    const closeBtn = document.getElementById('closeSettingsBtn');
+    
+    // 關閉按鈕事件
+    if (closeBtn) {
+        closeBtn.addEventListener('click', () => {
+            hideMobileSettingsPanel();
+        });
+    }
+    
+    // 點擊面板外部關閉
+    if (settingsPanel) {
+        settingsPanel.addEventListener('click', (e) => {
+            if (e.target === settingsPanel) {
+                hideMobileSettingsPanel();
+            }
+        });
+    }
+    
+    // 初始化設定項目
+    initMobileSettingsControls();
+    
+    // 設備兼容性優化
+    optimizeMobileSettingsForDevice();
+}
+
+function toggleMobileSettingsPanel() {
+    const settingsPanel = document.getElementById('mobileSettingsPanel');
+    if (!settingsPanel) return;
+    
+    if (settingsPanel.classList.contains('show')) {
+        hideMobileSettingsPanel();
+    } else {
+        showMobileSettingsPanel();
+    }
+}
+
+function showMobileSettingsPanel() {
+    const settingsPanel = document.getElementById('mobileSettingsPanel');
+    if (!settingsPanel) return;
+    
+    // 同步當前設定值
+    syncMobileSettingsValues();
+    
+    settingsPanel.classList.add('show');
+    document.body.style.overflow = 'hidden'; // 防止背景滾動
+}
+
+function hideMobileSettingsPanel() {
+    const settingsPanel = document.getElementById('mobileSettingsPanel');
+    if (!settingsPanel) return;
+    
+    settingsPanel.classList.remove('show');
+    document.body.style.overflow = ''; // 恢復滾動
+}
+
+function initMobileSettingsControls() {
+    // 通知設定
+    const mobileNotifications = document.getElementById('mobileNotifications');
+    if (mobileNotifications) {
+        mobileNotifications.addEventListener('change', (e) => {
+            const enableNotifications = document.getElementById('enableNotifications');
+            if (enableNotifications) {
+                enableNotifications.checked = e.target.checked;
+                // 觸發原有的事件處理
+                enableNotifications.dispatchEvent(new Event('change'));
+            }
+        });
+    }
+    
+    // 高精度定位設定
+    const mobileHighAccuracy = document.getElementById('mobileHighAccuracy');
+    if (mobileHighAccuracy) {
+        mobileHighAccuracy.addEventListener('change', (e) => {
+            const enableHighAccuracyEl = document.getElementById('enableHighAccuracy');
+            if (enableHighAccuracyEl) {
+                enableHighAccuracyEl.checked = e.target.checked;
+                enableHighAccuracy = e.target.checked;
+                // 觸發原有的事件處理
+                enableHighAccuracyEl.dispatchEvent(new Event('change'));
+            }
+        });
+    }
+    
+    // 自動居中設定
+    const mobileAutoCenter = document.getElementById('mobileAutoCenter');
+    if (mobileAutoCenter) {
+        mobileAutoCenter.addEventListener('change', (e) => {
+            const keepMapCenteredEl = document.getElementById('keepMapCentered');
+            if (keepMapCenteredEl) {
+                keepMapCenteredEl.checked = e.target.checked;
+                keepMapCentered = e.target.checked;
+                // 觸發原有的事件處理
+                keepMapCenteredEl.dispatchEvent(new Event('change'));
+            }
+        });
+    }
+    
+    // 提醒距離設定
+    const mobileAlertDistance = document.getElementById('mobileAlertDistance');
+    const mobileDistanceValue = document.getElementById('mobileDistanceValue');
+    if (mobileAlertDistance && mobileDistanceValue) {
+        mobileAlertDistance.addEventListener('input', (e) => {
+            const value = e.target.value;
+            mobileDistanceValue.textContent = `${value}m`;
+            
+            // 同步到原有設定
+            const alertDistanceEl = document.getElementById('alertDistance');
+            if (alertDistanceEl) {
+                alertDistanceEl.value = value;
+                alertDistance = parseInt(value);
+                // 觸發原有的事件處理
+                alertDistanceEl.dispatchEvent(new Event('input'));
+            }
+        });
+    }
+    
+    // 更新頻率設定
+    const mobileUpdateFreq = document.getElementById('mobileUpdateFreq');
+    if (mobileUpdateFreq) {
+        mobileUpdateFreq.addEventListener('change', (e) => {
+            const value = e.target.value;
+            const locationUpdateFrequencyEl = document.getElementById('locationUpdateFrequency');
+            if (locationUpdateFrequencyEl) {
+                locationUpdateFrequencyEl.value = value;
+                locationUpdateFrequency = parseInt(value);
+                // 觸發原有的事件處理
+                locationUpdateFrequencyEl.dispatchEvent(new Event('change'));
+            }
+        });
+    }
+    
+    // 操作按鈕事件
+    const mobileExportBtn = document.getElementById('mobileExportBtn');
+    const mobileImportBtn = document.getElementById('mobileImportBtn');
+    const mobileResetBtn = document.getElementById('mobileResetBtn');
+    
+    if (mobileExportBtn) {
+        mobileExportBtn.addEventListener('click', () => {
+            exportMarkerData();
+            hideMobileSettingsPanel();
+        });
+    }
+    
+    if (mobileImportBtn) {
+        mobileImportBtn.addEventListener('click', () => {
+            const importFileInput = document.getElementById('importFileInput');
+            if (importFileInput) {
+                importFileInput.click();
+            }
+        });
+    }
+    
+    if (mobileResetBtn) {
+        mobileResetBtn.addEventListener('click', () => {
+            if (confirm('確定要重置所有設定嗎？')) {
+                resetToDefaultSettings();
+                syncMobileSettingsValues();
+                showNotification('設定已重置', 'success');
+            }
+        });
+    }
+}
+
+function syncMobileSettingsValues() {
+    // 同步通知設定
+    const mobileNotifications = document.getElementById('mobileNotifications');
+    const enableNotifications = document.getElementById('enableNotifications');
+    if (mobileNotifications && enableNotifications) {
+        mobileNotifications.checked = enableNotifications.checked;
+    }
+    
+    // 同步高精度設定
+    const mobileHighAccuracy = document.getElementById('mobileHighAccuracy');
+    const enableHighAccuracyEl = document.getElementById('enableHighAccuracy');
+    if (mobileHighAccuracy && enableHighAccuracyEl) {
+        mobileHighAccuracy.checked = enableHighAccuracyEl.checked;
+    }
+    
+    // 同步自動居中設定
+    const mobileAutoCenter = document.getElementById('mobileAutoCenter');
+    const keepMapCenteredEl = document.getElementById('keepMapCentered');
+    if (mobileAutoCenter && keepMapCenteredEl) {
+        mobileAutoCenter.checked = keepMapCenteredEl.checked;
+    }
+    
+    // 同步提醒距離
+    const mobileAlertDistance = document.getElementById('mobileAlertDistance');
+    const mobileDistanceValue = document.getElementById('mobileDistanceValue');
+    const alertDistanceEl = document.getElementById('alertDistance');
+    if (mobileAlertDistance && mobileDistanceValue && alertDistanceEl) {
+        const value = alertDistanceEl.value || alertDistance;
+        mobileAlertDistance.value = value;
+        mobileDistanceValue.textContent = `${value}m`;
+    }
+    
+    // 同步更新頻率
+    const mobileUpdateFreq = document.getElementById('mobileUpdateFreq');
+    const locationUpdateFrequencyEl = document.getElementById('locationUpdateFrequency');
+    if (mobileUpdateFreq && locationUpdateFrequencyEl) {
+        mobileUpdateFreq.value = locationUpdateFrequencyEl.value || locationUpdateFrequency;
+    }
+}
+
+// 設備兼容性檢測和優化
+function optimizeMobileSettingsForDevice() {
+    const settingsPanel = document.getElementById('mobileSettingsPanel');
+    if (!settingsPanel) return;
+    
+    // 檢測設備類型
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const isAndroid = /Android/.test(navigator.userAgent);
+    const isSafari = /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent);
+    
+    // iOS特定優化
+    if (isIOS) {
+        settingsPanel.style.webkitOverflowScrolling = 'touch';
+        
+        // 修復iOS Safari的100vh問題
+        const updateHeight = () => {
+            const vh = window.innerHeight * 0.01;
+            document.documentElement.style.setProperty('--vh', `${vh}px`);
+        };
+        
+        updateHeight();
+        window.addEventListener('resize', updateHeight);
+        window.addEventListener('orientationchange', () => {
+            setTimeout(updateHeight, 100);
+        });
+    }
+    
+    // Android特定優化
+    if (isAndroid) {
+        // 改善Android上的觸摸反饋
+        const touchElements = settingsPanel.querySelectorAll('.setting-checkbox, .setting-range, .mobile-action-btn');
+        touchElements.forEach(element => {
+            element.style.webkitTapHighlightColor = 'rgba(0, 0, 0, 0.1)';
+        });
+    }
+    
+    // 小屏幕設備優化
+    if (window.innerWidth <= 360) {
+        settingsPanel.classList.add('small-screen');
+    }
+    
+    // 檢測是否支援觸摸
+    if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
+        settingsPanel.classList.add('touch-device');
+        
+        // 添加觸摸手勢支持
+        addTouchGestureSupport();
+    }
+}
+
+// 添加觸摸手勢支持
+function addTouchGestureSupport() {
+    const settingsPanel = document.getElementById('mobileSettingsPanel');
+    if (!settingsPanel) return;
+    
+    let startY = 0;
+    let currentY = 0;
+    let isDragging = false;
+    
+    const panelContent = settingsPanel.querySelector('.settings-panel-content');
+    if (!panelContent) return;
+    
+    // 向下滑動關閉面板
+    panelContent.addEventListener('touchstart', (e) => {
+        if (panelContent.scrollTop === 0) {
+            startY = e.touches[0].clientY;
+            isDragging = true;
+        }
+    }, { passive: true });
+    
+    panelContent.addEventListener('touchmove', (e) => {
+        if (!isDragging || panelContent.scrollTop > 0) return;
+        
+        currentY = e.touches[0].clientY;
+        const deltaY = currentY - startY;
+        
+        if (deltaY > 0) {
+            // 向下滑動，添加阻力效果
+            const resistance = Math.min(deltaY / 3, 50);
+            panelContent.style.transform = `translateY(${resistance}px)`;
+            panelContent.style.opacity = Math.max(1 - deltaY / 200, 0.5);
+        }
+    }, { passive: true });
+    
+    panelContent.addEventListener('touchend', () => {
+        if (!isDragging) return;
+        
+        const deltaY = currentY - startY;
+        
+        if (deltaY > 100) {
+            // 滑動距離足夠，關閉面板
+            hideMobileSettingsPanel();
+        } else {
+            // 恢復原位
+            panelContent.style.transform = '';
+            panelContent.style.opacity = '';
+        }
+        
+        isDragging = false;
+        startY = 0;
+        currentY = 0;
+    }, { passive: true });
+}
+
+// 測試手機設定面板功能
+function testMobileSettingsPanel() {
+    console.log('開始測試手機設定面板功能...');
+    
+    // 測試基本元素是否存在
+    const tests = [
+        { name: '設定按鈕', element: document.getElementById('quickSettingsBtn') },
+        { name: '設定面板', element: document.getElementById('mobileSettingsPanel') },
+        { name: '關閉按鈕', element: document.getElementById('closeSettingsBtn') },
+        { name: '通知設定', element: document.getElementById('mobileNotifications') },
+        { name: '高精度設定', element: document.getElementById('mobileHighAccuracy') },
+        { name: '自動居中設定', element: document.getElementById('mobileAutoCenter') },
+        { name: '提醒距離設定', element: document.getElementById('mobileAlertDistance') },
+        { name: '更新頻率設定', element: document.getElementById('mobileUpdateFreq') }
+    ];
+    
+    let passedTests = 0;
+    tests.forEach(test => {
+        if (test.element) {
+            console.log(`✓ ${test.name}: 存在`);
+            passedTests++;
+        } else {
+            console.error(`✗ ${test.name}: 不存在`);
+        }
+    });
+    
+    // 測試功能
+    try {
+        // 測試顯示面板
+        showMobileSettingsPanel();
+        setTimeout(() => {
+            const panel = document.getElementById('mobileSettingsPanel');
+            if (panel && panel.classList.contains('show')) {
+                console.log('✓ 顯示面板功能: 正常');
+                passedTests++;
+                
+                // 測試隱藏面板
+                setTimeout(() => {
+                    hideMobileSettingsPanel();
+                    setTimeout(() => {
+                        if (!panel.classList.contains('show')) {
+                            console.log('✓ 隱藏面板功能: 正常');
+                            passedTests++;
+                        } else {
+                            console.error('✗ 隱藏面板功能: 異常');
+                        }
+                        
+                        console.log(`測試完成: ${passedTests}/${tests.length + 2} 項通過`);
+                    }, 500);
+                }, 1000);
+            } else {
+                console.error('✗ 顯示面板功能: 異常');
+            }
+        }, 500);
+    } catch (error) {
+        console.error('測試過程中發生錯誤:', error);
+    }
+}
+
+// 設備兼容性檢測報告
+function generateCompatibilityReport() {
+    const report = {
+        userAgent: navigator.userAgent,
+        platform: navigator.platform,
+        screenSize: `${window.screen.width}x${window.screen.height}`,
+        viewportSize: `${window.innerWidth}x${window.innerHeight}`,
+        devicePixelRatio: window.devicePixelRatio,
+        touchSupport: 'ontouchstart' in window || navigator.maxTouchPoints > 0,
+        orientation: window.orientation || 'unknown',
+        isIOS: /iPad|iPhone|iPod/.test(navigator.userAgent),
+        isAndroid: /Android/.test(navigator.userAgent),
+        isSafari: /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent),
+        isChrome: /Chrome/.test(navigator.userAgent),
+        supportsBackdropFilter: CSS.supports('backdrop-filter', 'blur(10px)'),
+        supportsCSS3: CSS.supports('transform', 'translateY(0)'),
+        timestamp: new Date().toISOString()
+    };
+    
+    console.log('設備兼容性報告:', report);
+    return report;
+}
+
 // 將函數暴露到全局作用域
 window.toggleStatusBarSize = toggleStatusBarSize;
+window.toggleMobileSettingsPanel = toggleMobileSettingsPanel;
+window.showMobileSettingsPanel = showMobileSettingsPanel;
+window.hideMobileSettingsPanel = hideMobileSettingsPanel;
+window.testMobileSettingsPanel = testMobileSettingsPanel;
+window.generateCompatibilityReport = generateCompatibilityReport;

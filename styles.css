@@ -1,3 +1,8 @@
+/* CSS變數定義 */
+:root {
+    --vh: 1vh;
+}
+
 * {
     margin: 0;
     padding: 0;
@@ -4096,4 +4101,368 @@ input:checked + .slider:before {
     width: 60px;
     height: 5px;
     transform: scale(1.1);
+}
+
+/* 手機設定面板樣式 */
+.mobile-settings-panel {
+    display: none;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.98));
+    backdrop-filter: blur(15px);
+    border-top: 1px solid rgba(226, 232, 240, 0.8);
+    box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.15);
+    z-index: 1002;
+    transform: translateY(100%);
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    max-height: 70vh;
+    max-height: calc(var(--vh, 1vh) * 70); /* iOS兼容性 */
+    overflow-y: auto;
+}
+
+.mobile-settings-panel.show {
+    transform: translateY(0);
+}
+
+.settings-panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px 12px 20px;
+    border-bottom: 1px solid rgba(226, 232, 240, 0.6);
+    background: rgba(255, 255, 255, 0.9);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.settings-panel-header h3 {
+    font-size: 18px;
+    font-weight: 600;
+    color: #1e293b;
+    margin: 0;
+}
+
+.close-settings-btn {
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: 8px;
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.close-settings-btn:hover {
+    background: rgba(239, 68, 68, 0.2);
+    transform: scale(1.05);
+}
+
+.settings-panel-content {
+    padding: 20px;
+}
+
+.setting-group {
+    margin-bottom: 24px;
+    padding: 16px;
+    background: rgba(255, 255, 255, 0.7);
+    border-radius: 12px;
+    border: 1px solid rgba(226, 232, 240, 0.5);
+}
+
+.setting-group:last-child {
+    margin-bottom: 0;
+}
+
+.setting-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(226, 232, 240, 0.3);
+}
+
+.setting-item:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.setting-item.range-setting {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+}
+
+.setting-label {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    flex: 1;
+}
+
+.setting-text {
+    font-size: 15px;
+    font-weight: 500;
+    color: #374151;
+}
+
+.setting-checkbox {
+    width: 20px;
+    height: 20px;
+    border: 2px solid #d1d5db;
+    border-radius: 4px;
+    background: white;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.setting-checkbox:checked {
+    background: #3b82f6;
+    border-color: #3b82f6;
+}
+
+.setting-checkbox:checked::after {
+    content: '✓';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.range-container {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.setting-range {
+    flex: 1;
+    height: 6px;
+    border-radius: 3px;
+    background: #e5e7eb;
+    outline: none;
+    cursor: pointer;
+    -webkit-appearance: none;
+}
+
+.setting-range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #3b82f6;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(59, 130, 246, 0.3);
+    transition: all 0.3s ease;
+}
+
+.setting-range::-webkit-slider-thumb:hover {
+    transform: scale(1.1);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+}
+
+.setting-range::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #3b82f6;
+    cursor: pointer;
+    border: none;
+    box-shadow: 0 2px 6px rgba(59, 130, 246, 0.3);
+}
+
+.range-value {
+    font-size: 14px;
+    font-weight: 600;
+    color: #3b82f6;
+    min-width: 50px;
+    text-align: center;
+}
+
+.setting-select {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    background: white;
+    font-size: 14px;
+    color: #374151;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.setting-select:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.settings-actions-mobile {
+    display: flex;
+    gap: 12px;
+    margin-top: 20px;
+}
+
+.mobile-action-btn {
+    flex: 1;
+    padding: 12px 16px;
+    border: none;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background: rgba(99, 102, 241, 0.1);
+    color: #6366f1;
+    border: 1px solid rgba(99, 102, 241, 0.2);
+}
+
+.mobile-action-btn:hover {
+    background: rgba(99, 102, 241, 0.15);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
+}
+
+.mobile-action-btn:active {
+    transform: translateY(0);
+}
+
+/* 手機豎屏響應式設計 - 設定面板 */
+@media (max-width: 768px) and (orientation: portrait) {
+    .mobile-settings-panel {
+        display: block;
+    }
+    
+    /* 優化設定面板在小屏幕上的顯示 */
+    .settings-panel-content {
+        max-height: 70vh;
+        overflow-y: auto;
+    }
+    
+    /* 改善滾動條樣式 */
+    .settings-panel-content::-webkit-scrollbar {
+        width: 4px;
+    }
+    
+    .settings-panel-content::-webkit-scrollbar-track {
+        background: rgba(0, 0, 0, 0.1);
+        border-radius: 2px;
+    }
+    
+    .settings-panel-content::-webkit-scrollbar-thumb {
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 2px;
+    }
+    
+    /* 優化觸摸交互 */
+    .setting-checkbox,
+    .setting-range,
+    .setting-select,
+    .mobile-action-btn {
+        min-height: 44px; /* iOS建議的最小觸摸目標 */
+    }
+    
+    .setting-checkbox {
+        width: 24px;
+        height: 24px;
+    }
+}
+
+@media (max-width: 480px) and (orientation: portrait) {
+    .settings-panel-content {
+        padding: 16px;
+        max-height: 65vh;
+    }
+    
+    .setting-group {
+        padding: 12px;
+        margin-bottom: 16px;
+        border-radius: 12px;
+    }
+    
+    .setting-item {
+        padding: 12px 0;
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+    }
+    
+    .setting-text {
+        font-size: 14px;
+        line-height: 1.4;
+    }
+    
+    .settings-actions-mobile {
+        gap: 8px;
+        padding-top: 16px;
+        border-top: 1px solid rgba(0, 0, 0, 0.1);
+    }
+    
+    .mobile-action-btn {
+        padding: 12px 16px;
+        font-size: 13px;
+        min-height: 44px;
+        border-radius: 12px;
+    }
+    
+    /* 優化範圍滑塊在小屏幕上的顯示 */
+    .range-container {
+        gap: 8px;
+    }
+    
+    .setting-range {
+        height: 8px;
+    }
+    
+    .setting-range::-webkit-slider-thumb {
+        width: 24px;
+        height: 24px;
+    }
+    
+    .range-value {
+        min-width: 45px;
+        font-size: 13px;
+    }
+}
+
+@media (max-width: 360px) and (orientation: portrait) {
+    .settings-panel-content {
+        padding: 12px;
+        max-height: 60vh;
+    }
+    
+    .setting-group {
+        padding: 10px;
+        margin-bottom: 12px;
+    }
+    
+    .setting-item {
+        padding: 10px 0;
+    }
+    
+    .setting-text {
+        font-size: 13px;
+    }
+    
+    .mobile-action-btn {
+        padding: 10px 12px;
+        font-size: 12px;
+    }
+    
+    .settings-actions-mobile {
+        flex-direction: column;
+        gap: 8px;
+    }
 }
