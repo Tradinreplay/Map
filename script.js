@@ -197,14 +197,14 @@ async function autoGetCurrentLocation() {
                 timestamp: position.timestamp
             };
             
-            // 移動地圖到當前位置
-            map.setView([currentPosition.lat, currentPosition.lng], 15);
-            
             // 更新位置顯示
             updateLocationDisplay();
             
-            // 更新當前位置標記
+            // 更新當前位置標記（會自動處理居中）
             updateCurrentLocationMarker();
+            
+            // 初次定位時強制居中到合適的縮放級別
+            centerMapToCurrentPosition(true, 15);
             
             // 顯示成功通知
             const accuracy = Math.round(currentPosition.accuracy);
@@ -845,7 +845,7 @@ document.getElementById('createGroupForm').addEventListener('submit', handleCrea
                             },
                             {
                                 enableHighAccuracy: enableHighAccuracy,
-                                timeout: Math.min(locationTimeout, locationUpdateFrequency - 500),
+                                timeout: Math.min(locationTimeout, Math.max(locationUpdateFrequency - 100, 1000)),
                                 maximumAge: 0 // 強制獲取最新位置
                             }
                         );
@@ -1660,11 +1660,11 @@ function getCurrentLocation() {
                 timestamp: Date.now()
             };
             
-            // 移動地圖到當前位置
-            map.setView([lat, lng], 16);
-            
-            // 更新當前位置標記
+            // 更新當前位置標記（會自動處理居中）
             updateCurrentLocationMarker();
+            
+            // 強制居中到當前位置並設定合適的縮放級別
+            centerMapToCurrentPosition(true, 16);
             
             // 恢復按鈕狀態
             locationBtn.classList.remove('locating');
@@ -2244,6 +2244,17 @@ function handleCreateGroup(event) {
 }
 
 // 更新當前位置標記
+// 統一的地圖居中函數
+function centerMapToCurrentPosition(forceCenter = false, zoomLevel = null) {
+    if (!currentPosition) return;
+    
+    // 如果強制居中或者啟用了自動居中功能
+    if (forceCenter || keepMapCentered) {
+        const currentZoom = zoomLevel || map.getZoom();
+        map.setView([currentPosition.lat, currentPosition.lng], currentZoom);
+    }
+}
+
 function updateCurrentLocationMarker() {
     if (!currentPosition) return;
     
@@ -2268,10 +2279,8 @@ function updateCurrentLocationMarker() {
         </div>
     `);
     
-    // 如果啟用保持地圖中央功能，自動將地圖中心移動到當前位置
-    if (keepMapCentered) {
-        map.setView([currentPosition.lat, currentPosition.lng], map.getZoom());
-    }
+    // 使用統一的居中函數
+    centerMapToCurrentPosition();
 }
 
 // 組別管理功能
@@ -3031,9 +3040,15 @@ function startTracking() {
                 };
                 
                 updateLocationDisplay();
-                updateCurrentLocationMarker();
-                refreshAllMarkerPopups(); // 更新所有標記的提示窗距離顯示
-                updateLocationStatus('追蹤中');
+                            updateCurrentLocationMarker();
+                            
+                            // 如果啟用保持地圖居中，強制居中到當前位置
+                            if (keepMapCentered) {
+                                centerMapToCurrentPosition(true);
+                            }
+                            
+                            refreshAllMarkerPopups(); // 更新所有標記的提示窗距離顯示
+                            updateLocationStatus('追蹤中');
                 
                 // 如果精度較差，顯示警告
                 if (position.coords.accuracy > 50) {
@@ -3113,6 +3128,12 @@ function startTracking() {
                             
                             updateLocationDisplay();
                             updateCurrentLocationMarker();
+                            
+                            // 如果啟用保持地圖居中，強制居中到當前位置
+                            if (keepMapCentered) {
+                                centerMapToCurrentPosition(true);
+                            }
+                            
                             refreshAllMarkerPopups(); // 更新所有標記的提示窗距離顯示
                             updateLocationStatus('追蹤中 (強制更新)');
                         }
@@ -3122,7 +3143,7 @@ function startTracking() {
                     },
                     {
                         enableHighAccuracy: enableHighAccuracy,
-                        timeout: Math.min(locationTimeout, locationUpdateFrequency - 500),
+                        timeout: Math.min(locationTimeout, Math.max(locationUpdateFrequency - 100, 1000)),
                         maximumAge: 0 // 強制獲取最新位置
                     }
                 );
@@ -5366,6 +5387,9 @@ function centerToGroupMarkers() {
 
 // 顯示全部詳情模態框
 function showAllDetailsModal() {
+    // 關閉浮動設定視窗
+    hideFloatingSettings();
+    
     const modal = document.getElementById('allDetailsModal');
     const totalGroupsCount = document.getElementById('totalGroupsCount');
     const totalMarkersCount = document.getElementById('totalMarkersCount');
@@ -5789,6 +5813,21 @@ function initFloatingSettingsEventListeners() {
     if (floatingKeepMapCentered) {
         floatingKeepMapCentered.addEventListener('change', function() {
             keepMapCentered = this.checked;
+            
+            // 同步更新主設定面板中的核取方塊
+            const mainKeepMapCentered = document.getElementById('keepMapCentered');
+            if (mainKeepMapCentered) {
+                mainKeepMapCentered.checked = this.checked;
+            }
+            
+            // 更新中央按鈕的UI狀態
+            updateCenterButtonTooltip();
+            
+            // 儲存設定
+            saveSettingsOnly();
+            
+            // 顯示通知
+            showNotification(keepMapCentered ? '已啟用地圖居中功能' : '已停用地圖居中功能', 'info');
         });
     }
     
@@ -5796,6 +5835,71 @@ function initFloatingSettingsEventListeners() {
     if (floatingLocationUpdateFrequency) {
         floatingLocationUpdateFrequency.addEventListener('change', function() {
             locationUpdateFrequency = parseInt(this.value) || 3000;
+            
+            // 如果正在追蹤，重新啟動定時器以應用新的更新頻率
+            if (isTracking && locationUpdateTimer) {
+                clearInterval(locationUpdateTimer);
+                
+                locationUpdateTimer = setInterval(() => {
+                    // 強制重新獲取當前位置
+                    if (navigator.geolocation && isTracking) {
+                        navigator.geolocation.getCurrentPosition(
+                            function(position) {
+                                const now = Date.now();
+                                
+                                // 檢查是否真的是新的位置數據
+                                if (!lastLocationUpdate || (now - lastLocationUpdate) >= (locationUpdateFrequency * 0.8)) {
+                                    lastLocationUpdate = now;
+                                    
+                                    // 計算速度（如果有前一個位置）
+                                    let speed = null;
+                                    if (currentPosition && position.coords.speed !== null) {
+                                        speed = position.coords.speed;
+                                    } else if (currentPosition) {
+                                        const timeDiff = (now - currentPosition.timestamp) / 1000; // 秒
+                                        const distance = calculateDistance(
+                                            currentPosition.lat, currentPosition.lng,
+                                            position.coords.latitude, position.coords.longitude
+                                        );
+                                        if (timeDiff > 0) {
+                                            speed = distance / timeDiff; // 公尺/秒
+                                        }
+                                    }
+                                    
+                                    // 保存當前位置作為下次計算的參考
+                                    lastPosition = currentPosition ? {
+                                        lat: currentPosition.lat,
+                                        lng: currentPosition.lng
+                                    } : null;
+                                    
+                                    currentPosition = {
+                                        lat: position.coords.latitude,
+                                        lng: position.coords.longitude,
+                                        accuracy: position.coords.accuracy,
+                                        timestamp: now,
+                                        speed: speed
+                                    };
+                                    
+                                    updateLocationDisplay();
+                                    updateCurrentLocationMarker();
+                                    refreshAllMarkerPopups(); // 更新所有標記的提示窗距離顯示
+                                    updateLocationStatus('追蹤中 (強制更新)');
+                                }
+                            },
+                            function(error) {
+                                console.warn('定時器位置更新失敗:', error);
+                            },
+                            {
+                                enableHighAccuracy: enableHighAccuracy,
+                                timeout: Math.min(locationTimeout, Math.max(locationUpdateFrequency - 100, 1000)),
+                                maximumAge: 0 // 強制獲取最新位置
+                            }
+                        );
+                    }
+                }, locationUpdateFrequency);
+                
+                showNotification(`更新頻率已變更為 ${locationUpdateFrequency/1000} 秒`);
+            }
         });
     }
     
@@ -5803,6 +5907,71 @@ function initFloatingSettingsEventListeners() {
     if (floatingLocationTimeout) {
         floatingLocationTimeout.addEventListener('change', function() {
             locationTimeout = parseInt(this.value) * 1000 || 20000; // 轉換為毫秒
+            
+            // 如果正在追蹤，重新啟動定時器以應用新的超時設定
+            if (isTracking && locationUpdateTimer) {
+                clearInterval(locationUpdateTimer);
+                
+                locationUpdateTimer = setInterval(() => {
+                    // 強制重新獲取當前位置
+                    if (navigator.geolocation && isTracking) {
+                        navigator.geolocation.getCurrentPosition(
+                            function(position) {
+                                const now = Date.now();
+                                
+                                // 檢查是否真的是新的位置數據
+                                if (!lastLocationUpdate || (now - lastLocationUpdate) >= (locationUpdateFrequency * 0.8)) {
+                                    lastLocationUpdate = now;
+                                    
+                                    // 計算速度（如果有前一個位置）
+                                    let speed = null;
+                                    if (currentPosition && position.coords.speed !== null) {
+                                        speed = position.coords.speed;
+                                    } else if (currentPosition) {
+                                        const timeDiff = (now - currentPosition.timestamp) / 1000; // 秒
+                                        const distance = calculateDistance(
+                                            currentPosition.lat, currentPosition.lng,
+                                            position.coords.latitude, position.coords.longitude
+                                        );
+                                        if (timeDiff > 0) {
+                                            speed = distance / timeDiff; // 公尺/秒
+                                        }
+                                    }
+                                    
+                                    // 保存當前位置作為下次計算的參考
+                                    lastPosition = currentPosition ? {
+                                        lat: currentPosition.lat,
+                                        lng: currentPosition.lng
+                                    } : null;
+                                    
+                                    currentPosition = {
+                                        lat: position.coords.latitude,
+                                        lng: position.coords.longitude,
+                                        accuracy: position.coords.accuracy,
+                                        timestamp: now,
+                                        speed: speed
+                                    };
+                                    
+                                    updateLocationDisplay();
+                                    updateCurrentLocationMarker();
+                                    refreshAllMarkerPopups(); // 更新所有標記的提示窗距離顯示
+                                    updateLocationStatus('追蹤中 (強制更新)');
+                                }
+                            },
+                            function(error) {
+                                console.warn('定時器位置更新失敗:', error);
+                            },
+                            {
+                                enableHighAccuracy: enableHighAccuracy,
+                                timeout: Math.min(locationTimeout, Math.max(locationUpdateFrequency - 100, 1000)),
+                                maximumAge: 0 // 強制獲取最新位置
+                            }
+                        );
+                    }
+                }, locationUpdateFrequency);
+                
+                showNotification(`超時時間已變更為 ${locationTimeout/1000} 秒`);
+            }
         });
     }
     
