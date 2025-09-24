@@ -147,72 +147,116 @@ function initializeApp() {
 }
 
 // 自動獲取當前位置函數
-function autoGetCurrentLocation() {
-    if ('geolocation' in navigator) {
-        // 顯示定位中的提示
-        showNotification('📍 正在獲取您的位置...', 'info');
-        
-        navigator.geolocation.getCurrentPosition(
-            function(position) {
-                currentPosition = {
-                    lat: position.coords.latitude,
-                    lng: position.coords.longitude,
-                    accuracy: position.coords.accuracy,
-                    timestamp: position.timestamp
-                };
-                
-                // 移動地圖到當前位置
-                map.setView([currentPosition.lat, currentPosition.lng], 15);
-                
-                // 更新位置顯示
-                updateLocationDisplay();
-                
-                // 更新當前位置標記
-                updateCurrentLocationMarker();
-                
-                // 顯示成功通知
-                const accuracy = Math.round(currentPosition.accuracy);
-                showNotification(`🎯 定位成功！精度: ±${accuracy}公尺`, 'success');
-                
-                console.log('自動定位成功:', currentPosition);
-            },
-            function(error) {
-                console.log('自動定位失敗:', error);
-                
-                // 根據錯誤類型顯示不同的提示
-                let errorMessage = '📍 無法獲取位置';
-                switch(error.code) {
-                    case error.PERMISSION_DENIED:
-                        errorMessage = '❌ 位置權限被拒絕，請在瀏覽器設定中允許位置存取';
-                        break;
-                    case error.POSITION_UNAVAILABLE:
-                        errorMessage = '📍 位置信息不可用，請檢查GPS或網路連接';
-                        break;
-                    case error.TIMEOUT:
-                        errorMessage = '⏰ 定位超時，請稍後再試';
-                        break;
-                    default:
-                        errorMessage = '📍 定位失敗，請手動點擊定位按鈕重試';
-                        break;
-                }
-                
-                showNotification(errorMessage, 'warning');
-                
-                // 立即設定為預設位置（台北市中心）
-                const defaultLat = 25.0330;
-                const defaultLng = 121.5654;
-                map.setView([defaultLat, defaultLng], 16);
-                showNotification('已自動設定為台北市中心。您可以點擊地圖來添加標記。', 'info');
-            },
-            {
-                enableHighAccuracy: true,
-                timeout: 15000, // 增加超時時間到15秒
-                maximumAge: 300000 // 5分鐘內的緩存位置可接受
-            }
-        );
-    } else {
+async function autoGetCurrentLocation() {
+    if (!('geolocation' in navigator)) {
         showNotification('❌ 您的瀏覽器不支援地理定位功能', 'error');
+        setDefaultLocation();
+        return;
     }
+
+    // 檢查權限狀態
+    if ('permissions' in navigator) {
+        try {
+            const permission = await navigator.permissions.query({name: 'geolocation'});
+            
+            if (permission.state === 'denied') {
+                showNotification('❌ 位置權限已被拒絕。請在瀏覽器設定中允許位置存取，然後重新整理頁面。', 'error');
+                setDefaultLocation();
+                return;
+            }
+            
+            if (permission.state === 'prompt') {
+                showNotification('📍 請允許位置存取以獲得更好的體驗', 'info');
+            }
+        } catch (e) {
+            console.log('無法檢查權限狀態:', e);
+        }
+    }
+    
+    // 顯示定位中的提示
+    showNotification('📍 正在獲取您的位置...', 'info');
+    
+    // 設定定位選項
+    const options = {
+        enableHighAccuracy: isMobileDevice(), // 手機使用高精度
+        timeout: isMobileDevice() ? 20000 : 15000, // 手機增加超時時間
+        maximumAge: 300000 // 5分鐘內的緩存位置可接受
+    };
+    
+    navigator.geolocation.getCurrentPosition(
+        function(position) {
+            currentPosition = {
+                lat: position.coords.latitude,
+                lng: position.coords.longitude,
+                accuracy: position.coords.accuracy,
+                timestamp: position.timestamp
+            };
+            
+            // 移動地圖到當前位置
+            map.setView([currentPosition.lat, currentPosition.lng], 15);
+            
+            // 更新位置顯示
+            updateLocationDisplay();
+            
+            // 更新當前位置標記
+            updateCurrentLocationMarker();
+            
+            // 顯示成功通知
+            const accuracy = Math.round(currentPosition.accuracy);
+            showNotification(`🎯 定位成功！精度: ±${accuracy}公尺`, 'success');
+            
+            console.log('自動定位成功:', currentPosition);
+        },
+        function(error) {
+            console.log('自動定位失敗:', error);
+            
+            // 根據錯誤類型顯示不同的提示
+            let errorMessage = '📍 無法獲取位置';
+            let showRetryButton = false;
+            
+            switch(error.code) {
+                case error.PERMISSION_DENIED:
+                    if (isMobileDevice()) {
+                        errorMessage = '❌ 位置權限被拒絕。請在手機設定中允許此網站存取位置，或點擊地址欄的位置圖示重新授權。';
+                    } else {
+                        errorMessage = '❌ 位置權限被拒絕。請點擊瀏覽器地址欄的位置圖示重新授權。';
+                    }
+                    break;
+                case error.POSITION_UNAVAILABLE:
+                    errorMessage = '📍 位置信息不可用。請檢查GPS是否開啟，或確認網路連接正常。';
+                    showRetryButton = true;
+                    break;
+                case error.TIMEOUT:
+                    errorMessage = '⏰ 定位超時。請確認GPS訊號良好，或稍後再試。';
+                    showRetryButton = true;
+                    break;
+                default:
+                    errorMessage = '📍 定位失敗。請檢查網路連接或手動點擊定位按鈕重試。';
+                    showRetryButton = true;
+                    break;
+            }
+            
+            showNotification(errorMessage, 'warning');
+            
+            if (showRetryButton && isMobileDevice()) {
+                // 在手機上顯示重試提示
+                setTimeout(() => {
+                    showNotification('💡 提示：您可以點擊右下角的定位按鈕手動重試定位', 'info');
+                }, 3000);
+            }
+            
+            setDefaultLocation();
+        },
+        options
+    );
+}
+
+function setDefaultLocation() {
+    // 設定為預設位置（台北市中心）
+    const defaultLat = 25.0330;
+    const defaultLng = 121.5654;
+    map.setView([defaultLat, defaultLng], 16);
+    showNotification('已自動設定為台北市中心。您可以點擊地圖來添加標記。', 'info');
 }
 
 // 初始化Service Worker消息傳遞
@@ -1364,6 +1408,39 @@ function handleCSSFullscreen() {
 function handleFullscreenClick() {
     console.log('Fullscreen button clicked');
     toggleFullscreen();
+}
+
+// 手機設備自動進入全螢幕模式
+function autoEnterFullscreenOnMobile() {
+    if (!isMobileDevice()) {
+        return;
+    }
+    
+    console.log('Mobile device detected, attempting auto fullscreen');
+    
+    // 檢查是否已經在全螢幕模式
+    if (isFullscreen) {
+        console.log('Already in fullscreen mode');
+        return;
+    }
+    
+    // 延遲執行以確保頁面完全載入
+    setTimeout(() => {
+        try {
+            const mapContainer = document.querySelector('.map-container');
+            if (mapContainer) {
+                enterFullscreen(mapContainer);
+                console.log('Auto fullscreen activated for mobile device');
+                
+                // 顯示通知告知用戶已自動進入全螢幕
+                showNotification('已自動進入全螢幕模式', 'info');
+            } else {
+                console.warn('Map container not found for auto fullscreen');
+            }
+        } catch (error) {
+            console.error('Auto fullscreen failed:', error);
+        }
+    }, 500); // 延遲500ms確保DOM完全載入
 }
 
 function handleLocationClick() {
@@ -5342,12 +5419,14 @@ function initFloatingSettings() {
 function makeFloatingButtonDraggable(element) {
     let isDragging = false;
     let startX, startY, initialX, initialY;
-    let dragThreshold = 5; // 拖拽閾值，避免誤觸
+    let dragThreshold = 10; // 增加拖拽閾值，避免誤觸
     let hasMoved = false;
+    let startTime = 0;
     
     function handleStart(e) {
         isDragging = true;
         hasMoved = false;
+        startTime = Date.now();
         
         const clientX = e.type === 'mousedown' ? e.clientX : e.touches[0].clientX;
         const clientY = e.type === 'mousedown' ? e.clientY : e.touches[0].clientY;
@@ -5360,7 +5439,11 @@ function makeFloatingButtonDraggable(element) {
         initialY = rect.top;
         
         element.style.transition = 'none';
-        e.preventDefault();
+        
+        // 只在觸控事件時阻止預設行為，避免干擾點擊
+        if (e.type === 'touchstart') {
+            e.preventDefault();
+        }
     }
     
     function handleMove(e) {
@@ -5392,9 +5475,9 @@ function makeFloatingButtonDraggable(element) {
             element.style.top = constrainedY + 'px';
             element.style.right = 'auto';
             element.style.bottom = 'auto';
+            
+            e.preventDefault();
         }
-        
-        e.preventDefault();
     }
     
     function handleEnd(e) {
@@ -5402,10 +5485,15 @@ function makeFloatingButtonDraggable(element) {
             isDragging = false;
             element.style.transition = '';
             
-            // 如果有移動，保存位置
-            if (hasMoved) {
-                const rect = element.getBoundingClientRect();
-                saveFloatingButtonPosition(rect.left, rect.top);
+            const endTime = Date.now();
+            const touchDuration = endTime - startTime;
+            
+            // 如果有移動或觸控時間過長，阻止點擊事件
+            if (hasMoved || touchDuration > 300) {
+                if (hasMoved) {
+                    const rect = element.getBoundingClientRect();
+                    saveFloatingButtonPosition(rect.left, rect.top);
+                }
                 e.preventDefault();
                 e.stopPropagation();
             }
@@ -5420,7 +5508,7 @@ function makeFloatingButtonDraggable(element) {
     // 觸控事件
     element.addEventListener('touchstart', handleStart, { passive: false });
     document.addEventListener('touchmove', handleMove, { passive: false });
-    document.addEventListener('touchend', handleEnd);
+    element.addEventListener('touchend', handleEnd, { passive: false });
 }
 
 function showFloatingSettings() {
@@ -5698,6 +5786,16 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         } catch (error) {
             console.error('Error requesting location permission:', error);
+        }
+        
+        // 手機設備自動進入全螢幕模式
+        if (isMobileDevice()) {
+            try {
+                console.log('Mobile device detected, attempting auto fullscreen...');
+                autoEnterFullscreenOnMobile();
+            } catch (error) {
+                console.error('Error entering fullscreen on mobile:', error);
+            }
         }
         
     }, 100);

@@ -3454,6 +3454,16 @@ input:checked + .slider:before {
     align-items: center;
     justify-content: center;
     user-select: none;
+    /* 改善觸摸支持 */
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    /* 確保在手機上有足夠的觸摸區域 */
+    min-width: 44px;
+    min-height: 44px;
 }
 
 .floating-settings-btn:hover {
