@@ -134,6 +134,11 @@ function initializeApp() {
     } else {
         requestNotificationPermission();
         
+        // 自動定位功能 - 在頁面載入時自動獲取當前位置
+        setTimeout(() => {
+            autoGetCurrentLocation();
+        }, 500);
+        
         // 如果啟用自動開始追蹤，延遲一秒後開始追蹤
         if (autoStartTracking) {
             setTimeout(() => {
@@ -1940,17 +1945,9 @@ function requestLocationPermission() {
                 
                 // 顯示定位精度信息
                 if (position.coords.accuracy) {
-                    showNotification(`定位成功，精度: ${Math.round(position.coords.accuracy)}公尺`, 'success');
+                    showNotification(`🎯 定位成功！精度: ±${Math.round(position.coords.accuracy)}公尺`, 'success');
                 } else {
-                    showNotification('定位成功！', 'success');
-                }
-                
-                // 啟動自動定位功能
-                try {
-                    console.log('啟動自動定位功能...');
-                    autoGetCurrentLocation();
-                } catch (error) {
-                    console.error('啟動自動定位功能時發生錯誤:', error);
+                    showNotification('🎯 定位成功！', 'success');
                 }
                 
                 resolve(position);
@@ -5448,9 +5445,10 @@ function makeFloatingButtonDraggable(element) {
         
         element.style.transition = 'none';
         
-        // 只在觸控事件時阻止預設行為，避免干擾點擊
+        // 為觸控事件提供視覺反饋
         if (e.type === 'touchstart') {
-            e.preventDefault();
+            element.style.transform = 'scale(0.95)';
+            // 不阻止預設行為，讓觸控事件正常處理
         }
     }
     
@@ -5492,24 +5490,32 @@ function makeFloatingButtonDraggable(element) {
         if (isDragging) {
             isDragging = false;
             element.style.transition = '';
+            element.style.transform = ''; // 恢復視覺狀態
             
             const endTime = Date.now();
             const touchDuration = endTime - startTime;
             
-            // 如果有移動或觸控時間過長，阻止點擊事件
-            // 增加觸控時間閾值以改善手機用戶體驗
-            if (hasMoved || touchDuration > 800) {
-                if (hasMoved) {
-                    const rect = element.getBoundingClientRect();
-                    saveFloatingButtonPosition(rect.left, rect.top);
-                }
+            // 如果有移動，保存位置並阻止點擊
+            if (hasMoved) {
+                const rect = element.getBoundingClientRect();
+                saveFloatingButtonPosition(rect.left, rect.top);
                 e.preventDefault();
                 e.stopPropagation();
+            } else if (touchDuration < 500) {
+                // 如果沒有移動且觸控時間短，這是一個有效的點擊
+                // 對於觸控事件，手動觸發設定視窗
+                if (e.type === 'touchend') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    // 延遲執行以確保觸控事件完全處理
+                    setTimeout(() => {
+                        console.log('Mobile touch click detected, opening settings');
+                        showFloatingSettings();
+                    }, 50);
+                }
+                // 對於滑鼠事件，讓正常的點擊事件處理
             } else {
-                // 如果沒有移動且觸控時間短，手動觸發點擊事件
-                setTimeout(() => {
-                    showFloatingSettings();
-                }, 10);
+                // 觸控時間過長，視為長按，阻止點擊
                 e.preventDefault();
                 e.stopPropagation();
             }
