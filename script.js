@@ -127,17 +127,17 @@ function initializeApp() {
     // 初始化設定按鈕
     initSettingsButtons();
     
+    // 自動定位功能 - 在頁面載入時自動獲取當前位置（無論是否完成初始設定）
+    setTimeout(() => {
+        autoGetCurrentLocation();
+    }, 500);
+    
     // 檢查是否是第一次使用
     const hasSeenSetup = localStorage.getItem('hasSeenSetup');
     if (!hasSeenSetup) {
         showInitialSetup();
     } else {
         requestNotificationPermission();
-        
-        // 自動定位功能 - 在頁面載入時自動獲取當前位置
-        setTimeout(() => {
-            autoGetCurrentLocation();
-        }, 500);
         
         // 如果啟用自動開始追蹤，延遲一秒後開始追蹤
         if (autoStartTracking) {
