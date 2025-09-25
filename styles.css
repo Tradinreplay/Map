@@ -2161,8 +2161,14 @@ input:checked + .slider:before {
     padding: 15px 20px;
     border-radius: 8px;
     box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    z-index: 3000;
+    z-index: 10000;
     animation: slideInRight 0.3s ease;
+    max-width: 350px;
+    word-wrap: break-word;
+    white-space: pre-line;
+    font-size: 14px;
+    line-height: 1.4;
+    border-left: 4px solid rgba(255,255,255,0.3);
 }
 
 .notification.error {
@@ -2177,6 +2183,32 @@ input:checked + .slider:before {
     background: #3182ce;
 }
 
+/* 通知圖示和訊息佈局 */
+.notification-icon {
+    display: inline-block;
+    margin-right: 8px;
+    font-size: 16px;
+    vertical-align: middle;
+}
+
+.notification-message {
+    display: inline-block;
+    vertical-align: middle;
+    flex: 1;
+}
+
+.notification {
+    display: flex;
+    align-items: flex-start;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+}
+
+.notification:hover {
+    transform: translateX(-5px);
+}
+
+/* 動畫效果 */
 @keyframes slideInRight {
     from {
         transform: translateX(100%);
@@ -2185,6 +2217,17 @@ input:checked + .slider:before {
     to {
         transform: translateX(0);
         opacity: 1;
+    }
+}
+
+@keyframes slideOutRight {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateX(100%);
+        opacity: 0;
     }
 }
 

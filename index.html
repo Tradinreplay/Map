@@ -40,8 +40,8 @@
                     標註模式
                 </button>
                 <button id="trackingBtn" class="control-btn">
-                    <span>📍</span>
-                    開始追蹤
+                    <span>🔔</span>
+                    開啟通知
                 </button>
             </div>
             
@@ -303,20 +303,7 @@
                 
                 <div class="import-options">
                     <div class="import-option">
-                        <input type="radio" id="importOverwrite" name="importMode" value="overwrite" checked>
-                        <label for="importOverwrite">
-                            <div class="option-header">
-                                <span class="option-icon">🔄</span>
-                                <span class="option-title">完全覆蓋</span>
-                            </div>
-                            <div class="option-description">
-                                刪除所有現有標註點，使用匯入的資料完全替換
-                            </div>
-                        </label>
-                    </div>
-                    
-                    <div class="import-option">
-                        <input type="radio" id="importMerge" name="importMode" value="merge">
+                        <input type="radio" id="importMerge" name="importMode" value="merge" checked>
                         <label for="importMerge">
                             <div class="option-header">
                                 <span class="option-icon">➕</span>
@@ -412,7 +399,7 @@
                     <h4>🔔 位置提醒設定</h4>
                     <div class="setting-row">
                         <label class="switch">
-                            <input type="checkbox" id="floatingEnableNotifications" checked>
+                            <input type="checkbox" id="floatingEnableNotifications">
                             <span class="slider"></span>
                         </label>
                         <span>位置提醒</span>
@@ -444,7 +431,7 @@
                             <input type="checkbox" id="floatingAutoStartTracking">
                             <span class="slider"></span>
                         </label>
-                        <span>自動開始追蹤</span>
+                        <span>自動開啟追蹤</span>
                     </div>
                     <div class="setting-row">
                         <label class="switch">
