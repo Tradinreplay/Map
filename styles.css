@@ -928,7 +928,7 @@ form input:focus, form textarea:focus, form select:focus {
         margin: 3vh auto;
         padding: clamp(10px, 2.4vw, 16px);
         width: clamp(224px, 74vw, 400px);
-        max-height: 88vh;
+        max-height: 66vh;
         overflow-y: auto;
     }
     
@@ -1044,7 +1044,7 @@ form input:focus, form textarea:focus, form select:focus {
         margin: 0.5vh auto;
         padding: clamp(6px, 1.5vw, 10px);
         width: clamp(208px, 76vw, 360px);
-        max-height: 94vh;
+        max-height: 70.5vh;
         overflow-y: auto;
     }
     
@@ -1185,7 +1185,7 @@ form input:focus, form textarea:focus, form select:focus {
         margin: 0.2vh auto;
         padding: clamp(4px, 1.2vw, 8px);
         width: clamp(192px, 78vw, 288px);
-        max-height: 96vh;
+        max-height: 72vh;
     }
     
     .modal-content h2 {

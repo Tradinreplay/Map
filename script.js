@@ -224,7 +224,7 @@ async function autoGetCurrentLocation() {
                     const btn = document.getElementById('trackingBtn');
                     if (btn) {
                         btn.classList.add('active');
-                        btn.innerHTML = '<span>⏹️</span>停止追蹤';
+                        btn.innerHTML = '<span>🎯</span>已啟動追蹤';
                     }
                     
                     showNotification('📍 位置追蹤已自動啟動', 'info');
@@ -3654,6 +3654,12 @@ function showLocationAlert(marker, distance) {
 
 // 更新定位狀態顯示
 function updateLocationStatus(status) {
+    // 只有當追蹤按鈕存在時才更新狀態顯示
+    const trackingBtn = document.getElementById('trackingBtn');
+    if (!trackingBtn) {
+        return; // 如果追蹤按鈕不存在，則不顯示追蹤狀態
+    }
+    
     const statusDiv = document.getElementById('locationStatus');
     if (statusDiv) {
         statusDiv.textContent = status;
@@ -5977,10 +5983,14 @@ function syncFloatingSettingsValues() {
         floatingLocationAccuracy.textContent = locationAccuracy.textContent;
     }
     
-    const locationStatus = document.getElementById('locationStatus');
-    const floatingLocationStatus = document.getElementById('floatingLocationStatus');
-    if (locationStatus && floatingLocationStatus) {
-        floatingLocationStatus.textContent = locationStatus.textContent;
+    // 只有當追蹤按鈕存在時才同步狀態顯示
+    const trackingBtn = document.getElementById('trackingBtn');
+    if (trackingBtn) {
+        const locationStatus = document.getElementById('locationStatus');
+        const floatingLocationStatus = document.getElementById('floatingLocationStatus');
+        if (locationStatus && floatingLocationStatus) {
+            floatingLocationStatus.textContent = locationStatus.textContent;
+        }
     }
 }
 
