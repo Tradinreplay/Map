@@ -224,7 +224,7 @@ async function autoGetCurrentLocation() {
                     const btn = document.getElementById('trackingBtn');
                     if (btn) {
                         btn.classList.add('active');
-                        btn.innerHTML = '<span>🎯</span>已啟動追蹤';
+                        btn.innerHTML = '<span>🎯</span>開啟追蹤通知';
                     }
                     
                     showNotification('📍 位置追蹤已自動啟動', 'info');
