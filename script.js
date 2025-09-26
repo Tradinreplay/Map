@@ -1000,7 +1000,7 @@ document.getElementById('createGroupForm').addEventListener('submit', handleCrea
             // 更新音量顯示
             const volumeValueEl = document.querySelector('.volume-value');
             if (volumeValueEl) {
-                volumeValueEl.textContent = Math.round(volume * 100) + '%';
+                volumeValueEl.textContent = Math.round(volume * 1) + '%';
             }
             // 更新音效系統音量
             if (window.notificationSound) {
@@ -4561,7 +4561,7 @@ function loadSavedSettings() {
                 // 更新音量顯示
                 const volumeValueEl = document.querySelector('.volume-value');
                 if (volumeValueEl) {
-                    volumeValueEl.textContent = Math.round(settings.notificationVolume * 100) + '%';
+                    volumeValueEl.textContent = Math.round(settings.notificationVolume * 1) + '%';
                 }
             }
             // 更新音效系統音量
