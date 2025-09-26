@@ -4,6 +4,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>地圖標註系統</title>
+    
+    <!-- PWA Support -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#2196F3">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="地圖標註">
+    <link rel="apple-touch-icon" href="icon-192x192.png">
+    
+    <!-- Meta tags for better mobile experience -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="application-name" content="地圖標註系統">
+    <meta name="msapplication-TileColor" content="#2196F3">
+    <meta name="msapplication-TileImage" content="icon-144x144.png">
+    
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="styles.css">
 </head>
@@ -361,10 +376,7 @@
                             <span>📍</span>
                             <span>定位</span>
                         </button>
-                        <button id="testNotificationBtn" class="quick-action-btn" title="測試通知">
-                            <span>🔔</span>
-                            <span>測試通知</span>
-                        </button>
+
                         <button id="showAllMarkersBtn" class="quick-action-btn" title="顯示所有標記">
                             <span>👁️</span>
                             <span>顯示全部</span>
@@ -413,6 +425,18 @@
                         <label>間隔</label>
                         <input type="number" id="floatingAlertInterval" value="30" min="5" max="300" class="compact-input">
                         <span class="unit">s</span>
+                    </div>
+                    <div class="setting-row">
+                        <label class="switch">
+                            <input type="checkbox" id="floatingEnableNotificationSound" checked>
+                            <span class="slider"></span>
+                        </label>
+                        <span>通知音效</span>
+                    </div>
+                    <div class="setting-row">
+                        <label>音量</label>
+                        <input type="range" id="floatingNotificationVolume" min="0" max="100" value="50" class="volume-slider">
+                        <span class="volume-value">50%</span>
                     </div>
                 </div>
                 
@@ -501,6 +525,13 @@
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <!-- 通知音效腳本 -->
+    <script src="notification-sound.js"></script>
+    
+    <!-- Android 整合腳本 -->
+    <script src="android-integration.js"></script>
+    
     <script src="script.js?v=20240924-1"></script>
     
     <!-- Service Worker Registration -->

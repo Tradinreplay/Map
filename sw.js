@@ -177,6 +177,25 @@ function showLocationNotification(title, body, data = {}) {
     };
     
     console.log(`顯示通知：${title} - ${body}`);
+    
+    // 嘗試通知主應用播放音效
+    try {
+        self.clients.matchAll().then(clients => {
+            clients.forEach(client => {
+                client.postMessage({
+                    type: 'PLAY_NOTIFICATION_SOUND',
+                    data: {
+                        soundType: 'notification',
+                        title: title,
+                        body: body
+                    }
+                });
+            });
+        });
+    } catch (error) {
+        console.warn('無法發送音效播放消息:', error);
+    }
+    
     return self.registration.showNotification(title, options);
 }
 

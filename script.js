@@ -99,7 +99,9 @@ function getSettingsElement(elementId) {
         'enableNotifications': 'floatingEnableNotifications',
         'alertDistance': 'floatingAlertDistance',
         'alertInterval': 'floatingAlertInterval',
-        'keepMapCentered': 'floatingKeepMapCentered'
+        'keepMapCentered': 'floatingKeepMapCentered',
+        'enableNotificationSound': 'floatingEnableNotificationSound',
+        'notificationVolume': 'floatingNotificationVolume'
     };
     
     const floatingId = elementMapping[elementId];
@@ -322,6 +324,19 @@ function initServiceWorkerMessaging() {
                 // 執行背景位置檢查
                 if (isTracking && currentPosition) {
                     checkProximityAlerts();
+                }
+            }
+            
+            if (event.data && event.data.type === 'PLAY_NOTIFICATION_SOUND') {
+                // 播放通知音效
+                if (window.notificationSound && typeof window.notificationSound.playNotificationSound === 'function') {
+                    window.notificationSound.playNotificationSound().then(() => {
+                        console.log('Service Worker 觸發的通知音效播放成功');
+                    }).catch(error => {
+                        console.warn('Service Worker 觸發的通知音效播放失敗:', error);
+                    });
+                } else {
+                    console.log('通知音效功能不可用');
                 }
             }
         });
@@ -600,6 +615,7 @@ function initEventListeners() {
     document.getElementById('addMarkerBtn').addEventListener('click', toggleAddMarkerMode);
     document.getElementById('trackingBtn').addEventListener('click', toggleTracking);
     document.getElementById('centerMapBtn').addEventListener('click', centerMapToCurrentLocation);
+
     
     // 提醒設定 - 使用浮動設定窗口的元素
     const enableNotificationsEl = document.getElementById('floatingEnableNotifications');
@@ -756,8 +772,7 @@ function initEventListeners() {
     // 建立組別表單
 document.getElementById('createGroupForm').addEventListener('submit', handleCreateGroup);
 
-// 測試通知按鈕
-    document.getElementById('testNotificationBtn').addEventListener('click', testNotification);
+
     
     // 組別詳情模態框按鈕事件監聽器
     document.getElementById('showAllGroupMarkersBtn').addEventListener('click', showAllMarkersInGroup);
@@ -964,6 +979,32 @@ document.getElementById('createGroupForm').addEventListener('submit', handleCrea
         allDetailsModal.addEventListener('click', function(e) {
             if (e.target === this) {
                 closeAllDetailsModal();
+            }
+        });
+    }
+    
+    // 音效設定事件監聽器
+    const enableNotificationSoundEl = document.getElementById('floatingEnableNotificationSound');
+    if (enableNotificationSoundEl) {
+        enableNotificationSoundEl.addEventListener('change', function() {
+            if (window.notificationSound) {
+                window.notificationSound.setEnabled(this.checked);
+            }
+        });
+    }
+    
+    const notificationVolumeEl = document.getElementById('floatingNotificationVolume');
+    if (notificationVolumeEl) {
+        notificationVolumeEl.addEventListener('input', function() {
+            const volume = parseFloat(this.value);
+            // 更新音量顯示
+            const volumeValueEl = document.querySelector('.volume-value');
+            if (volumeValueEl) {
+                volumeValueEl.textContent = Math.round(volume * 100) + '%';
+            }
+            // 更新音效系統音量
+            if (window.notificationSound) {
+                window.notificationSound.setVolume(volume);
             }
         });
     }
@@ -2053,7 +2094,58 @@ function loadButtonPositions() {
 function requestLocationPermission() {
     console.log('開始請求位置權限...');
     
-    return new Promise((resolve, reject) => {
+    return new Promise(async (resolve, reject) => {
+        // 檢查是否為Android應用程式
+        if (window.isAndroidApp && window.isAndroidApp()) {
+            console.log('檢測到Android應用程式環境，使用Android權限管理...');
+            try {
+                // 先請求Android權限
+                const hasPermission = await window.AndroidPermissions.requestLocationPermission();
+                if (!hasPermission) {
+                    console.error('Android位置權限被拒絕');
+                    showNotification('❌ 位置權限被拒絕，請在設定中允許位置權限', 'error');
+                    reject(new Error('位置權限被拒絕'));
+                    return;
+                }
+                
+                // 使用Android地理位置API
+                window.AndroidGeolocation.getCurrentPosition(
+                    {
+                        enableHighAccuracy: enableHighAccuracy,
+                        timeout: locationTimeout,
+                        maximumAge: 5000
+                    }
+                ).then(position => {
+                    console.log('Android定位成功！', position);
+                    currentPosition = {
+                        lat: position.coords.latitude,
+                        lng: position.coords.longitude,
+                        accuracy: position.coords.accuracy
+                    };
+                    updateLocationDisplay();
+                    updateCurrentLocationMarker();
+                    map.setView([currentPosition.lat, currentPosition.lng], 18);
+                    
+                    // 顯示定位精度信息
+                    if (position.coords.accuracy) {
+                        showNotification(`🎯 定位成功！精度: ±${Math.round(position.coords.accuracy)}公尺`, 'success');
+                    } else {
+                        showNotification('🎯 定位成功！', 'success');
+                    }
+                    
+                    resolve(position);
+                }).catch(error => {
+                    console.error('Android定位失敗:', error);
+                    handleLocationError(error, reject);
+                });
+                
+                return;
+            } catch (error) {
+                console.error('Android權限請求失敗:', error);
+                // 如果Android權限失敗，回退到標準API
+            }
+        }
+        
         // 檢查是否為HTTPS或localhost
         const isSecure = location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
         if (!isSecure) {
@@ -2085,37 +2177,7 @@ function requestLocationPermission() {
                 resolve(position);
             },
             function(error) {
-                console.error('無法獲取位置:', error);
-                console.log('錯誤詳情 - 代碼:', error.code, '訊息:', error.message);
-                let errorMessage = '無法獲取您的位置';
-                let detailedMessage = '';
-                
-                switch(error.code) {
-                    case error.PERMISSION_DENIED:
-                        errorMessage = '位置權限被拒絕';
-                        detailedMessage = '請點擊瀏覽器地址欄的鎖頭圖標，將位置權限設為"允許"，然後重新整理頁面';
-                        break;
-                    case error.POSITION_UNAVAILABLE:
-                        errorMessage = '位置信息不可用';
-                        detailedMessage = '請確認設備的位置服務已開啟，並檢查網路連線';
-                        break;
-                    case error.TIMEOUT:
-                        errorMessage = '定位請求超時';
-                        detailedMessage = '定位時間過長，請檢查網路連線或稍後再試';
-                        break;
-                    default:
-                        detailedMessage = '請檢查瀏覽器權限設定和設備位置服務';
-                }
-                
-                showNotification(errorMessage + '。' + detailedMessage, 'warning');
-                
-                // 立即設定為預設位置（台北市中心）
-                const defaultLat = 25.0330;
-                const defaultLng = 121.5654;
-                map.setView([defaultLat, defaultLng], 16);
-                showNotification('已自動設定為台北市中心。您可以點擊地圖來添加標記。', 'info');
-                
-                reject(error);
+                handleLocationError(error, reject);
             },
             {
                 enableHighAccuracy: true,
@@ -2130,9 +2192,41 @@ function requestLocationPermission() {
     });
 }
 
-// 請求通知權限
-function requestNotificationPermission() {
-    if ('Notification' in window) {
+function handleLocationError(error, reject) {
+    console.error('無法獲取位置:', error);
+    console.log('錯誤詳情 - 代碼:', error.code, '訊息:', error.message);
+    let errorMessage = '無法獲取您的位置';
+    let detailedMessage = '';
+    
+    switch(error.code) {
+        case error.PERMISSION_DENIED:
+            errorMessage = '位置權限被拒絕';
+            detailedMessage = '請點擊瀏覽器地址欄的鎖頭圖標，將位置權限設為"允許"，然後重新整理頁面';
+            break;
+        case error.POSITION_UNAVAILABLE:
+            errorMessage = '位置信息不可用';
+            detailedMessage = '請確認設備的位置服務已開啟，並檢查網路連線';
+            break;
+        case error.TIMEOUT:
+            errorMessage = '定位請求超時';
+            detailedMessage = '定位時間過長，請檢查網路連線或稍後再試';
+            break;
+        default:
+            detailedMessage = '請檢查瀏覽器權限設定和設備位置服務';
+    }
+    
+    showNotification(errorMessage + '。' + detailedMessage, 'warning');
+    
+    // 立即設定為預設位置（台北市中心）
+    const defaultLat = 25.0330;
+    const defaultLng = 121.5654;
+    map.setView([defaultLat, defaultLng], 16);
+    showNotification('已自動設定為台北市中心。您可以點擊地圖來添加標記。', 'info');
+    
+    reject(error);
+}
+
+function requestNotificationPermission() {    if ('Notification' in window) {
         // 檢查當前權限狀態
         if (Notification.permission === 'granted') {
             showNotification('通知權限已啟用');
@@ -3533,123 +3627,95 @@ function showLocationAlert(marker, distance) {
     // 高亮顯示相關的群組按鈕
     highlightGroupButton(marker.groupId, marker.subgroupId);
     
-    // 嘗試多種通知方式以確保手機瀏覽器能收到通知
-    
-    // 1. 增強的 Service Worker 通知 (最適合背景運作)
-    if ('serviceWorker' in navigator && Notification.permission === 'granted') {
-        navigator.serviceWorker.ready.then(function(registration) {
-            // 使用新的消息傳遞方式
-            if (registration.active) {
-                registration.active.postMessage({
-                    type: 'LOCATION_ALERT',
-                    title: '位置提醒',
-                    body: message,
-                    data: {
-                        markerId: marker.id,
-                        markerName: marker.name,
-                        distance: Math.round(distance),
-                        lat: marker.lat,
-                        lng: marker.lng,
-                        tag: 'location-alert-' + marker.id,
-                        timestamp: Date.now()
-                    }
-                });
+    // 震動功能
+    async function triggerVibration() {
+        try {
+            // 優先使用 Capacitor Haptics
+            if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Haptics) {
+                console.log('Using Capacitor Haptics for vibration');
+                // 複雜震動序列
+                await window.Capacitor.Plugins.Haptics.vibrate({ duration: 500 });
+                setTimeout(async () => {
+                    await window.Capacitor.Plugins.Haptics.vibrate({ duration: 300 });
+                }, 700);
+                setTimeout(async () => {
+                    await window.Capacitor.Plugins.Haptics.vibrate({ duration: 300 });
+                }, 1200);
+            } else if (window.AndroidDevice && typeof window.AndroidDevice.vibrate === 'function') {
+                console.log('Using AndroidDevice vibration');
+                window.AndroidDevice.vibrate([500, 200, 300, 200, 300]);
+            } else if ('vibrate' in navigator) {
+                console.log('Using browser vibration');
+                navigator.vibrate([500, 200, 300, 200, 300]);
             } else {
-                // 降級到直接通知
-                registration.showNotification('位置提醒', {
-                    body: message,
-                    icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="red"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>',
-                    badge: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="red"><circle cx="12" cy="12" r="10"/></svg>',
-                    vibrate: [200, 100, 200, 100, 200],
-                    tag: 'location-alert-' + marker.id,
-                    requireInteraction: true,
-                    silent: false,
-                    data: { markerId: marker.id },
-                    actions: [
-                        {
-                            action: 'view',
-                            title: '查看位置'
-                        }
-                    ]
-                });
+                console.log('No vibration method available');
             }
-        }).catch(function(error) {
-            console.log('Service Worker notification failed:', error);
-            // 降級到普通通知
-            fallbackNotification();
-        });
-    } else {
-        fallbackNotification();
-    }
-    
-    function fallbackNotification() {
-        // 2. 普通瀏覽器通知
-        if (Notification.permission === 'granted') {
-            try {
-                const notification = new Notification('位置提醒', {
-                    body: message,
-                    icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="red"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>',
-                    vibrate: [200, 100, 200],
-                    tag: 'location-alert',
-                    requireInteraction: true
-                });
-                
-                // 點擊通知時的處理
-                notification.onclick = function() {
-                    window.focus();
-                    if (marker.leafletMarker) {
-                        marker.leafletMarker.openPopup();
-                        map.setView([marker.lat, marker.lng], 18);
-                    }
-                    notification.close();
-                };
-            } catch (error) {
-                console.log('Standard notification failed:', error);
+        } catch (error) {
+            console.error('Vibration failed:', error);
+            // 降級到瀏覽器震動
+            if ('vibrate' in navigator) {
+                navigator.vibrate([500, 200, 300, 200, 300]);
             }
         }
     }
     
-    // 3. 手機震動 (如果支援)
-    if ('vibrate' in navigator) {
-        navigator.vibrate([200, 100, 200, 100, 200]);
+    // 播放通知音效
+    async function playNotificationSound() {
+        try {
+            if (window.notificationSound && typeof window.notificationSound.playNotificationSound === 'function') {
+                await window.notificationSound.playNotificationSound();
+                console.log('通知音效播放成功');
+            } else {
+                console.log('通知音效功能不可用');
+            }
+        } catch (error) {
+            console.warn('播放通知音效失敗:', error);
+        }
     }
-    
-    // 4. 顯示彈窗提醒 (確保一定有視覺提醒)
-    document.getElementById('notificationMessage').textContent = message;
-    document.getElementById('notificationModal').style.display = 'block';
-    
-    // 5秒後自動關閉通知彈窗 (手機上給更多時間)
-    setTimeout(() => {
-        document.getElementById('notificationModal').style.display = 'none';
-    }, 5000);
-    
-    // 5. 在地圖上高亮標記
-    if (marker.leafletMarker) {
-        marker.leafletMarker.openPopup();
-        // 將地圖中心移到標記位置
-        map.setView([marker.lat, marker.lng], Math.max(map.getZoom(), 18));
-    }
-    
-    // 6. 音效提醒 (如果可能)
-    try {
-        // 創建簡單的音效
-        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        const oscillator = audioContext.createOscillator();
-        const gainNode = audioContext.createGain();
-        
-        oscillator.connect(gainNode);
-        gainNode.connect(audioContext.destination);
-        
-        oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
-        gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
-        
-        oscillator.start(audioContext.currentTime);
-        oscillator.stop(audioContext.currentTime + 0.5);
-    } catch (error) {
-        // 音效失敗不影響其他功能
-        console.log('Audio notification failed:', error);
-    }
+
+    // 執行震動和音效，然後顯示自定義通知
+    Promise.all([
+        triggerVibration(),
+        playNotificationSound()
+    ]).then(() => {
+        // 震動和音效完成後顯示通知
+        setTimeout(() => {
+            showAutoCloseNotification(message, 'info');
+            
+            // 將地圖定位到通知的標示點
+            if (marker && marker.lat && marker.lng) {
+                map.setView([marker.lat, marker.lng], 16); // 設定地圖中心和縮放級別
+                
+                // 確保標示點在地圖上並顯示其資料
+                const markerOnMap = markers.find(m => m.id === marker.id);
+                if (markerOnMap && markerOnMap.leafletMarker) {
+                    // 更新標示點的彈出視窗內容
+                    updateMarkerPopup(markerOnMap);
+                    // 打開標示點的彈出視窗
+                    markerOnMap.leafletMarker.openPopup();
+                }
+            }
+        }, 100); // 短暫延遲確保震動完成
+    }).catch(() => {
+        // 如果震動或音效失敗，仍然顯示通知
+        setTimeout(() => {
+            showAutoCloseNotification(message, 'info');
+            
+            // 將地圖定位到通知的標示點
+            if (marker && marker.lat && marker.lng) {
+                map.setView([marker.lat, marker.lng], 16); // 設定地圖中心和縮放級別
+                
+                // 確保標示點在地圖上並顯示其資料
+                const markerOnMap = markers.find(m => m.id === marker.id);
+                if (markerOnMap && markerOnMap.leafletMarker) {
+                    // 更新標示點的彈出視窗內容
+                    updateMarkerPopup(markerOnMap);
+                    // 打開標示點的彈出視窗
+                    markerOnMap.leafletMarker.openPopup();
+                }
+            }
+        }, 100);
+    });
 }
 
 // 更新定位狀態顯示
@@ -3979,68 +4045,27 @@ function showNotification(message, type = 'success', duration = 4000) {
     }, duration);
 }
 
-function testNotification() {
-    // 創建測試標記
-    const testMarker = {
-        id: 'test-marker',
-        name: '測試標記',
-        description: '這是一個測試通知的標記',
-        lat: currentPosition ? currentPosition.lat : 25.0330,
-        lng: currentPosition ? currentPosition.lng : 121.5654
-    };
-    
-    // 測試距離提醒
-    showLocationAlert(testMarker, 50);
-    
-    // 顯示測試訊息
-    showNotification('🔔 測試通知已發送！請檢查您的瀏覽器通知', 'info');
-}
+// 位置提醒專用通知函數（3秒自動關閉，支持重複提醒）
+let lastLocationNotificationTime = 0;
+let lastLocationNotificationMessage = '';
 
-// 測試群組追蹤提示功能
-function testGroupTrackingAlert() {
-    // 創建測試群組
-    const testGroup = new Group('test-group-' + Date.now(), '測試群組');
-    const testSubgroup = new Subgroup('test-subgroup-' + Date.now(), '測試子群組', testGroup.id);
-    testGroup.addSubgroup(testSubgroup);
-    groups.push(testGroup);
+function showAutoCloseNotification(message, type = 'info') {
+    const currentTime = Date.now();
+    const timeDiff = currentTime - lastLocationNotificationTime;
     
-    // 創建測試標記（屬於群組）
-    const testMarkerWithGroup = {
-        id: 'test-marker-group',
-        name: '群組測試標記',
-        description: '這是一個屬於群組的測試標記',
-        lat: currentPosition ? currentPosition.lat : 25.0330,
-        lng: currentPosition ? currentPosition.lng : 121.5654,
-        groupId: testGroup.id
-    };
+    // 如果是相同訊息且在5秒內，則不重複顯示
+    if (message === lastLocationNotificationMessage && timeDiff < 5000) {
+        console.log('重複通知被阻止:', message);
+        return;
+    }
     
-    // 創建測試標記（屬於子群組）
-    const testMarkerWithSubgroup = {
-        id: 'test-marker-subgroup',
-        name: '子群組測試標記',
-        description: '這是一個屬於子群組的測試標記',
-        lat: currentPosition ? currentPosition.lat : 25.0330,
-        lng: currentPosition ? currentPosition.lng : 121.5654,
-        groupId: testGroup.id,
-        subgroupId: testSubgroup.id
-    };
+    // 更新最後通知時間和訊息
+    lastLocationNotificationTime = currentTime;
+    lastLocationNotificationMessage = message;
     
-    // 測試群組標記的距離提醒
-    console.log('測試群組標記追蹤提示...');
-    showLocationAlert(testMarkerWithGroup, 75);
-    
-    // 延遲測試子群組標記
-    setTimeout(() => {
-        console.log('測試子群組標記追蹤提示...');
-        showLocationAlert(testMarkerWithSubgroup, 45);
-    }, 3000);
-    
-    // 顯示測試訊息
-    showNotification('🧪 群組追蹤提示測試已開始！將依序測試群組和子群組標記', 'info');
+    // 使用現有的showNotification函數，設置3秒自動關閉
+    showNotification(message, type, 3000);
 }
-
-// 將測試函數暴露到全域
-window.testGroupTrackingAlert = testGroupTrackingAlert;
 
 // 群組按鈕提示管理
 let groupAlertTimers = new Map(); // 記錄群組提示的定時器
@@ -4152,126 +4177,15 @@ function clearSpecificGroupHighlight(groupId, subgroupId = null) {
     }
 }
 
-// 測試新的追蹤UI邏輯
-function testNewTrackingUI() {
-    console.log('測試新的追蹤UI邏輯...');
-    
-    // 模擬設置追蹤目標（顯示圖標）
-    if (groups.length > 0) {
-        const testGroup = groups[0];
-        console.log('測試群組追蹤圖標:', testGroup.id);
-        showGroupTrackingIcon(testGroup.id);
-        
-        // 3秒後測試脈衝動畫
-        setTimeout(() => {
-            console.log('測試群組脈衝動畫');
-            highlightGroupButton(testGroup.id);
-        }, 3000);
-        
-        // 8秒後測試清除脈衝動畫（保留圖標）
-        setTimeout(() => {
-            console.log('測試清除脈衝動畫（保留圖標）');
-            clearSpecificGroupHighlight(testGroup.id);
-        }, 8000);
-        
-        // 12秒後測試完全清除
-        setTimeout(() => {
-            console.log('測試完全清除追蹤效果');
-            clearGroupButtonHighlight();
-        }, 12000);
-    } else {
-        console.log('沒有群組可供測試');
-    }
-}
-
 // 暴露函數到全域
 window.highlightGroupButton = highlightGroupButton;
 window.clearGroupButtonHighlight = clearGroupButtonHighlight;
 window.showGroupTrackingIcon = showGroupTrackingIcon;
-window.testNewTrackingUI = testNewTrackingUI;
 window.clearSpecificGroupHighlight = clearSpecificGroupHighlight;
 
-// 測試群組按鈕提示功能
-function testGroupButtonAlert() {
-    console.log('開始測試群組按鈕提示功能...');
-    
-    // 確保有群組存在
-    if (groups.length === 0) {
-        console.log('沒有群組，創建測試群組...');
-        const testGroup = new Group('test-group-alert', '測試群組提示');
-        const testSubgroup = new Subgroup('test-subgroup-alert', '測試子群組提示', 'test-group-alert');
-        testGroup.addSubgroup(testSubgroup);
-        groups.push(testGroup);
-        updateGroupsList();
-    }
-    
-    const testGroup = groups[0];
-    console.log(`使用群組: ${testGroup.name} (ID: ${testGroup.id})`);
-    
-    // 測試群組按鈕高亮
-    setTimeout(() => {
-        console.log('測試群組按鈕高亮...');
-        highlightGroupButton(testGroup.id);
-    }, 1000);
-    
-    // 測試子群組按鈕高亮（如果有子群組）
-    if (testGroup.subgroups.length > 0) {
-        setTimeout(() => {
-            console.log('測試子群組按鈕高亮...');
-            highlightGroupButton(testGroup.id, testGroup.subgroups[0].id);
-        }, 6000);
-    }
-    
-    // 測試清除所有高亮
-    setTimeout(() => {
-        console.log('測試清除所有高亮...');
-        clearGroupButtonHighlight();
-    }, 11000);
-    
-    console.log('群組按鈕提示測試已啟動，請觀察群組按鈕的變化');
-}
 
-// 暴露測試函數到全域
-window.testGroupButtonAlert = testGroupButtonAlert;
 
-// 添加測試popup功能
-function testPopupFunction() {
-    console.log('=== 測試Popup功能 ===');
-    
-    // 創建測試標記
-    const testMarker = new Marker(
-        'test-popup-' + Date.now(),
-        '測試Popup標記',
-        '這是一個測試popup功能的標記',
-        25.0330,
-        121.5654,
-        null,
-        null,
-        'blue',
-        '🧪'
-    );
-    
-    // 添加到markers陣列
-    markers.push(testMarker);
-    
-    // 添加到地圖
-    addMarkerToMap(testMarker);
-    
-    console.log('測試標記已創建:', testMarker);
-    console.log('標記的leafletMarker:', testMarker.leafletMarker);
-    console.log('Popup是否已綁定:', testMarker.leafletMarker ? testMarker.leafletMarker.getPopup() : 'leafletMarker不存在');
-    
-    // 顯示通知
-    showNotification('🧪 測試標記已添加到地圖！請點擊藍色的🧪圖標查看popup', 'info');
-    
-    // 將地圖中心移動到測試標記
-    if (map) {
-        map.setView([testMarker.lat, testMarker.lng], 15);
-    }
-}
 
-// 將測試函數添加到全局範圍
-window.testPopupFunction = testPopupFunction;
 
 
 
@@ -4482,6 +4396,8 @@ function saveCurrentSettings() {
         const enableNotificationsEl = getSettingsElement('enableNotifications');
         const alertDistanceEl = getSettingsElement('alertDistance');
         const alertIntervalEl = getSettingsElement('alertInterval');
+        const enableNotificationSoundEl = getSettingsElement('enableNotificationSound');
+        const notificationVolumeEl = getSettingsElement('notificationVolume');
         
         if (!enableNotificationsEl || !alertDistanceEl || !alertIntervalEl) {
             throw new Error('設定介面元素未找到');
@@ -4490,6 +4406,8 @@ function saveCurrentSettings() {
         const enableNotifications = enableNotificationsEl.checked;
         const currentAlertDistance = parseInt(alertDistanceEl.value);
         const currentAlertInterval = parseInt(alertIntervalEl.value);
+        const enableNotificationSound = enableNotificationSoundEl ? enableNotificationSoundEl.checked : true;
+        const notificationVolume = notificationVolumeEl ? parseFloat(notificationVolumeEl.value) : 0.5;
         
         // 驗證數值
         if (isNaN(currentAlertDistance) || currentAlertDistance < 1) {
@@ -4530,6 +4448,10 @@ function saveCurrentSettings() {
             enableNotifications: enableNotifications,
             alertDistance: currentAlertDistance,
             alertInterval: currentAlertInterval,
+            
+            // 音效設定
+            enableNotificationSound: enableNotificationSound,
+            notificationVolume: notificationVolume,
             
             // 地圖設定
             keepMapCentered: keepMapCentered,
@@ -4619,6 +4541,33 @@ function loadSavedSettings() {
                 alertIntervalEl.value = settings.alertInterval;
             }
             alertInterval = settings.alertInterval;
+        }
+        
+        // 應用音效設定到UI
+        if (settings.enableNotificationSound !== undefined) {
+            const enableNotificationSoundEl = getSettingsElement('enableNotificationSound');
+            if (enableNotificationSoundEl) {
+                enableNotificationSoundEl.checked = settings.enableNotificationSound;
+            }
+            // 更新音效系統設定
+            if (window.notificationSound) {
+                window.notificationSound.setEnabled(settings.enableNotificationSound);
+            }
+        }
+        if (settings.notificationVolume !== undefined) {
+            const notificationVolumeEl = getSettingsElement('notificationVolume');
+            if (notificationVolumeEl) {
+                notificationVolumeEl.value = settings.notificationVolume;
+                // 更新音量顯示
+                const volumeValueEl = document.querySelector('.volume-value');
+                if (volumeValueEl) {
+                    volumeValueEl.textContent = Math.round(settings.notificationVolume * 100) + '%';
+                }
+            }
+            // 更新音效系統音量
+            if (window.notificationSound) {
+                window.notificationSound.setVolume(settings.notificationVolume);
+            }
         }
         
         // 應用地圖設定到UI
