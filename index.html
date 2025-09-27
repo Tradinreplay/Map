@@ -21,6 +21,7 @@
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="styles.css?v=mobile-debug-version-20240927">
+    <link rel="stylesheet" href="feature-guide-styles.css">
 </head>
 <body>
     <div class="container">
@@ -375,6 +376,214 @@
                 <button id="closeFloatingSettings" class="close-settings-btn">&times;</button>
             </div>
             <div class="floating-settings-body">
+                <!-- 功能說明頁面 -->
+                <div class="setting-group">
+                    <div id="featureGuidePanel" class="feature-guide-panel">
+                        <div class="feature-guide-header">
+                            <h3>🎯 地圖標註系統功能說明</h3>
+                            <button id="toggleFeatureGuide" class="toggle-guide-btn">
+                                <span id="guideToggleIcon">▶</span>
+                            </button>
+                        </div>
+                        
+                        <div id="featureGuideContent" class="feature-guide-content" style="display: none;">
+                            <div class="feature-categories">
+                                <!-- 地圖與定位功能 -->
+                                <div class="feature-category">
+                                    <div class="category-header">
+                                        <div class="category-icon">🗺️</div>
+                                        <h4>地圖與定位</h4>
+                                    </div>
+                                    <div class="feature-list">
+                                        <div class="feature-item">
+                                            <div class="feature-icon">📍</div>
+                                            <div class="feature-info">
+                                                <h5>即時定位</h5>
+                                                <p>自動獲取當前GPS位置並在地圖上顯示</p>
+                                            </div>
+                                        </div>
+                                        <div class="feature-item">
+                                            <div class="feature-icon">🎯</div>
+                                            <div class="feature-info">
+                                                <h5>自動居中</h5>
+                                                <p>地圖自動跟隨當前位置移動</p>
+                                            </div>
+                                        </div>
+                                        <div class="feature-item">
+                                            <div class="feature-icon">⛶</div>
+                                            <div class="feature-info">
+                                                <h5>全螢幕顯示</h5>
+                                                <p>切換全螢幕模式獲得更好的地圖體驗</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- 標註點管理 -->
+                                <div class="feature-category">
+                                    <div class="category-header">
+                                        <div class="category-icon">📌</div>
+                                        <h4>標註點管理</h4>
+                                    </div>
+                                    <div class="feature-list">
+                                        <div class="feature-item">
+                                            <div class="feature-icon">➕</div>
+                                            <div class="feature-info">
+                                                <h5>新增標註點</h5>
+                                                <p>點擊地圖任意位置新增自定義標註點</p>
+                                            </div>
+                                        </div>
+                                        <div class="feature-item">
+                                            <div class="feature-icon">🎨</div>
+                                            <div class="feature-info">
+                                                <h5>自定義外觀</h5>
+                                                <p>選擇顏色、圖案，讓標註點更具識別性</p>
+                                            </div>
+                                        </div>
+                                        <div class="feature-item">
+                                            <div class="feature-icon">📷</div>
+                                            <div class="feature-info">
+                                                <h5>圖片上傳</h5>
+                                                <p>為每個標註點添加最多6張圖片</p>
+                                            </div>
+                                        </div>
+                                        <div class="feature-item">
+                                            <div class="feature-icon">🔍</div>
+                                            <div class="feature-info">
+                                                <h5>搜尋功能</h5>
+                                                <p>快速搜尋標註點名稱或描述</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- 組別管理 -->
+                                <div class="feature-category">
+                                    <div class="category-header">
+                                        <div class="category-icon">👥</div>
+                                        <h4>組別與群組管理</h4>
+                                    </div>
+                                    <div class="feature-list">
+                                        <div class="feature-item">
+                                            <div class="feature-icon">📁</div>
+                                            <div class="feature-info">
+                                                <h5>建立組別</h5>
+                                                <p>建立不同組別來分類管理標註點</p>
+                                            </div>
+                                        </div>
+                                        <div class="feature-item">
+                                            <div class="feature-icon">📂</div>
+                                            <div class="feature-info">
+                                                <h5>子群組</h5>
+                                                <p>在組別下建立子群組，更細緻的分類</p>
+                                            </div>
+                                        </div>
+                                        <div class="feature-item">
+                                            <div class="feature-icon">🔽</div>
+                                            <div class="feature-info">
+                                                <h5>過濾顯示</h5>
+                                                <p>按組別或群組過濾顯示標註點</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- 智能提醒 -->
+                                <div class="feature-category">
+                                    <div class="category-header">
+                                        <div class="category-icon">🔔</div>
+                                        <h4>智能提醒系統</h4>
+                                    </div>
+                                    <div class="feature-list">
+                                        <div class="feature-item">
+                                            <div class="feature-icon">📏</div>
+                                            <div class="feature-info">
+                                                <h5>距離提醒</h5>
+                                                <p>設定提醒距離，接近標註點時自動通知</p>
+                                            </div>
+                                        </div>
+                                        <div class="feature-item">
+                                            <div class="feature-icon">🔊</div>
+                                            <div class="feature-info">
+                                                <h5>音效通知</h5>
+                                                <p>支援音效和振動提醒</p>
+                                            </div>
+                                        </div>
+                                        <div class="feature-item">
+                                            <div class="feature-icon">🌙</div>
+                                            <div class="feature-info">
+                                                <h5>背景追蹤</h5>
+                                                <p>即使在背景也能持續位置追蹤</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- 資料管理 -->
+                                <div class="feature-category">
+                                    <div class="category-header">
+                                        <div class="category-icon">📊</div>
+                                        <h4>資料管理</h4>
+                                    </div>
+                                    <div class="feature-list">
+                                        <div class="feature-item">
+                                            <div class="feature-icon">📤</div>
+                                            <div class="feature-info">
+                                                <h5>匯出資料</h5>
+                                                <p>將標註點資料匯出為JSON檔案</p>
+                                            </div>
+                                        </div>
+                                        <div class="feature-item">
+                                            <div class="feature-icon">📥</div>
+                                            <div class="feature-info">
+                                                <h5>匯入資料</h5>
+                                                <p>從JSON檔案匯入標註點資料</p>
+                                            </div>
+                                        </div>
+                                        <div class="feature-item">
+                                            <div class="feature-icon">💾</div>
+                                            <div class="feature-info">
+                                                <h5>本地儲存</h5>
+                                                <p>所有資料安全儲存在本地裝置</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- 快速操作指南 -->
+                                <div class="feature-category">
+                                    <div class="category-header">
+                                        <div class="category-icon">⚡</div>
+                                        <h4>快速操作指南</h4>
+                                    </div>
+                                    <div class="quick-guide">
+                                        <div class="guide-step">
+                                            <span class="step-number">1</span>
+                                            <p>點擊「📍 標註模式」開始新增標註點</p>
+                                        </div>
+                                        <div class="guide-step">
+                                            <span class="step-number">2</span>
+                                            <p>點擊地圖任意位置建立標註點</p>
+                                        </div>
+                                        <div class="guide-step">
+                                            <span class="step-number">3</span>
+                                            <p>填寫標註點資訊並選擇組別</p>
+                                        </div>
+                                        <div class="guide-step">
+                                            <span class="step-number">4</span>
+                                            <p>開啟「📍 開始追蹤」進行位置追蹤</p>
+                                        </div>
+                                        <div class="guide-step">
+                                            <span class="step-number">5</span>
+                                            <p>設定提醒距離，接近時自動通知</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
                 <!-- 快速操作區域 -->
                 <div class="setting-group">
                     <h4>🚀 快速操作</h4>
@@ -542,6 +751,8 @@
             </div>
         </div>
     </div>
+
+
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     

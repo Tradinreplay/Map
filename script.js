@@ -24,12 +24,8 @@ function checkMobileCompatibility() {
         }
     });
     
-    // 如果是移動設備，顯示調試信息
-    if (isMobile) {
-        setTimeout(() => {
-            alert(`移動設備檢測:\n設備: ${isAndroid ? 'Android' : '其他'}\nWebView: ${isWebView ? '是' : '否'}\n螢幕: ${screen.width}x${screen.height}\n視窗: ${window.innerWidth}x${window.innerHeight}`);
-        }, 2000);
-    }
+    // 移動設備檢測（已移除提示）
+    // 保留檢測功能但不顯示提示
     
     return { isMobile, isAndroid, isWebView };
 }
@@ -3235,10 +3231,7 @@ function updateMarkerPopup(marker) {
             console.error('數據類型:', typeof marker.imageData);
             console.error('數據長度:', marker.imageData ? marker.imageData.length : 'null');
             
-            // 移動設備調試：顯示錯誤信息
-            if (window.DeviceMotionEvent !== undefined) {
-                alert(`移動設備調試 - 圖片處理錯誤:\n錯誤: ${e.message}\n數據類型: ${typeof marker.imageData}\n數據: ${marker.imageData ? marker.imageData.substring(0, 100) + '...' : 'null'}`);
-            }
+            // 移動設備調試已移除，僅保留控制台日誌
             
             // 如果所有解析都失敗，嘗試當作單張圖片處理
             if (typeof marker.imageData === 'string' && marker.imageData.startsWith('data:image/')) {
@@ -7042,6 +7035,15 @@ document.addEventListener('DOMContentLoaded', function() {
         console.error('Error initializing floating settings:', error);
     }
     
+    // 初始化功能說明頁面
+    console.log('Initializing feature guide...');
+    try {
+        initFeatureGuide();
+        console.log('Feature guide initialized');
+    } catch (error) {
+        console.error('Error initializing feature guide:', error);
+    }
+    
     // 延遲執行其他初始化函數
     setTimeout(() => {
         // 載入設定
@@ -7257,3 +7259,46 @@ function hideSearchResults() {
 window.performMarkerSearch = performMarkerSearch;
 window.selectSearchResult = selectSearchResult;
 window.clearSearch = clearSearch;
+
+// ===== 功能說明頁面邏輯 =====
+let isFeatureGuideCollapsed = true;
+
+function initFeatureGuide() {
+    const featureGuidePanel = document.getElementById('featureGuidePanel');
+    const toggleGuideBtn = document.getElementById('toggleFeatureGuide');
+    
+    if (!featureGuidePanel || !toggleGuideBtn) {
+        console.warn('功能說明頁面元素未找到');
+        return;
+    }
+    
+    // 綁定收合/展開按鈕事件
+    toggleGuideBtn.addEventListener('click', toggleFeatureGuide);
+    
+    console.log('功能說明頁面初始化完成');
+}
+
+
+
+function toggleFeatureGuide() {
+    const featureGuideContent = document.getElementById('featureGuideContent');
+    const toggleIcon = document.getElementById('guideToggleIcon');
+    
+    if (!featureGuideContent) return;
+    
+    isFeatureGuideCollapsed = !isFeatureGuideCollapsed;
+    
+    if (isFeatureGuideCollapsed) {
+        featureGuideContent.style.display = 'none';
+        if (toggleIcon) toggleIcon.textContent = '▶';
+    } else {
+        featureGuideContent.style.display = 'block';
+        if (toggleIcon) toggleIcon.textContent = '▼';
+    }
+}
+
+
+
+// 將功能說明相關函數暴露到全域
+window.initFeatureGuide = initFeatureGuide;
+window.toggleFeatureGuide = toggleFeatureGuide;
