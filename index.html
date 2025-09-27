@@ -24,6 +24,38 @@
     <link rel="stylesheet" href="feature-guide-styles.css">
 </head>
 <body>
+    <!-- 固定功能說明按鈕 -->
+    <div id="fixedFeatureGuideBtn" onclick="showSimpleFeatureGuide()" style="
+        position: fixed !important;
+        top: 120px !important;
+        right: 20px !important;
+        width: 48px !important;
+        height: 48px !important;
+        background-color: #007bff !important;
+        color: white !important;
+        border-radius: 50% !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: center !important;
+        font-size: 10px !important;
+        font-weight: bold !important;
+        cursor: pointer !important;
+        z-index: 999999 !important;
+        box-shadow: 0 4px 12px rgba(0, 123, 255, 0.4) !important;
+        border: 2px solid white !important;
+        text-align: center !important;
+        line-height: 1.1 !important;
+        user-select: none !important;
+        touch-action: manipulation !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        pointer-events: auto !important;
+        font-family: Arial, sans-serif !important;
+    ">
+        🎯<br>說明
+    </div>
+
     <div class="container">
         <!-- 地圖容器 -->
         <div class="map-container">
@@ -765,10 +797,9 @@
 
     
     <script src="script.js?v=mobile-debug-version-20240927"></script>
-    <script src="test-functionality.js"></script>
     <script src="android-debug.js"></script>
     <script src="android-feature-guide-fix.js"></script>
-    <script src="standalone-feature-guide.js"></script>
+    <script src="simple-feature-guide.js"></script>
     
 
 </body>

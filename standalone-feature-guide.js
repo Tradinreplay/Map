@@ -52,7 +52,14 @@ const featureGuideData = {
 function createFeatureGuideButton() {
     const button = document.createElement('div');
     button.id = 'standalone-feature-guide-btn';
-    button.innerHTML = '🎯<br>說明';
+    
+    // Android環境使用更簡單的文字
+    if (isAndroidEnvironment()) {
+        button.innerHTML = '🎯<br>說明';
+        button.setAttribute('data-android', 'true');
+    } else {
+        button.innerHTML = '🎯<br>說明';
+    }
     
     // 從localStorage讀取保存的位置
     const savedPosition = localStorage.getItem('featureGuideButtonPosition');
@@ -400,9 +407,68 @@ function hideFeatureGuide() {
     }
 }
 
+// 檢測是否為Android環境
+function isAndroidEnvironment() {
+    return /Android/i.test(navigator.userAgent) || 
+           (typeof window.Capacitor !== 'undefined') ||
+           (typeof window.cordova !== 'undefined');
+}
+
+// 強制顯示按鈕（Android專用）
+function forceShowButton(button) {
+    if (isAndroidEnvironment()) {
+        console.log('🤖 Android環境檢測到，強制顯示按鈕');
+        
+        // 強制設置所有可能影響顯示的CSS屬性
+        button.style.cssText = `
+            position: fixed !important;
+            top: 120px !important;
+            right: 20px !important;
+            width: 60px !important;
+            height: 60px !important;
+            background-color: #007bff !important;
+            color: white !important;
+            border-radius: 50% !important;
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: center !important;
+            justify-content: center !important;
+            font-size: 12px !important;
+            font-weight: bold !important;
+            cursor: move !important;
+            z-index: 999999 !important;
+            box-shadow: 0 4px 12px rgba(0, 123, 255, 0.4) !important;
+            border: 3px solid white !important;
+            text-align: center !important;
+            line-height: 1.2 !important;
+            transition: all 0.3s ease !important;
+            user-select: none !important;
+            touch-action: none !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            pointer-events: auto !important;
+        `;
+        
+        // 確保按鈕在最頂層
+        document.body.appendChild(button);
+        
+        // 延遲檢查按鈕是否真的顯示了
+        setTimeout(() => {
+            const rect = button.getBoundingClientRect();
+            console.log('按鈕位置檢查:', rect);
+            if (rect.width === 0 || rect.height === 0) {
+                console.warn('⚠️ 按鈕可能沒有正確顯示，嘗試重新創建');
+                button.remove();
+                setTimeout(() => initStandaloneFeatureGuide(), 1000);
+            }
+        }, 1000);
+    }
+}
+
 // 初始化獨立功能說明系統
 function initStandaloneFeatureGuide() {
     console.log('初始化獨立功能說明系統');
+    console.log('當前環境:', isAndroidEnvironment() ? 'Android' : '瀏覽器');
     
     // 等待DOM加載完成
     if (document.readyState === 'loading') {
@@ -420,6 +486,9 @@ function initStandaloneFeatureGuide() {
     const button = createFeatureGuideButton();
     document.body.appendChild(button);
     
+    // Android環境強制顯示
+    forceShowButton(button);
+    
     // 創建並添加模態視窗
     const modal = createFeatureGuideModal();
     document.body.appendChild(modal);
@@ -436,6 +505,17 @@ function initStandaloneFeatureGuide() {
             button.style.backgroundColor = '#007bff';
         }
     }, 500);
+    
+    // Android環境額外檢查
+    if (isAndroidEnvironment()) {
+        setTimeout(() => {
+            const btn = document.getElementById('standalone-feature-guide-btn');
+            if (!btn || btn.offsetWidth === 0) {
+                console.warn('⚠️ 按鈕在Android環境下沒有正確顯示，嘗試重新初始化');
+                setTimeout(() => initStandaloneFeatureGuide(), 2000);
+            }
+        }, 3000);
+    }
 }
 
 // 立即初始化
