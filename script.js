@@ -1750,6 +1750,10 @@ function handleCenterClick() {
 window.handleFullscreenClick = handleFullscreenClick;
 window.handleLocationClick = handleLocationClick;
 window.handleCenterClick = handleCenterClick;
+window.toggleAddMarkerMode = toggleAddMarkerMode;
+window.toggleTracking = toggleTracking;
+window.toggleNotifications = toggleNotifications;
+window.centerMapToCurrentLocation = centerMapToCurrentLocation;
 
 // 行動裝置檢測函數
 function isMobileDevice() {
@@ -1933,6 +1937,19 @@ function initDragFunctionality() {
     addMobileTouchSupport(fullscreenBtn, 'handleFullscreenClick');
     addMobileTouchSupport(locationBtn, 'handleLocationClick');
     addMobileTouchSupport(centerBtn, 'handleCenterClick');
+    
+    // 為其他重要按鈕添加手機觸控支援
+    const addMarkerBtn = document.getElementById('addMarkerBtn');
+    const trackingBtn = document.getElementById('trackingBtn');
+    const notificationBtn = document.getElementById('notificationBtn');
+    const centerMapBtn = document.getElementById('centerMapBtn');
+    const floatingHelpBtn = document.getElementById('floatingHelpBtn');
+    
+    if (addMarkerBtn) addMobileTouchSupport(addMarkerBtn, 'toggleAddMarkerMode');
+    if (trackingBtn) addMobileTouchSupport(trackingBtn, 'toggleTracking');
+    if (notificationBtn) addMobileTouchSupport(notificationBtn, 'toggleNotifications');
+    if (centerMapBtn) addMobileTouchSupport(centerMapBtn, 'centerMapToCurrentLocation');
+    if (floatingHelpBtn) addMobileTouchSupport(floatingHelpBtn, 'showHelpModal');
 }
 
 // 為手機添加觸控事件支持
@@ -1984,6 +2001,16 @@ function addMobileTouchSupport(element, functionName) {
                 window.handleCenterClick();
                 // 在手機端顯示額外的狀態提示
                 showMobileCenterStatusToast();
+            } else if (functionName === 'toggleAddMarkerMode' && typeof window.toggleAddMarkerMode === 'function') {
+                window.toggleAddMarkerMode();
+            } else if (functionName === 'toggleTracking' && typeof window.toggleTracking === 'function') {
+                window.toggleTracking();
+            } else if (functionName === 'toggleNotifications' && typeof window.toggleNotifications === 'function') {
+                window.toggleNotifications();
+            } else if (functionName === 'centerMapToCurrentLocation' && typeof window.centerMapToCurrentLocation === 'function') {
+                window.centerMapToCurrentLocation();
+            } else if (functionName === 'showHelpModal' && typeof window.showHelpModal === 'function') {
+                window.showHelpModal();
             }
         }
         
@@ -7035,14 +7062,7 @@ document.addEventListener('DOMContentLoaded', function() {
         console.error('Error initializing floating settings:', error);
     }
     
-    // 初始化功能說明頁面
-    console.log('Initializing feature guide...');
-    try {
-        initFeatureGuide();
-        console.log('Feature guide initialized');
-    } catch (error) {
-        console.error('Error initializing feature guide:', error);
-    }
+
     
     // 延遲執行其他初始化函數
     setTimeout(() => {
@@ -7260,59 +7280,182 @@ window.performMarkerSearch = performMarkerSearch;
 window.selectSearchResult = selectSearchResult;
 window.clearSearch = clearSearch;
 
-// ===== 功能說明頁面邏輯 =====
-let isFeatureGuideCollapsed = true;
+// ===== 浮動幫助按鈕功能 =====
 
-function initFeatureGuide() {
-    const featureGuidePanel = document.getElementById('featureGuidePanel');
-    const toggleGuideBtn = document.getElementById('toggleFeatureGuide');
-    const featureGuideContent = document.getElementById('featureGuideContent');
-    const toggleIcon = document.getElementById('guideToggleIcon');
+// 幫助按鈕拖拽功能
+let isDragging = false;
+let dragOffset = { x: 0, y: 0 };
+
+function initHelpButton() {
+    const helpBtn = document.getElementById('floatingHelpBtn');
+    const helpModal = document.getElementById('helpModal');
+    const closeBtn = document.getElementById('closeHelpModal');
     
-    if (!featureGuidePanel || !toggleGuideBtn) {
-        console.warn('功能說明頁面元素未找到');
+    if (!helpBtn || !helpModal || !closeBtn) {
+        console.warn('幫助按鈕或視窗元素未找到');
         return;
     }
     
-    // 確保初始狀態與HTML一致
-    if (featureGuideContent) {
-        const isHidden = featureGuideContent.style.display === 'none' || 
-                        window.getComputedStyle(featureGuideContent).display === 'none';
-        isFeatureGuideCollapsed = isHidden;
-    }
+    // 點擊顯示幫助視窗
+    helpBtn.addEventListener('click', function(e) {
+        if (!isDragging) {
+            showHelpModal();
+        }
+    });
     
-    // 設置初始圖標狀態
-    if (toggleIcon) {
-        toggleIcon.textContent = isFeatureGuideCollapsed ? '▶' : '▼';
-    }
+    // 關閉按鈕事件
+    closeBtn.addEventListener('click', hideHelpModal);
     
-    // 綁定收合/展開按鈕事件
-    toggleGuideBtn.addEventListener('click', toggleFeatureGuide);
+    // 點擊背景關閉視窗
+    helpModal.addEventListener('click', function(e) {
+        if (e.target === helpModal) {
+            hideHelpModal();
+        }
+    });
     
-    console.log('功能說明頁面初始化完成，初始狀態：', isFeatureGuideCollapsed ? '收合' : '展開');
+    // ESC鍵關閉視窗
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && !helpModal.classList.contains('hidden')) {
+            hideHelpModal();
+        }
+    });
+    
+    // 拖拽功能 - 滑鼠事件
+    helpBtn.addEventListener('mousedown', startDrag);
+    
+    // 拖拽功能 - 觸控事件
+    helpBtn.addEventListener('touchstart', startDragTouch, { passive: false });
 }
 
+function startDrag(e) {
+    isDragging = true;
+    const helpBtn = document.getElementById('floatingHelpBtn');
+    const rect = helpBtn.getBoundingClientRect();
+    dragOffset.x = e.clientX - rect.left;
+    dragOffset.y = e.clientY - rect.top;
+    helpBtn.style.cursor = 'grabbing';
+    
+    // 動態添加事件監聽器
+    document.addEventListener('mousemove', drag);
+    document.addEventListener('mouseup', endDrag);
+    
+    e.preventDefault();
+    e.stopPropagation();
+}
 
+function drag(e) {
+    if (!isDragging) return;
+    
+    const helpBtn = document.getElementById('floatingHelpBtn');
+    const newX = e.clientX - dragOffset.x;
+    const newY = e.clientY - dragOffset.y;
+    
+    // 限制在視窗範圍內
+    const maxX = window.innerWidth - helpBtn.offsetWidth;
+    const maxY = window.innerHeight - helpBtn.offsetHeight;
+    
+    const constrainedX = Math.max(0, Math.min(newX, maxX));
+    const constrainedY = Math.max(0, Math.min(newY, maxY));
+    
+    helpBtn.style.left = constrainedX + 'px';
+    helpBtn.style.top = constrainedY + 'px';
+    helpBtn.style.right = 'auto';
+    
+    e.preventDefault();
+}
 
-function toggleFeatureGuide() {
-    const featureGuideContent = document.getElementById('featureGuideContent');
-    const toggleIcon = document.getElementById('guideToggleIcon');
-    
-    if (!featureGuideContent) return;
-    
-    isFeatureGuideCollapsed = !isFeatureGuideCollapsed;
-    
-    if (isFeatureGuideCollapsed) {
-        featureGuideContent.style.display = 'none';
-        if (toggleIcon) toggleIcon.textContent = '▶';
-    } else {
-        featureGuideContent.style.display = 'block';
-        if (toggleIcon) toggleIcon.textContent = '▼';
+function endDrag() {
+    if (isDragging) {
+        const helpBtn = document.getElementById('floatingHelpBtn');
+        helpBtn.style.cursor = 'pointer';
+        
+        // 移除事件監聽器
+        document.removeEventListener('mousemove', drag);
+        document.removeEventListener('mouseup', endDrag);
+        
+        // 延遲重置拖拽狀態，避免立即觸發點擊事件
+        setTimeout(() => {
+            isDragging = false;
+        }, 100);
     }
 }
 
+function startDragTouch(e) {
+    if (e.touches.length === 1) {
+        const touch = e.touches[0];
+        isDragging = true;
+        const helpBtn = document.getElementById('floatingHelpBtn');
+        const rect = helpBtn.getBoundingClientRect();
+        dragOffset.x = touch.clientX - rect.left;
+        dragOffset.y = touch.clientY - rect.top;
+        
+        // 動態添加事件監聽器
+        document.addEventListener('touchmove', dragTouch, { passive: false });
+        document.addEventListener('touchend', endDragTouch);
+        
+        e.preventDefault();
+        e.stopPropagation();
+    }
+}
 
+function dragTouch(e) {
+    if (!isDragging || e.touches.length !== 1) return;
+    
+    const touch = e.touches[0];
+    const helpBtn = document.getElementById('floatingHelpBtn');
+    const newX = touch.clientX - dragOffset.x;
+    const newY = touch.clientY - dragOffset.y;
+    
+    // 限制在視窗範圍內
+    const maxX = window.innerWidth - helpBtn.offsetWidth;
+    const maxY = window.innerHeight - helpBtn.offsetHeight;
+    
+    const constrainedX = Math.max(0, Math.min(newX, maxX));
+    const constrainedY = Math.max(0, Math.min(newY, maxY));
+    
+    helpBtn.style.left = constrainedX + 'px';
+    helpBtn.style.top = constrainedY + 'px';
+    helpBtn.style.right = 'auto';
+    
+    e.preventDefault();
+}
 
-// 將功能說明相關函數暴露到全域
-window.initFeatureGuide = initFeatureGuide;
-window.toggleFeatureGuide = toggleFeatureGuide;
+function endDragTouch() {
+    if (isDragging) {
+        // 移除事件監聽器
+        document.removeEventListener('touchmove', dragTouch);
+        document.removeEventListener('touchend', endDragTouch);
+        
+        // 延遲重置拖拽狀態，避免立即觸發點擊事件
+        setTimeout(() => {
+            isDragging = false;
+        }, 100);
+    }
+}
+
+function showHelpModal() {
+    const helpModal = document.getElementById('helpModal');
+    if (helpModal) {
+        helpModal.classList.remove('hidden');
+        helpModal.style.display = 'flex';
+        document.body.style.overflow = 'hidden'; // 防止背景滾動
+    }
+}
+
+function hideHelpModal() {
+    const helpModal = document.getElementById('helpModal');
+    if (helpModal) {
+        helpModal.classList.add('hidden');
+        helpModal.style.display = 'none';
+        document.body.style.overflow = ''; // 恢復背景滾動
+    }
+}
+
+// 初始化幫助按鈕
+document.addEventListener('DOMContentLoaded', function() {
+    initHelpButton();
+});
+
+// 將幫助功能暴露到全域
+window.showHelpModal = showHelpModal;
+window.hideHelpModal = hideHelpModal;

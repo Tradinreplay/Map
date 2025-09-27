@@ -485,8 +485,8 @@ body {
     position: absolute;
     top: 108px; /* 在定位按鈕下方 */
     left: 12px;
-    width: 36px;
-    height: 36px;
+    width: 28px;
+    height: 28px;
     background: rgba(255, 255, 255, 0.9);
     border: 2px solid rgba(255, 193, 7, 0.3);
     border-radius: 10px;
@@ -3700,8 +3700,8 @@ input:checked + .slider:before {
     position: fixed;
     top: 20px;
     left: 20px;
-    width: 50px;
-    height: 50px;
+    width: 20px;
+    height: 20px;
     border: none;
     border-radius: 50%;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -4004,25 +4004,7 @@ input:checked + .slider:before {
         left: 15px;
     }
     
-    /* 強制顯示功能說明面板 */
-    #featureGuidePanel,
-    .feature-guide-panel,
-    .setting-group {
-        display: block !important;
-        visibility: visible !important;
-        opacity: 1 !important;
-        position: relative !important;
-        width: 100% !important;
-    }
-    
-    #featureGuidePanel {
-        z-index: 10 !important;
-        min-height: 60px !important;
-        background: rgba(255, 255, 255, 0.98) !important;
-        border: 3px solid #007bff !important;
-        border-radius: 12px !important;
-        margin-bottom: 20px !important;
-    }
+
 }
 
 /* 浮動窗口內的快速操作按鈕樣式 */
@@ -4419,5 +4401,257 @@ input:checked + .slider:before {
         width: 60px;
         height: 60px;
         border-radius: 4px;
+    }
+}
+
+/* ===== 浮動幫助按鈕樣式 ===== */
+.floating-help-btn {
+    position: fixed;
+    top: 120px;
+    right: 20px;
+    width: 20px;
+    height: 20px;
+    background: #dc3545; /* 紅底 */
+    color: white;
+    border: 1px solid white; /* 白框 */
+    border-radius: 50%;
+    font-size: 12px;
+    font-weight: bold;
+    cursor: pointer;
+    z-index: 25000 !important;
+    box-shadow: 0 2px 8px rgba(220, 53, 69, 0.4);
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+    touch-action: manipulation;
+}
+
+.floating-help-btn:hover {
+    background: #c82333; /* 深紅色 */
+    transform: scale(1.1);
+    box-shadow: 0 3px 12px rgba(220, 53, 69, 0.6);
+}
+
+.floating-help-btn:active {
+    transform: scale(0.9);
+    background: #a71e2a;
+    box-shadow: 0 1px 4px rgba(220, 53, 69, 0.8);
+    transition: all 0.1s ease;
+}
+
+.floating-help-btn span {
+    font-family: 'Arial', sans-serif;
+    font-weight: bold;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+/* ===== 功能說明浮動視窗樣式 ===== */
+.help-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 26000 !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(5px);
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+.help-modal-content {
+    background: white;
+    border-radius: 12px;
+    max-width: 72%;
+    max-height: 72%;
+    width: 640px;
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.3);
+    overflow: hidden;
+    animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateY(-50px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.help-modal-header {
+    background: linear-gradient(135deg, #007bff, #0056b3);
+    color: white;
+    padding: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.help-modal-header h2 {
+    margin: 0;
+    font-size: 19.2px;
+    font-weight: bold;
+}
+
+.close-help-btn {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 30px;
+    cursor: pointer;
+    padding: 0;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+}
+
+.close-help-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: rotate(90deg);
+}
+
+.help-modal-body {
+    padding: 16px;
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+.help-section {
+    margin-bottom: 24px;
+}
+
+.help-section h3 {
+    color: #007bff;
+    font-size: 16px;
+    margin-bottom: 12px;
+    padding-bottom: 6.4px;
+    border-bottom: 2px solid #e9ecef;
+    font-weight: bold;
+}
+
+.help-item {
+    display: flex;
+    align-items: flex-start;
+    margin-bottom: 12px;
+    padding: 9.6px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border-left: 3.2px solid #007bff;
+    transition: all 0.3s ease;
+}
+
+.help-item:hover {
+    background: #e3f2fd;
+    transform: translateX(4px);
+}
+
+.help-icon {
+    font-size: 19.2px;
+    margin-right: 12px;
+    min-width: 24px;
+    text-align: center;
+}
+
+.help-text {
+    flex: 1;
+    line-height: 1.28;
+    font-size: 14.4px;
+}
+
+.help-text strong {
+    color: #007bff;
+    font-weight: bold;
+}
+
+/* 響應式設計 */
+@media (max-width: 768px) {
+    .floating-help-btn {
+        width: 36px;
+        height: 36px;
+        font-size: 16px;
+        top: 110px;
+        right: 15px;
+    }
+    
+    .help-modal-content {
+        max-width: 76%;
+        max-height: 76%;
+        margin: 8px;
+    }
+    
+    .help-modal-header {
+        padding: 12px;
+    }
+    
+    .help-modal-header h2 {
+        font-size: 16px;
+    }
+    
+    .help-modal-body {
+        padding: 12px;
+        max-height: 75vh;
+    }
+    
+    .help-section h3 {
+        font-size: 14.4px;
+    }
+    
+    .help-item {
+        padding: 8px;
+        margin-bottom: 9.6px;
+    }
+    
+    .help-icon {
+        font-size: 16px;
+        margin-right: 9.6px;
+        min-width: 20px;
+    }
+}
+
+@media (max-width: 480px) {
+    .floating-help-btn {
+        width: 32px;
+        height: 32px;
+        font-size: 14.4px;
+        top: 100px;
+        right: 10px;
+    }
+    
+    .help-modal-header h2 {
+        font-size: 14.4px;
+    }
+    
+    .help-section h3 {
+        font-size: 12.8px;
+    }
+    
+    .help-item {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .help-icon {
+        margin-right: 0;
+        margin-bottom: 8px;
     }
 }
