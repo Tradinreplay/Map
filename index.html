@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>地圖標註系統</title>
+    <title>地圖標註系統 - mobile-image-preview-fixed-20240927</title>
     
     <!-- PWA Support -->
     <link rel="manifest" href="manifest.json">
@@ -20,7 +20,7 @@
     <meta name="msapplication-TileImage" content="icon-144x144.png">
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles.css?v=mobile-debug-version-20240927">
 </head>
 <body>
     <div class="container">
@@ -55,13 +55,17 @@
                     標註模式
                 </button>
                 <button id="trackingBtn" class="control-btn">
-                    <span>🔔</span>
+                    <span>📍</span>
+                    開始追蹤
+                </button>
+                <button id="notificationBtn" class="control-btn">
+                    <span>🔕</span>
                     開啟通知
                 </button>
             </div>
             
             <!-- 位置顯示區域 -->
-            <div id="currentLocation">定位中...</div>
+            <div id="currentLocation" onclick="handleCurrentLocationClick()">定位中...</div>
             <div id="locationAccuracy" class="accuracy-display">精度: --</div>
 
         </div>
@@ -239,13 +243,16 @@
             <div class="image-modal-header">
                 <h3 id="imageModalTitle">圖片預覽</h3>
                 <div class="image-navigation">
-                    <button id="prevImageBtn" class="nav-btn">‹</button>
                     <span id="imageCounter">1 / 1</span>
-                    <button id="nextImageBtn" class="nav-btn">›</button>
                 </div>
             </div>
             <div class="image-modal-body">
+                <button id="prevImageBtn" class="nav-btn">‹</button>
+                <button id="nextImageBtn" class="nav-btn">›</button>
                 <img id="modalPreviewImg" src="" alt="預覽圖片">
+                <div id="imageThumbnailContainer" class="image-thumbnail-container">
+                    <!-- 縮圖將動態生成在這裡 -->
+                </div>
             </div>
         </div>
     </div>
@@ -486,7 +493,7 @@
                 </div>
                 
                 <div class="location-display">
-                    <div id="floatingCurrentLocation">定位中...</div>
+                    <div id="floatingCurrentLocation" onclick="handleCurrentLocationClick()" style="cursor: pointer; user-select: none;">定位中...</div>
                     <div id="floatingLocationAccuracy" class="accuracy-display">精度: --</div>
                     <div id="floatingLocationStatus" class="status-display">狀態: 未啟動</div>
                     <div id="floatingLocationSpeed" class="speed-display" style="display: none;">速度: --</div>
@@ -532,7 +539,7 @@
     <!-- Android 整合腳本 -->
     <script src="android-integration.js"></script>
     
-    <script src="script.js?v=20240924-1"></script>
+    <script src="script.js?v=mobile-debug-version-20240927"></script>
     
     <!-- Service Worker Registration -->
     <script>

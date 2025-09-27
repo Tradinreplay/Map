@@ -1,4 +1,38 @@
 // 全域變數
+console.log('Script.js version: 20240926-2 loaded');
+
+// 移動設備兼容性檢查
+function checkMobileCompatibility() {
+    const isMobile = window.DeviceMotionEvent !== undefined;
+    const userAgent = navigator.userAgent;
+    const isAndroid = /Android/i.test(userAgent);
+    const isWebView = /wv/i.test(userAgent);
+    
+    console.log('設備兼容性檢查:', {
+        isMobile: isMobile,
+        isAndroid: isAndroid,
+        isWebView: isWebView,
+        userAgent: userAgent,
+        screen: {
+            width: screen.width,
+            height: screen.height,
+            pixelRatio: window.devicePixelRatio
+        },
+        viewport: {
+            width: window.innerWidth,
+            height: window.innerHeight
+        }
+    });
+    
+    // 如果是移動設備，顯示調試信息
+    if (isMobile) {
+        setTimeout(() => {
+            alert(`移動設備檢測:\n設備: ${isAndroid ? 'Android' : '其他'}\nWebView: ${isWebView ? '是' : '否'}\n螢幕: ${screen.width}x${screen.height}\n視窗: ${window.innerWidth}x${window.innerHeight}`);
+        }, 2000);
+    }
+    
+    return { isMobile, isAndroid, isWebView };
+}
 let map;
 let currentPosition = null;
 let currentLocationMarker = null; // 當前位置標記
@@ -32,6 +66,11 @@ let lastLocationUpdate = null; // 最後一次定位更新時間
 let locationUpdateTimer = null; // 定位更新定時器
 let lastPosition = null; // 上一次位置（用於計算方向）
 let currentBearing = 0; // 當前行進方向（角度）
+
+// 路徑顯示相關變數
+let routeLine = null; // 當前顯示的路徑線
+let routeDistance = 0; // 路徑總距離
+let routeInfoControl = null; // 路徑資訊控制項
 
 // 資料結構
 class Group {
@@ -226,7 +265,7 @@ async function autoGetCurrentLocation() {
                     const btn = document.getElementById('trackingBtn');
                     if (btn) {
                         btn.classList.add('active');
-                        btn.innerHTML = '<span>🎯</span>開啟標註點通知';
+                        btn.innerHTML = '<span>🎯</span>自動追蹤';
                     }
                     
                     showNotification('📍 位置追蹤已自動啟動', 'info');
@@ -537,8 +576,8 @@ function initMap() {
         "OpenStreetMap": osmLayer
     };
     
-    // 添加圖層控制器
-    L.control.layers(baseMaps).addTo(map);
+    // 添加圖層控制器（移到右下角避免被下拉式選單遮擋）
+    L.control.layers(baseMaps, null, {position: 'bottomright'}).addTo(map);
     
     // 地圖點擊事件
     map.on('click', function(e) {
@@ -614,8 +653,26 @@ function initEventListeners() {
     // 控制按鈕
     document.getElementById('addMarkerBtn').addEventListener('click', toggleAddMarkerMode);
     document.getElementById('trackingBtn').addEventListener('click', toggleTracking);
+    document.getElementById('notificationBtn').addEventListener('click', toggleNotifications);
     document.getElementById('centerMapBtn').addEventListener('click', centerMapToCurrentLocation);
 
+    // 當前位置顯示區域點擊事件
+    const currentLocationDiv = document.getElementById('currentLocation');
+    if (currentLocationDiv) {
+        console.log('✅ 找到 currentLocation 元素，正在綁定點擊事件...');
+        currentLocationDiv.addEventListener('click', handleCurrentLocationClick);
+        // 添加CSS樣式使其看起來可點擊
+        currentLocationDiv.style.cursor = 'pointer';
+        currentLocationDiv.style.userSelect = 'none';
+        console.log('✅ currentLocation 點擊事件已綁定，樣式已設定');
+        
+        // 測試事件綁定
+        currentLocationDiv.addEventListener('click', function() {
+            console.log('🔥 currentLocation 被點擊了！');
+        });
+    } else {
+        console.error('❌ 找不到 currentLocation 元素');
+    }
     
     // 提醒設定 - 使用浮動設定窗口的元素
     const enableNotificationsEl = document.getElementById('floatingEnableNotifications');
@@ -1201,16 +1258,29 @@ function openImageModal(imagesArray, startIndex = 0) {
     const imageCounter = document.getElementById('imageCounter');
     const prevBtn = document.getElementById('prevImageBtn');
     const nextBtn = document.getElementById('nextImageBtn');
+    const thumbnailContainer = document.getElementById('imageThumbnailContainer');
     
     let currentIndex = startIndex;
     
+    // 隱藏縮圖和計數器，但顯示導航按鈕
+    if (imageCounter) imageCounter.style.display = 'none';
+    if (thumbnailContainer) thumbnailContainer.style.display = 'none';
+    
+    // 只有多張圖片時才顯示導航按鈕
+    if (imagesArray.length > 1) {
+        if (prevBtn) prevBtn.style.display = 'block';
+        if (nextBtn) nextBtn.style.display = 'block';
+    } else {
+        if (prevBtn) prevBtn.style.display = 'none';
+        if (nextBtn) nextBtn.style.display = 'none';
+    }
+    
     function updateModalImage() {
         modalImg.src = imagesArray[currentIndex];
-        imageCounter.textContent = `${currentIndex + 1} / ${imagesArray.length}`;
         
         // 更新按鈕狀態
-        prevBtn.disabled = currentIndex === 0;
-        nextBtn.disabled = currentIndex === imagesArray.length - 1;
+        if (prevBtn) prevBtn.disabled = currentIndex === 0;
+        if (nextBtn) nextBtn.disabled = currentIndex === imagesArray.length - 1;
     }
     
     function showPrevImage() {
@@ -1228,8 +1298,8 @@ function openImageModal(imagesArray, startIndex = 0) {
     }
     
     // 設置事件監聽器
-    prevBtn.onclick = showPrevImage;
-    nextBtn.onclick = showNextImage;
+    if (prevBtn) prevBtn.onclick = showPrevImage;
+    if (nextBtn) nextBtn.onclick = showNextImage;
     
     // 鍵盤導航
     function handleKeyPress(e) {
@@ -1268,7 +1338,7 @@ function openImageModal(imagesArray, startIndex = 0) {
             // 確保modal的樣式正確
             setTimeout(() => {
                 modal.style.position = 'fixed';
-                modal.style.zIndex = '10002';
+                modal.style.zIndex = '18000'; /* 提高z-index確保圖片模態框正確顯示 */
                 modal.style.left = '0';
                 modal.style.top = '0';
                 modal.style.width = '100vw';
@@ -1403,7 +1473,7 @@ function enterFullscreen(element) {
         // 確保modal的樣式正確
         setTimeout(() => {
             modal.style.position = 'fixed';
-            modal.style.zIndex = '10001';
+            modal.style.zIndex = '15000'; /* 提高z-index確保模態框正確顯示 */
             modal.style.left = '0';
             modal.style.top = '0';
             modal.style.width = '100vw';
@@ -2226,7 +2296,8 @@ function handleLocationError(error, reject) {
     reject(error);
 }
 
-function requestNotificationPermission() {    if ('Notification' in window) {
+function requestNotificationPermission() {
+    if ('Notification' in window) {
         // 檢查當前權限狀態
         if (Notification.permission === 'granted') {
             showNotification('通知權限已啟用');
@@ -2291,7 +2362,7 @@ function showInitialSetup() {
             // 確保modal的樣式正確
             setTimeout(() => {
                 modal.style.position = 'fixed';
-                modal.style.zIndex = '10001';
+                modal.style.zIndex = '15000'; /* 提高z-index確保模態框正確顯示 */
                 modal.style.left = '0';
                 modal.style.top = '0';
                 modal.style.width = '100vw';
@@ -2723,7 +2794,7 @@ function showMarkerModal(lat, lng, existingMarker = null) {
             // 延遲設定樣式確保正確顯示
             setTimeout(() => {
                 modal.style.position = 'fixed';
-                modal.style.zIndex = '10001';
+                modal.style.zIndex = '15000'; /* 提高z-index確保模態框正確顯示 */
                 modal.style.left = '0';
                 modal.style.top = '0';
                 modal.style.width = '100vw';
@@ -2909,9 +2980,31 @@ function addMarkerToMap(marker) {
     const customIcon = createCustomMarkerIcon(marker.color || 'red', marker.icon || '📍');
     const leafletMarker = L.marker([marker.lat, marker.lng], { icon: customIcon }).addTo(map);
     
-    // 添加點擊事件，當點擊標示點時關閉浮動設定視窗
-    leafletMarker.on('click', function() {
+    // 添加點擊事件，包含按壓效果和關閉浮動設定視窗
+    leafletMarker.on('click', function(e) {
+        // 添加按壓效果 - 觸覺反饋
+        if ('vibrate' in navigator) {
+            navigator.vibrate(50); // 短暫振動50毫秒
+        }
+        
+        // 添加視覺按壓效果到標記圖標
+        if (leafletMarker._icon) {
+            const icon = leafletMarker._icon;
+            
+            // 添加按壓動畫類別
+            icon.classList.add('marker-press-animation');
+            
+            // 移除動畫類別
+            setTimeout(() => {
+                icon.classList.remove('marker-press-animation');
+            }, 300);
+        }
+        
+        // 關閉浮動設定視窗
         hideFloatingSettings();
+        
+        // 阻止事件冒泡，避免觸發地圖點擊事件
+        e.originalEvent.stopPropagation();
     });
     
     marker.leafletMarker = leafletMarker;
@@ -2944,6 +3037,11 @@ function setTrackingTarget(markerId) {
         // 立即為相關群組按鈕添加追蹤圖標
         showGroupTrackingIcon(marker.groupId, marker.subgroupId);
         
+        // 顯示路徑線和距離資訊
+        if (currentPosition) {
+            showRouteLine();
+        }
+        
         // 如果正在追蹤位置，開始距離檢查定時器
         if (isTracking && currentPosition) {
             startProximityCheck();
@@ -2969,6 +3067,9 @@ function clearTrackingTarget() {
         
         // 清除追蹤目標
         trackingTarget = null;
+        
+        // 清除路徑線和距離資訊
+        clearRouteLine();
         
         // 顯示通知
         showNotification(`已取消追蹤 "${targetName}"`);
@@ -3039,33 +3140,94 @@ function updateMarkerPopup(marker) {
     // 多張圖片顯示
     let imageDisplay = '';
     if (marker.imageData) {
+        // 移動設備調試：記錄圖片數據處理開始
+        console.log('開始處理圖片數據:', {
+            hasImageData: !!marker.imageData,
+            dataType: typeof marker.imageData,
+            isArray: Array.isArray(marker.imageData),
+            dataLength: marker.imageData ? marker.imageData.length : 0,
+            isMobile: window.DeviceMotionEvent !== undefined
+        });
+        
         try {
             // 嘗試解析為數組（新格式）
-            const imagesArray = Array.isArray(marker.imageData) ? marker.imageData : JSON.parse(marker.imageData);
+            let imagesArray;
+            if (Array.isArray(marker.imageData)) {
+                imagesArray = marker.imageData;
+            } else if (typeof marker.imageData === 'string') {
+                try {
+                    // 嘗試解析JSON字符串
+                    const parsed = JSON.parse(marker.imageData);
+                    imagesArray = Array.isArray(parsed) ? parsed : [parsed];
+                } catch (parseError) {
+                    // 如果不是JSON，當作單張圖片處理
+                    imagesArray = [marker.imageData];
+                }
+            } else {
+                imagesArray = [marker.imageData];
+            }
+            
+            // 過濾掉無效的圖片數據
+            imagesArray = imagesArray.filter(img => img && typeof img === 'string' && img.trim() !== '');
+            
             if (imagesArray.length > 0) {
-                const imageElements = imagesArray.map((imageData, index) => 
-                    `<img src="${imageData}" 
-                         style="max-width: 80px; max-height: 80px; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin: 2px; cursor: pointer; object-fit: cover;" 
-                         alt="圖片 ${index + 1}"
-                         onclick="openImageModal(${JSON.stringify(imagesArray).replace(/"/g, '&quot;')}, ${index})">`
-                ).join('');
+                // 移動設備調試：記錄處理結果
+                console.log('圖片數組處理成功:', {
+                    imageCount: imagesArray.length,
+                    firstImageType: typeof imagesArray[0],
+                    firstImageLength: imagesArray[0] ? imagesArray[0].length : 0,
+                    allImagesValid: imagesArray.every(img => img && typeof img === 'string')
+                });
                 
-                imageDisplay = `<div style="margin-bottom: 8px; text-align: center;">
-                    <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 4px;">
-                        ${imageElements}
-                    </div>
-                    <div style="font-size: 11px; color: #888; margin-top: 4px;">點擊圖片預覽 (${imagesArray.length}/3)</div>
-                </div>`;
+                if (imagesArray.length === 1) {
+                    // 單張圖片顯示
+                    const firstImage = imagesArray[0];
+                    imageDisplay = `<div style="margin-bottom: 8px; text-align: center;">
+                        <img src="${firstImage}" 
+                             style="width: 80px; height: 80px; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); cursor: pointer; object-fit: cover;" 
+                             alt="標註點圖片"
+                             onclick="openImageModal(${JSON.stringify(imagesArray).replace(/"/g, '&quot;')}, 0)">
+                        <div style="font-size: 11px; color: #888; margin-top: 4px;">點擊圖片預覽</div>
+                    </div>`;
+                } else {
+                    // 多張圖片顯示縮略圖
+                    const thumbnailsHtml = imagesArray.slice(0, 3).map((img, index) => 
+                        `<img src="${img}" 
+                             style="width: 50px; height: 50px; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); cursor: pointer; object-fit: cover; margin: 2px;" 
+                             alt="圖片 ${index + 1}"
+                             onclick="openImageModal(${JSON.stringify(imagesArray).replace(/"/g, '&quot;')}, ${index})">`
+                    ).join('');
+                    
+                    const moreText = imagesArray.length > 3 ? `<div style="font-size: 10px; color: #666; margin-top: 2px;">+${imagesArray.length - 3} 更多</div>` : '';
+                    
+                    imageDisplay = `<div style="margin-bottom: 8px; text-align: center;">
+                        <div style="display: flex; justify-content: center; flex-wrap: wrap; gap: 2px;">
+                            ${thumbnailsHtml}
+                        </div>
+                        <div style="font-size: 11px; color: #888; margin-top: 4px;">點擊圖片預覽 (${imagesArray.length}張)</div>
+                        ${moreText}
+                    </div>`;
+                }
             }
         } catch (e) {
-            // 如果解析失敗，當作舊格式（單張圖片）處理
+            console.error('圖片數據處理錯誤:', e);
+            console.error('原始圖片數據:', marker.imageData);
+            console.error('數據類型:', typeof marker.imageData);
+            console.error('數據長度:', marker.imageData ? marker.imageData.length : 'null');
+            
+            // 移動設備調試：顯示錯誤信息
+            if (window.DeviceMotionEvent !== undefined) {
+                alert(`移動設備調試 - 圖片處理錯誤:\n錯誤: ${e.message}\n數據類型: ${typeof marker.imageData}\n數據: ${marker.imageData ? marker.imageData.substring(0, 100) + '...' : 'null'}`);
+            }
+            
+            // 如果所有解析都失敗，嘗試當作單張圖片處理
             if (typeof marker.imageData === 'string' && marker.imageData.startsWith('data:image/')) {
                 imageDisplay = `<div style="margin-bottom: 8px; text-align: center;">
                     <img src="${marker.imageData}" 
-                         style="max-width: 200px; max-height: 150px; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); cursor: pointer;" 
+                         style="width: 80px; height: 80px; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); cursor: pointer; object-fit: cover;" 
                          alt="標註點圖片"
                          onclick="openImageModal(['${marker.imageData}'], 0)">
-                    <div style="font-size: 11px; color: #888; margin-top: 4px;">點擊圖片預覽</div>
+                    <div style="font-size: 11px; color: #888; margin-top: 4px;">點擊圖片預覽 (1/1)</div>
                 </div>`;
             }
         }
@@ -3147,6 +3309,22 @@ function deleteCurrentMarker() {
 // 位置追蹤功能
 function toggleTracking() {
     const btn = document.getElementById('trackingBtn');
+    
+    if (isTracking) {
+        stopTracking();
+        btn.classList.remove('active');
+        btn.innerHTML = '<span>📍</span>開始追蹤';
+    } else {
+        startTracking();
+        btn.classList.add('active');
+        btn.innerHTML = '<span>⏹️</span>停止追蹤';
+    }
+    
+    isTracking = !isTracking;
+}
+
+// 通知功能切換
+function toggleNotifications() {
     const floatingEnableNotifications = document.getElementById('floatingEnableNotifications');
     
     // 獲取當前設定面板的狀態
@@ -3162,9 +3340,12 @@ function toggleTracking() {
     }
     
     // 更新按鈕狀態
+    updateNotificationButtonState();
+    
     if (newState) {
-        btn.classList.add('active');
-        btn.innerHTML = '<span>🔔</span>關閉通知';
+        // 請求通知權限
+        requestNotificationPermission();
+        
         showNotification('🔔 標註點通知已開啟', 'info');
         
         // 如果追蹤正在進行，重新啟動距離檢查
@@ -3172,8 +3353,6 @@ function toggleTracking() {
             startProximityCheck();
         }
     } else {
-        btn.classList.remove('active');
-        btn.innerHTML = '<span>🔕</span>開啟通知';
         showNotification('🔕 標註點通知已關閉', 'info');
         
         // 停止所有提醒定時器
@@ -3185,8 +3364,20 @@ function toggleTracking() {
         lastAlerts.clear();
         lastAlertTimes.clear();
     }
-    
+}
 
+// 統一更新通知按鈕狀態的函數
+function updateNotificationButtonState() {
+    const notificationBtn = document.getElementById('notificationBtn');
+    if (notificationBtn) {
+        if (markerNotificationsEnabled) {
+            notificationBtn.classList.add('active');
+            notificationBtn.innerHTML = '<span>🔔</span>關閉通知';
+        } else {
+            notificationBtn.classList.remove('active');
+            notificationBtn.innerHTML = '<span>🔕</span>開啟通知';
+        }
+    }
 }
 
 function startTracking() {
@@ -3240,6 +3431,12 @@ function startTracking() {
                             }
                             
                             refreshAllMarkerPopups(); // 更新所有標記的提示窗距離顯示
+                            
+                            // 如果有追蹤目標，更新路徑線
+                            if (trackingTarget) {
+                                showRouteLine();
+                            }
+                            
                             updateLocationStatus('追蹤中');
                 
                 // 如果精度較差，顯示警告
@@ -3327,6 +3524,12 @@ function startTracking() {
                             }
                             
                             refreshAllMarkerPopups(); // 更新所有標記的提示窗距離顯示
+                            
+                            // 如果有追蹤目標，更新路徑線
+                            if (trackingTarget) {
+                                showRouteLine();
+                            }
+                            
                             updateLocationStatus('追蹤中 (強制更新)');
                         }
                     },
@@ -3456,6 +3659,106 @@ function centerMapToCurrentLocation() {
     }
 }
 
+// 處理當前位置顯示區域的點擊事件
+function handleCurrentLocationClick(event) {
+    console.log('🎯 handleCurrentLocationClick 函數被調用');
+    
+    // 觸覺反饋
+    if (navigator.vibrate) {
+        navigator.vibrate(50);
+        console.log('📳 震動反饋已觸發');
+    } else {
+        console.log('⚠️ 瀏覽器不支援震動API');
+    }
+    
+    // 視覺按壓效果 - 支援多個元素
+    const targetElement = event ? event.target : null;
+    const elementsToAnimate = [];
+    
+    // 添加主要的currentLocation元素
+    const currentLocationDiv = document.getElementById('currentLocation');
+    if (currentLocationDiv) {
+        elementsToAnimate.push(currentLocationDiv);
+    }
+    
+    // 添加浮動視窗中的元素
+    const floatingCurrentLocation = document.getElementById('floatingCurrentLocation');
+    if (floatingCurrentLocation) {
+        elementsToAnimate.push(floatingCurrentLocation);
+    }
+    
+    // 如果有特定的目標元素，優先處理它
+    if (targetElement && (targetElement.id === 'currentLocation' || targetElement.id === 'floatingCurrentLocation')) {
+        // 只對點擊的元素添加按壓效果
+        targetElement.style.transform = 'scale(0.95)';
+        targetElement.style.transition = 'transform 0.1s ease';
+        
+        setTimeout(() => {
+            targetElement.style.transform = 'scale(1)';
+        }, 100);
+        
+        console.log(`🎨 對 ${targetElement.id} 元素應用按壓效果`);
+    } else {
+        // 如果沒有特定目標，對所有相關元素添加效果
+        elementsToAnimate.forEach(element => {
+            element.style.transform = 'scale(0.95)';
+            element.style.transition = 'transform 0.1s ease';
+            
+            setTimeout(() => {
+                element.style.transform = 'scale(1)';
+            }, 100);
+        });
+        
+        console.log('🎨 對所有定位元素應用按壓效果');
+    }
+    
+    // 檢查是否有追蹤目標
+    if (trackingTarget) {
+        // 定位到追蹤標示點
+        focusMarkerFromFloatingWindow(trackingTarget);
+    } else {
+        // 沒有追蹤目標時，定位到當前位置
+        centerMapToCurrentLocation();
+    }
+}
+
+// 從浮動視窗定位到標示點的函數
+function focusMarkerFromFloatingWindow(marker) {
+    // 觸覺反饋
+    if (navigator.vibrate) {
+        navigator.vibrate(50);
+    }
+    
+    // 平滑移動地圖到標示點位置
+    map.flyTo([marker.lat, marker.lng], 18, {
+        animate: true,
+        duration: 0.5
+    });
+    
+    // 找到對應的標示點
+    const targetMarker = markers.find(m => m.id === marker.id);
+    if (targetMarker && targetMarker.leafletMarker) {
+        // 300ms 延遲後開啟彈出視窗
+        setTimeout(() => {
+            targetMarker.leafletMarker.openPopup();
+        }, 300);
+        
+        // 添加閃爍效果
+        const markerElement = targetMarker.leafletMarker.getElement();
+        if (markerElement) {
+            markerElement.classList.add('marker-focus-blink');
+            setTimeout(() => {
+                markerElement.classList.remove('marker-focus-blink');
+            }, 1000);
+        }
+    }
+    
+    // 顯示成功通知
+    setTimeout(() => {
+        showNotification(`已定位到 ${marker.name}`, 'success');
+    }, 500);
+}
+
 // 距離計算
 function calculateDistance(lat1, lng1, lat2, lng2) {
     const R = 6371e3; // 地球半徑（公尺）
@@ -3487,10 +3790,162 @@ function calculateBearing(lat1, lng1, lat2, lng2) {
     return (θ * 180/Math.PI + 360) % 360;
 }
 
-// 旋轉地圖函數
+// 路徑顯示功能
+function showRouteLine() {
+    if (!currentPosition || !trackingTarget) {
+        return;
+    }
+    
+    // 清除現有路徑線
+    clearRouteLine();
+    
+    // 創建路徑線
+    const routeCoords = [
+        [currentPosition.lat, currentPosition.lng],
+        [trackingTarget.lat, trackingTarget.lng]
+    ];
+    
+    routeLine = L.polyline(routeCoords, {
+        color: '#ff4444',
+        weight: 4,
+        opacity: 0.8,
+        dashArray: '10, 5'
+    }).addTo(map);
+    
+    // 計算距離
+    routeDistance = calculateDistance(
+        currentPosition.lat, currentPosition.lng,
+        trackingTarget.lat, trackingTarget.lng
+    );
+    
+    // 更新路徑資訊顯示
+    updateRouteInfo();
+}
 
+function clearRouteLine() {
+    if (routeLine) {
+        map.removeLayer(routeLine);
+        routeLine = null;
+    }
+    clearRouteInfo();
+}
 
+function updateRouteInfo() {
+    if (!trackingTarget || !currentPosition) {
+        return;
+    }
+    
+    // 移除現有的路徑資訊控制項
+    clearRouteInfo();
+    
+    // 格式化距離顯示
+    let distanceText = '';
+    if (routeDistance < 1000) {
+        distanceText = `${Math.round(routeDistance)}公尺`;
+    } else {
+        distanceText = `${(routeDistance / 1000).toFixed(1)}公里`;
+    }
+    
+    // 計算方向
+    const bearing = calculateBearing(
+        currentPosition.lat, currentPosition.lng,
+        trackingTarget.lat, trackingTarget.lng
+    );
+    
+    // 方向文字
+    const directions = ['北', '東北', '東', '東南', '南', '西南', '西', '西北'];
+    const directionIndex = Math.round(bearing / 45) % 8;
+    const directionText = directions[directionIndex];
+    
+    // 創建路徑資訊控制項
+    routeInfoControl = L.control({position: 'topleft'});
+    routeInfoControl.onAdd = function(map) {
+        const div = L.DomUtil.create('div', 'route-info-control');
+        div.innerHTML = `
+            <div style="background: rgba(255,255,255,0.95); padding: 8px; border-radius: 6px; box-shadow: 0 2px 10px rgba(0,0,0,0.2); font-size: 11px; min-width: 150px;">
+                <div style="font-weight: bold; color: #333; margin-bottom: 4px;">
+                    🎯 追蹤目標: ${trackingTarget.name}
+                </div>
+                <div style="color: #666; margin-bottom: 2px;">
+                    📍 距離: <span style="color: #ff4444; font-weight: bold;">${distanceText}</span>
+                </div>
+                <div style="color: #666;">
+                    🧭 方向: <span style="color: #2196F3; font-weight: bold;">${directionText} (${Math.round(bearing)}°)</span>
+                </div>
+            </div>
+        `;
+        
+        // 添加點擊事件監聽器
+        const infoDiv = div.querySelector('div');
+        infoDiv.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            // 觸覺反饋
+            if (navigator.vibrate) {
+                navigator.vibrate(50);
+            }
+            
+            // 視覺按壓效果
+            div.classList.add('tracking-info-press-animation');
+            setTimeout(() => {
+                div.classList.remove('tracking-info-press-animation');
+            }, 300);
+            
+            // 定位到追蹤目標
+            locateToTrackingTarget();
+        });
+        
+        // 防止地圖事件冒泡
+        L.DomEvent.disableClickPropagation(div);
+        L.DomEvent.disableScrollPropagation(div);
+        
+        return div;
+    };
+    routeInfoControl.addTo(map);
+}
 
+function clearRouteInfo() {
+    if (routeInfoControl) {
+        map.removeControl(routeInfoControl);
+        routeInfoControl = null;
+    }
+}
+
+// 定位到追蹤目標
+function locateToTrackingTarget() {
+    if (!trackingTarget) {
+        console.log('沒有設定追蹤目標');
+        return;
+    }
+    
+    // 平滑移動地圖到追蹤目標位置
+    map.flyTo([trackingTarget.lat, trackingTarget.lng], 18, {
+        animate: true,
+        duration: 0.8
+    });
+    
+    // 找到對應的標示點
+    const targetMarker = markers.find(m => m.id === trackingTarget.id);
+    if (targetMarker && targetMarker.leafletMarker) {
+        // 500ms 延遲後開啟彈出視窗
+        setTimeout(() => {
+            targetMarker.leafletMarker.openPopup();
+        }, 500);
+        
+        // 添加閃爍效果
+        const markerElement = targetMarker.leafletMarker.getElement();
+        if (markerElement) {
+            markerElement.classList.add('marker-focus-blink');
+            setTimeout(() => {
+                markerElement.classList.remove('marker-focus-blink');
+            }, 2000);
+        }
+    }
+    
+    // 顯示通知
+    showNotification(`📍 已定位到追蹤目標: ${trackingTarget.name}`, 'success');
+}
 
 // 距離檢查定時器
 let proximityCheckTimer = null;
@@ -3975,11 +4430,54 @@ function showOnlyThisMarker(markerId) {
 function focusMarker(markerId) {
     const marker = markers.find(m => m.id === markerId);
     if (marker && marker.leafletMarker) {
+        // 添加按壓效果 - 觸覺反饋
+        if ('vibrate' in navigator) {
+            navigator.vibrate(50); // 短暫振動50毫秒
+        }
+        
+        // 添加視覺按壓效果
+        const markerElement = document.querySelector(`[onclick="focusMarker('${markerId}')"]`);
+        if (markerElement) {
+            markerElement.style.transform = 'scale(0.95)';
+            markerElement.style.transition = 'transform 0.1s ease';
+            
+            // 恢復原始大小
+            setTimeout(() => {
+                markerElement.style.transform = 'scale(1)';
+                setTimeout(() => {
+                    markerElement.style.transition = '';
+                }, 100);
+            }, 100);
+        }
+        
         closeGroupDetailsModal();
         // 關閉浮動設定視窗（如果開啟的話）
         hideFloatingSettings();
-        map.setView([marker.lat, marker.lng], 18);
-        marker.leafletMarker.openPopup();
+        
+        // 添加地圖定位動畫效果
+        map.setView([marker.lat, marker.lng], 18, {
+            animate: true,
+            duration: 0.5
+        });
+        
+        // 延遲打開popup以配合動畫
+        setTimeout(() => {
+            marker.leafletMarker.openPopup();
+            
+            // 添加標記閃爍效果
+            if (marker.leafletMarker._icon) {
+                const icon = marker.leafletMarker._icon;
+                icon.style.animation = 'marker-focus-blink 1s ease-in-out';
+                
+                // 清除動畫
+                setTimeout(() => {
+                    icon.style.animation = '';
+                }, 1000);
+            }
+        }, 300);
+        
+        // 顯示定位成功通知
+        showNotification(`已定位到 "${marker.name}"`, 'success', 2000);
     }
 }
 
@@ -4344,16 +4842,7 @@ function loadData() {
             }
             
             // 同步地圖按鈕狀態
-            const trackingBtn = document.getElementById('trackingBtn');
-            if (trackingBtn) {
-                if (markerNotificationsEnabled) {
-                    trackingBtn.classList.add('active');
-                    trackingBtn.innerHTML = '<span>🔔</span>關閉通知';
-                } else {
-                    trackingBtn.classList.remove('active');
-                    trackingBtn.innerHTML = '<span>🔕</span>開啟通知';
-                }
-            }
+            updateNotificationButtonState();
             
             // 更新即時定位設定UI（這些元素在主界面中不存在，只在浮動設定窗口中存在）
             // document.getElementById('enableHighAccuracy').checked = enableHighAccuracy;
@@ -5659,15 +6148,8 @@ function initFloatingSettings() {
         return;
     }
     
-    // 使浮動按鈕可拖拽
+    // 使浮動按鈕可拖拽（拖拽處理器會處理點擊事件）
     makeFloatingButtonDraggable(floatingBtn);
-    
-    // 點擊按鈕開啟設定視窗
-    floatingBtn.addEventListener('click', function(e) {
-        console.log('Floating settings button clicked (click event)');
-        e.stopPropagation();
-        showFloatingSettings();
-    });
     
     // 點擊關閉按鈕
     closeBtn.addEventListener('click', function() {
@@ -5691,7 +6173,7 @@ function initFloatingSettings() {
 function makeFloatingButtonDraggable(element) {
     let isDragging = false;
     let startX, startY, initialX, initialY;
-    let dragThreshold = 10; // 增加拖拽閾值，避免誤觸
+    let dragThreshold = 10; // 拖拽閾值
     let hasMoved = false;
     let startTime = 0;
     
@@ -5715,7 +6197,6 @@ function makeFloatingButtonDraggable(element) {
         // 為觸控事件提供視覺反饋
         if (e.type === 'touchstart') {
             element.style.transform = 'scale(0.95)';
-            // 不阻止預設行為，讓觸控事件正常處理
         }
     }
     
@@ -5771,19 +6252,14 @@ function makeFloatingButtonDraggable(element) {
                 e.stopPropagation();
             } else if (touchDuration < 500) {
                 // 如果沒有移動且觸控時間短，這是一個有效的點擊
-                console.log('Valid touch click detected, duration:', touchDuration);
-                // 對於觸控事件，手動觸發設定視窗
-                if (e.type === 'touchend') {
-                    console.log('Handling touchend event for settings');
-                    e.preventDefault();
-                    e.stopPropagation();
-                    // 延遲執行以確保觸控事件完全處理
-                    setTimeout(() => {
-                        console.log('Mobile touch click detected, opening settings');
-                        showFloatingSettings();
-                    }, 50);
-                }
-                // 對於滑鼠事件，讓正常的點擊事件處理
+                console.log('Valid click detected, duration:', touchDuration);
+                e.preventDefault();
+                e.stopPropagation();
+                // 延遲執行以確保事件完全處理
+                setTimeout(() => {
+                    console.log('Opening settings after valid click');
+                    showFloatingSettings();
+                }, 50);
             } else {
                 // 觸控時間過長，視為長按，阻止點擊
                 console.log('Touch duration too long, preventing click:', touchDuration);
@@ -5819,7 +6295,7 @@ function showFloatingSettings() {
         modal.style.left = '0';
         modal.style.width = '100%';
         modal.style.height = '100%';
-        modal.style.zIndex = '10010';
+        modal.style.zIndex = '20000'; /* 提高z-index確保在最上層 */
         modal.style.background = 'rgba(0, 0, 0, 0.5)';
         
         // 如果處於全螢幕模式，確保modal在正確的容器中
@@ -5832,11 +6308,14 @@ function showFloatingSettings() {
                 // 確保modal的樣式正確
                 setTimeout(() => {
                     modal.style.position = 'fixed';
-                    modal.style.zIndex = '10010';
+                    modal.style.zIndex = '20000'; /* 提高z-index確保在最上層 */
                     modal.style.left = '0';
                     modal.style.top = '0';
                     modal.style.width = '100vw';
                     modal.style.height = '100vh';
+                    modal.style.display = 'flex'; /* 確保顯示 */
+                    modal.style.alignItems = 'center';
+                    modal.style.justifyContent = 'center';
                 }, 10);
             }
         }
@@ -5952,16 +6431,7 @@ function initFloatingSettingsEventListeners() {
             markerNotificationsEnabled = this.checked;
             
             // 更新地圖上的追蹤按鈕狀態
-            const trackingBtn = document.getElementById('trackingBtn');
-            if (trackingBtn) {
-                if (markerNotificationsEnabled) {
-                    trackingBtn.classList.remove('disabled');
-                    trackingBtn.textContent = isTracking ? '停止追蹤' : '開始追蹤';
-                } else {
-                    trackingBtn.classList.add('disabled');
-                    trackingBtn.textContent = '通知已停用';
-                }
-            }
+            updateNotificationButtonState();
             
             // 請求通知權限（如果啟用）
             if (this.checked) {
@@ -5981,6 +6451,9 @@ function initFloatingSettingsEventListeners() {
                 markerNotificationsEnabled ? '已啟用標註點通知' : '已停用標註點通知', 
                 'info'
             );
+            
+            // 保存狀態
+            saveData();
         });
     }
     
@@ -6265,12 +6738,206 @@ window.initFloatingSettings = initFloatingSettings;
 window.showFloatingSettings = showFloatingSettings;
 window.hideFloatingSettings = hideFloatingSettings;
 
+// 背景服務相關功能
+let backgroundServiceEnabled = false;
+let backgroundLocationTracking = false;
+
+// 初始化背景服務
+function initBackgroundService() {
+    // 檢查是否在 Android 環境中
+    if (typeof AndroidBackgroundService !== 'undefined') {
+        console.log('Android 背景服務接口可用');
+        
+        // 設置位置更新回調
+        window.onLocationUpdate = function(latitude, longitude) {
+            console.log('收到背景位置更新:', latitude, longitude);
+            
+            // 更新當前位置
+            currentPosition = { lat: latitude, lng: longitude };
+            
+            // 更新地圖標記
+            updateCurrentLocationMarker();
+            
+            // 檢查距離提醒
+            if (markerNotificationsEnabled) {
+                checkProximityAlerts();
+            }
+            
+            // 如果有追蹤目標，發送給 Service Worker
+            if (trackingTarget && navigator.serviceWorker && navigator.serviceWorker.controller) {
+                navigator.serviceWorker.controller.postMessage({
+                    type: 'BACKGROUND_LOCATION_CHECK',
+                    trackingTarget: trackingTarget,
+                    currentPosition: currentPosition
+                });
+            }
+        };
+        
+        backgroundServiceEnabled = true;
+    } else {
+        console.log('Android 背景服務接口不可用，使用標準定位');
+    }
+}
+
+// 啟動背景位置追蹤
+function startBackgroundLocationTracking() {
+    if (backgroundServiceEnabled && typeof AndroidBackgroundService !== 'undefined') {
+        try {
+            AndroidBackgroundService.startBackgroundService();
+            backgroundLocationTracking = true;
+            console.log('背景位置追蹤已啟動');
+            
+            // 更新 UI 狀態
+            updateLocationStatus('背景追蹤中...');
+            
+            return true;
+        } catch (error) {
+            console.error('啟動背景服務失敗:', error);
+            return false;
+        }
+    }
+    return false;
+}
+
+// 停止背景位置追蹤
+function stopBackgroundLocationTracking() {
+    if (backgroundServiceEnabled && typeof AndroidBackgroundService !== 'undefined') {
+        try {
+            AndroidBackgroundService.stopBackgroundService();
+            backgroundLocationTracking = false;
+            console.log('背景位置追蹤已停止');
+            
+            // 更新 UI 狀態
+            updateLocationStatus('已停止');
+            
+            return true;
+        } catch (error) {
+            console.error('停止背景服務失敗:', error);
+            return false;
+        }
+    }
+    return false;
+}
+
+// 增強版的開始追蹤函數
+function startTrackingWithBackground() {
+    // 首先嘗試啟動背景服務
+    const backgroundStarted = startBackgroundLocationTracking();
+    
+    if (!backgroundStarted) {
+        // 如果背景服務啟動失敗，使用標準追蹤
+        startTracking();
+    } else {
+        // 背景服務啟動成功，設置相關狀態
+        isTracking = true;
+        
+        // 更新按鈕狀態
+        const trackingBtn = document.getElementById('trackingBtn');
+        if (trackingBtn) {
+            trackingBtn.textContent = '停止追蹤';
+            trackingBtn.classList.add('active');
+        }
+        
+        // 開始距離檢查
+        if (markerNotificationsEnabled) {
+            startProximityCheck();
+        }
+        
+        console.log('背景追蹤模式已啟動');
+    }
+}
+
+// 增強版的停止追蹤函數
+function stopTrackingWithBackground() {
+    // 停止背景服務
+    stopBackgroundLocationTracking();
+    
+    // 停止標準追蹤
+    stopTracking();
+}
+
+// 修改原有的 toggleTracking 函數
+const originalToggleTracking = window.toggleTracking;
+window.toggleTracking = function() {
+    if (isTracking) {
+        stopTrackingWithBackground();
+    } else {
+        startTrackingWithBackground();
+    }
+};
+
+// 處理應用進入背景時的邏輯
+function handleAppBackground() {
+    if (isTracking && backgroundServiceEnabled) {
+        console.log('應用進入背景，維持背景追蹤');
+        // 背景服務會繼續運行，不需要額外操作
+    }
+}
+
+// 處理應用回到前台時的邏輯
+function handleAppForeground() {
+    if (backgroundLocationTracking) {
+        console.log('應用回到前台，同步背景追蹤狀態');
+        // 同步背景服務的狀態到前台 UI
+        isTracking = true;
+        
+        const trackingBtn = document.getElementById('trackingBtn');
+        if (trackingBtn) {
+            trackingBtn.textContent = '停止追蹤';
+            trackingBtn.classList.add('active');
+        }
+    }
+}
+
+// 監聽頁面可見性變化
+document.addEventListener('visibilitychange', function() {
+    if (document.hidden) {
+        handleAppBackground();
+    } else {
+        handleAppForeground();
+    }
+});
+
+// 監聽頁面卸載事件（應用被關閉）
+window.addEventListener('beforeunload', function() {
+    if (backgroundLocationTracking) {
+        // 應用被關閉時停止背景服務
+        stopBackgroundLocationTracking();
+    }
+});
+
+// 處理來自 Service Worker 的消息
+if (navigator.serviceWorker) {
+    navigator.serviceWorker.addEventListener('message', function(event) {
+        if (event.data && event.data.type === 'FOCUS_MARKER') {
+            // 聚焦到指定標記
+            focusMarker(event.data.markerId);
+        } else if (event.data && event.data.type === 'BACKGROUND_LOCATION_CHECK') {
+            // 處理背景位置檢查請求
+            if (currentPosition && trackingTarget) {
+                // 發送當前位置和追蹤目標給 Service Worker
+                navigator.serviceWorker.controller.postMessage({
+                    type: 'BACKGROUND_LOCATION_CHECK',
+                    trackingTarget: trackingTarget,
+                    currentPosition: currentPosition
+                });
+            }
+        }
+    });
+}
+
 // 初始化 - 在所有函數定義之後
 document.addEventListener('DOMContentLoaded', function() {
     console.log('DOMContentLoaded event fired');
     
+    // 檢查移動設備兼容性
+    checkMobileCompatibility();
+    
     initEventListeners();
     initializeApp();
+    
+    // 初始化背景服務
+    initBackgroundService();
     
     // 初始化拖曳功能
     console.log('Initializing drag functionality...');

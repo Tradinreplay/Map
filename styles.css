@@ -150,7 +150,21 @@ body {
     word-break: break-all;
     border: 1px solid rgba(255, 255, 255, 0.3);
     color: #333;
-     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.2s ease;
+}
+
+#currentLocation:hover {
+    background: rgba(255, 255, 255, 0.8);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    transform: translateY(-1px);
+}
+
+#currentLocation:active {
+    transform: scale(0.95) translateY(0);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
 }
 
 .accuracy-display {
@@ -238,6 +252,7 @@ body {
     box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08) !important;
     padding: 4px !important;
     font-size: 12px !important;
+    z-index: 1500 !important;
 }
 
 .leaflet-control-layers-toggle {
@@ -266,6 +281,69 @@ body {
 .leaflet-control-layers input {
     margin: 0 !important;
     transform: scale(0.8) !important;
+}
+
+/* 路徑資訊控制項樣式 - 縮小25% + 按壓效果 */
+.route-info-control {
+    z-index: 1700 !important;
+    position: relative !important;
+    transform: scale(0.75) !important;
+    transform-origin: top left !important;
+}
+
+.route-info-control > div {
+    background: rgba(255,255,255,0.95) !important;
+    backdrop-filter: blur(20px) !important;
+    -webkit-backdrop-filter: blur(20px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.3) !important;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15) !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+    user-select: none !important;
+    -webkit-user-select: none !important;
+    -moz-user-select: none !important;
+    -ms-user-select: none !important;
+}
+
+.route-info-control > div:hover {
+    background: rgba(255,255,255,0.98) !important;
+    box-shadow: 0 6px 25px rgba(0,0,0,0.2) !important;
+    border-color: rgba(33, 150, 243, 0.3) !important;
+}
+
+.route-info-control > div:active {
+    transform: scale(0.95) !important;
+    box-shadow: 0 2px 15px rgba(0,0,0,0.25) !important;
+    background: rgba(245,245,245,0.98) !important;
+}
+
+/* 追蹤資訊框按壓動畫 */
+.route-info-control.tracking-info-press-animation > div {
+    animation: tracking-info-press-effect 0.3s ease-out !important;
+}
+
+@keyframes tracking-info-press-effect {
+    0% { transform: scale(1); }
+    50% { transform: scale(0.9); }
+    100% { transform: scale(1.05); }
+}
+
+/* 確保所有Leaflet控制項都有適當的z-index */
+.leaflet-control {
+    z-index: 1500 !important;
+}
+
+.leaflet-control-zoom {
+    z-index: 1500 !important;
+}
+
+.leaflet-control-attribution {
+    z-index: 1400 !important;
+}
+
+/* 確保圖層控制項在展開時有更高的z-index */
+.leaflet-control-layers-expanded {
+    z-index: 1600 !important;
 }
 
 /* 地圖性能優化樣式 */
@@ -297,6 +375,28 @@ body {
 .leaflet-marker-icon {
     transform: translateZ(0);
     backface-visibility: hidden;
+    cursor: pointer;
+    transition: transform 0.1s ease;
+}
+
+/* 地圖標記點按壓效果 */
+.leaflet-marker-icon:hover {
+    transform: translateZ(0) scale(1.05);
+}
+
+.leaflet-marker-icon:active {
+    transform: translateZ(0) scale(0.95);
+}
+
+/* 標記點按壓動畫 */
+@keyframes marker-press-effect {
+    0% { transform: translateZ(0) scale(1); }
+    50% { transform: translateZ(0) scale(0.9); }
+    100% { transform: translateZ(0) scale(1.1); }
+}
+
+.marker-press-animation {
+    animation: marker-press-effect 0.3s ease-out;
 }
 
 
@@ -529,9 +629,9 @@ body {
 /* 浮動控制面板 */
 .floating-controls {
     position: absolute;
-    top: 16px;
-    right: 16px; /* 全螢幕按鈕移到左上角後，恢復原位置 */
-    z-index: 1000;
+    top: 16px; /* 移動到右上角位置 */
+    right: 16px;
+    z-index: 1650; /* 提高z-index以確保不被遮擋 */
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -595,34 +695,40 @@ body {
 /* 全螢幕模式下的modal樣式 */
 .map-container.fullscreen .modal {
     position: fixed !important;
-    z-index: 10001 !important;
+    z-index: 15000 !important; /* 提高z-index確保在地圖上層 */
     left: 0 !important;
     top: 0 !important;
     width: 100vw !important;
     height: 100vh !important;
+    display: flex !important; /* 確保顯示 */
+    align-items: center !important;
+    justify-content: center !important;
 }
 
 /* 全螢幕模式下的圖片模態框樣式 */
 .map-container.fullscreen .image-modal {
-    z-index: 10002 !important;
+    z-index: 18000 !important; /* 提高z-index確保圖片模態框在一般模態框之上 */
 }
 
 .map-container.fullscreen .image-modal-close {
-    z-index: 10003 !important;
+    z-index: 18001 !important;
 }
 
 /* 全螢幕模式下的浮動設定樣式 */
 .map-container.fullscreen .floating-settings-modal {
     position: fixed !important;
-    z-index: 10010 !important;
+    z-index: 20000 !important; /* 大幅提高z-index確保在最上層 */
     left: 0 !important;
     top: 0 !important;
     width: 100vw !important;
     height: 100vh !important;
+    display: flex !important; /* 確保顯示 */
+    align-items: center !important;
+    justify-content: center !important;
 }
 
 .map-container.fullscreen .floating-settings-btn {
-    z-index: 10011 !important;
+    z-index: 20001 !important;
 }
 
 .modal-content {
@@ -906,7 +1012,7 @@ form input:focus, form textarea:focus, form select:focus {
     }
     
     .floating-controls {
-        top: 8px;
+        top: 100px; /* 進一步向下移動以避免與圖層控制重疊 */
         right: 8px;
         gap: 6px;
         flex-wrap: wrap;
@@ -1033,7 +1139,7 @@ form input:focus, form textarea:focus, form select:focus {
     }
     
     .floating-controls {
-        top: 6px;
+        top: 80px; /* 進一步向下移動以避免與圖層控制重疊 */
         right: 6px;
         flex-direction: column;
         align-items: flex-end;
@@ -2335,7 +2441,7 @@ input:checked + .slider:before {
     /* 浮動控制面板在移動設備上的調整 */
     .floating-controls {
         right: 12px;
-        top: 12px;
+        top: 110px; /* 進一步向下移動以避免與圖層控制重疊 */
     }
     
     .control-btn {
@@ -2391,7 +2497,7 @@ input:checked + .slider:before {
     
     .floating-controls {
         right: 8px;
-        top: 8px;
+        top: 100px; /* 進一步向下移動以避免與圖層控制重疊 */
         gap: 6px;
     }
     
@@ -2455,17 +2561,14 @@ input:checked + .slider:before {
     padding: 0;
     border-radius: 12px;
     overflow: hidden;
-    background: #fff;
+    background: #000;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    display: inline-block;
+    position: relative;
 }
 
 .image-modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 16px 20px;
-    background: #f8f9fa;
-    border-bottom: 1px solid #e9ecef;
+    display: none;
 }
 
 .image-modal-header h3 {
@@ -2482,30 +2585,42 @@ input:checked + .slider:before {
 }
 
 .nav-btn {
-    width: 32px;
-    height: 32px;
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 40px;
+    height: 40px;
     border: none;
-    border-radius: 6px;
-    background: #6366f1;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.7);
     color: white;
-    font-size: 18px;
+    font-size: 20px;
     font-weight: bold;
     cursor: pointer;
     transition: all 0.2s ease;
     display: flex;
     align-items: center;
     justify-content: center;
+    z-index: 10;
+}
+
+#prevImageBtn {
+    left: 10px;
+}
+
+#nextImageBtn {
+    right: 10px;
 }
 
 .nav-btn:hover {
-    background: #5856eb;
-    transform: scale(1.05);
+    background: rgba(0, 0, 0, 0.9);
+    transform: translateY(-50%) scale(1.1);
 }
 
 .nav-btn:disabled {
-    background: #cbd5e0;
+    background: rgba(128, 128, 128, 0.5);
     cursor: not-allowed;
-    transform: none;
+    transform: translateY(-50%);
 }
 
 #imageCounter {
@@ -2518,19 +2633,55 @@ input:checked + .slider:before {
 
 .image-modal-body {
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 20px;
+    padding: 0;
     background: #000;
+    min-height: auto;
+    position: relative;
 }
 
 .image-modal-body img {
-    max-width: 100%;
-    max-height: 70vh;
+    max-width: 90vw;
+    max-height: 90vh;
     width: auto;
     height: auto;
+    display: block;
+    object-fit: contain;
+}
+
+/* 縮圖容器樣式 */
+.image-thumbnail-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: 8px;
+    margin-top: 16px;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.1);
     border-radius: 8px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    max-width: 240px; /* 每行最多3張，每張72px + 間距 */
+}
+
+.image-thumbnail {
+    width: 72px;
+    height: 72px;
+    object-fit: cover;
+    border-radius: 6px;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: all 0.2s ease;
+}
+
+.image-thumbnail:hover {
+    border-color: #6366f1;
+    transform: scale(1.05);
+}
+
+.image-thumbnail.active {
+    border-color: #f59e0b;
+    box-shadow: 0 0 8px rgba(245, 158, 11, 0.5);
 }
 
 .image-modal-close {
@@ -2588,7 +2739,7 @@ input:checked + .slider:before {
     position: absolute;
     top: 8px;
     right: 8px;
-    font-size: 16px;
+    font-size: 12px;
     animation: tracking-icon-blink 1s ease-in-out infinite;
 }
 
@@ -2609,17 +2760,21 @@ input:checked + .slider:before {
     color: #d63031;
 }
 
-/* Leaflet 彈出視窗樣式優化 */
+/* Leaflet 彈出視窗樣式優化 - 縮小25% */
 .leaflet-popup-content-wrapper {
-    max-width: 280px !important;
-    min-width: 200px !important;
+    max-width: 210px !important; /* 280px * 0.75 = 210px */
+    min-width: 150px !important; /* 200px * 0.75 = 150px */
+}
+
+.leaflet-popup {
+    z-index: 1300 !important;
 }
 
 .leaflet-popup-content {
-    margin: 12px 16px !important;
-    line-height: 1.4 !important;
-    font-size: 14px !important;
-    max-width: 250px !important;
+    margin: 9px 12px !important; /* 12px * 0.75 = 9px, 16px * 0.75 = 12px */
+    line-height: 1.3 !important; /* 1.4 * 0.93 ≈ 1.3 */
+    font-size: 12px !important; /* 14px * 0.75 = 10.5px */
+    max-width: 188px !important; /* 250px * 0.75 = 188px */
     word-wrap: break-word !important;
     word-break: break-word !important;
     white-space: normal !important;
@@ -2642,8 +2797,59 @@ input:checked + .slider:before {
     white-space: pre-wrap !important;
     overflow-wrap: break-word !important;
     hyphens: auto !important;
-    max-width: 220px !important;
+    max-width: 165px !important; /* 220px * 0.75 = 165px */
     box-sizing: border-box !important;
+}
+
+/* 縮小彈出視窗內的所有元素25% */
+.leaflet-popup-content div[style*="text-align: center"] {
+    min-width: 150px !important; /* 200px * 0.75 = 150px */
+}
+
+.leaflet-popup-content div[style*="font-size: 18px"] {
+    font-size: 14px !important; /* 18px * 0.75 = 13.5px */
+}
+
+.leaflet-popup-content div[style*="font-size: 14px"] {
+    font-size: 12px !important; /* 14px * 0.75 = 10.5px */
+}
+
+.leaflet-popup-content div[style*="font-size: 12px"] {
+    font-size: 12px !important; /* 12px * 0.75 = 9px */
+}
+
+.leaflet-popup-content div[style*="font-size: 11px"] {
+    font-size: 10px !important; /* 11px * 0.75 = 8.25px */
+}
+
+.leaflet-popup-content button {
+    padding: 3px 6px !important; /* 4px * 0.75 = 3px, 8px * 0.75 = 6px */
+    font-size: 9px !important; /* 12px * 0.75 = 9px */
+}
+
+.leaflet-popup-content img {
+    max-width: 150px !important; /* 200px * 0.75 = 150px */
+    max-height: 112.5px !important; /* 150px * 0.75 = 112.5px */
+}
+
+/* 標記定位時的閃爍動畫 */
+@keyframes marker-focus-blink {
+    0%, 100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    25% {
+        transform: scale(1.2);
+        opacity: 0.8;
+    }
+    50% {
+        transform: scale(1.4);
+        opacity: 0.6;
+    }
+    75% {
+        transform: scale(1.2);
+        opacity: 0.8;
+    }
 }
 
 /* 組別詳情模態框樣式 */
@@ -3676,6 +3882,29 @@ input:checked + .slider:before {
     color: #4a5568;
 }
 
+/* 浮動視窗中的定位元素可點擊樣式 */
+#floatingCurrentLocation {
+    padding: 8px 12px;
+    background: rgba(59, 130, 246, 0.1);
+    border: 2px solid rgba(59, 130, 246, 0.3);
+    border-radius: 8px;
+    transition: all 0.2s ease;
+    font-weight: 500;
+    color: #2563eb !important;
+}
+
+#floatingCurrentLocation:hover {
+    background: rgba(59, 130, 246, 0.2);
+    border-color: rgba(59, 130, 246, 0.5);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.2);
+}
+
+#floatingCurrentLocation:active {
+    transform: translateY(0) scale(0.98);
+    box-shadow: 0 1px 4px rgba(59, 130, 246, 0.3);
+}
+
 .floating-settings-body .settings-actions,
 .floating-settings-body .data-actions {
     display: grid;
@@ -3944,4 +4173,112 @@ input:checked + .slider:before {
     padding: 2px 6px;
     border-radius: 4px;
     display: inline-block;
+}
+
+/* 移動設備圖片預覽優化 */
+@media (max-width: 768px) {
+    .image-preview-container {
+        gap: 6px;
+        margin-top: 6px;
+    }
+    
+    .image-preview {
+        border-radius: 6px;
+    }
+    
+    .image-preview img {
+        max-width: 80px;
+        max-height: 80px;
+        border-radius: 4px;
+    }
+    
+    .image-modal-content {
+        max-width: 95vw;
+        max-height: 95vh;
+        border-radius: 8px;
+    }
+    
+    .image-modal-body img {
+        max-width: 95vw;
+        max-height: 95vh;
+    }
+    
+    .nav-btn {
+        width: 36px;
+        height: 36px;
+        font-size: 18px;
+    }
+    
+    #prevImageBtn {
+        left: 8px;
+    }
+    
+    #nextImageBtn {
+        right: 8px;
+    }
+    
+    .image-modal-close {
+        top: 12px;
+        right: 16px;
+        width: 28px;
+        height: 28px;
+        font-size: 16px;
+    }
+}
+
+@media (max-width: 480px) {
+    .image-preview-container {
+        gap: 4px;
+        margin-top: 4px;
+    }
+    
+    .image-preview img {
+        max-width: 60px;
+        max-height: 60px;
+    }
+    
+    .image-modal-content {
+        max-width: 98vw;
+        max-height: 98vh;
+        border-radius: 6px;
+    }
+    
+    .image-modal-body img {
+        max-width: 98vw;
+        max-height: 98vh;
+    }
+    
+    .nav-btn {
+        width: 32px;
+        height: 32px;
+        font-size: 16px;
+    }
+    
+    #prevImageBtn {
+        left: 6px;
+    }
+    
+    #nextImageBtn {
+        right: 6px;
+    }
+    
+    .image-modal-close {
+        top: 10px;
+        right: 12px;
+        width: 26px;
+        height: 26px;
+        font-size: 14px;
+    }
+    
+    .image-thumbnail-container {
+        max-width: 200px;
+        gap: 6px;
+        padding: 8px;
+    }
+    
+    .image-thumbnail {
+        width: 60px;
+        height: 60px;
+        border-radius: 4px;
+    }
 }
