@@ -2949,7 +2949,15 @@ function saveMarker(e) {
     updateGroupsList();
     saveData();
     
-    document.getElementById('markerModal').style.display = 'none';
+    // 關閉浮動視窗 - 確保在全螢幕模式下也能正確關閉
+    const modal = document.getElementById('markerModal');
+    
+    // 如果modal在全螢幕容器中，將其移回body
+    const fullscreenContainer = document.querySelector('.map-container.fullscreen');
+    if (fullscreenContainer && fullscreenContainer.contains(modal)) {
+        document.body.appendChild(modal);
+    }
+    modal.style.display = 'none';
     
     // 關閉標註模式
     isAddingMarker = false;
@@ -3292,7 +3300,15 @@ function deleteCurrentMarker() {
         updateMapMarkers(); // 這會重新渲染地圖上的標記
         saveData();
         
-        document.getElementById('markerModal').style.display = 'none';
+        // 關閉浮動視窗 - 確保在全螢幕模式下也能正確關閉
+        const modal = document.getElementById('markerModal');
+        
+        // 如果modal在全螢幕容器中，將其移回body
+        const fullscreenContainer = document.querySelector('.map-container.fullscreen');
+        if (fullscreenContainer && fullscreenContainer.contains(modal)) {
+            document.body.appendChild(modal);
+        }
+        modal.style.display = 'none';
         
         // 顯示提示並自動關閉
         const notification = document.createElement('div');
