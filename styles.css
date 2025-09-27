@@ -3829,7 +3829,7 @@ input:checked + .slider:before {
 
 .floating-settings-body {
     padding: 24px;
-    max-height: 60vh;
+    max-height: 75vh;
     overflow-y: auto;
 }
 
@@ -3993,6 +3993,7 @@ input:checked + .slider:before {
     
     .floating-settings-body {
         padding: 20px;
+        max-height: 80vh;
     }
     
     .floating-settings-btn {
@@ -4001,6 +4002,26 @@ input:checked + .slider:before {
         font-size: 18px;
         top: 15px;
         left: 15px;
+    }
+    
+    /* 強制顯示功能說明面板 */
+    #featureGuidePanel,
+    .feature-guide-panel,
+    .setting-group {
+        display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        position: relative !important;
+        width: 100% !important;
+    }
+    
+    #featureGuidePanel {
+        z-index: 10 !important;
+        min-height: 60px !important;
+        background: rgba(255, 255, 255, 0.98) !important;
+        border: 3px solid #007bff !important;
+        border-radius: 12px !important;
+        margin-bottom: 20px !important;
     }
 }
 

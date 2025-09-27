@@ -7266,16 +7266,30 @@ let isFeatureGuideCollapsed = true;
 function initFeatureGuide() {
     const featureGuidePanel = document.getElementById('featureGuidePanel');
     const toggleGuideBtn = document.getElementById('toggleFeatureGuide');
+    const featureGuideContent = document.getElementById('featureGuideContent');
+    const toggleIcon = document.getElementById('guideToggleIcon');
     
     if (!featureGuidePanel || !toggleGuideBtn) {
         console.warn('功能說明頁面元素未找到');
         return;
     }
     
+    // 確保初始狀態與HTML一致
+    if (featureGuideContent) {
+        const isHidden = featureGuideContent.style.display === 'none' || 
+                        window.getComputedStyle(featureGuideContent).display === 'none';
+        isFeatureGuideCollapsed = isHidden;
+    }
+    
+    // 設置初始圖標狀態
+    if (toggleIcon) {
+        toggleIcon.textContent = isFeatureGuideCollapsed ? '▶' : '▼';
+    }
+    
     // 綁定收合/展開按鈕事件
     toggleGuideBtn.addEventListener('click', toggleFeatureGuide);
     
-    console.log('功能說明頁面初始化完成');
+    console.log('功能說明頁面初始化完成，初始狀態：', isFeatureGuideCollapsed ? '收合' : '展開');
 }
 
 
