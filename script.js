@@ -2301,6 +2301,10 @@ function requestNotificationPermission() {
         // 檢查當前權限狀態
         if (Notification.permission === 'granted') {
             showNotification('通知權限已啟用');
+            // 同時請求背景通知權限
+            if (typeof AndroidDevice !== 'undefined' && AndroidDevice.requestBackgroundNotificationPermission) {
+                AndroidDevice.requestBackgroundNotificationPermission();
+            }
             return Promise.resolve('granted');
         } else if (Notification.permission === 'denied') {
             showNotification('通知權限被拒絕，請在瀏覽器設定中手動啟用', 'warning');
@@ -2312,6 +2316,10 @@ function requestNotificationPermission() {
                     showNotification('通知權限已啟用');
                     // 註冊Service Worker推送通知
                     registerPushNotification();
+                    // 請求背景通知權限
+                    if (typeof AndroidDevice !== 'undefined' && AndroidDevice.requestBackgroundNotificationPermission) {
+                        AndroidDevice.requestBackgroundNotificationPermission();
+                    }
                 } else {
                     showNotification('通知權限被拒絕，部分功能可能無法正常使用', 'warning');
                 }
@@ -2319,6 +2327,10 @@ function requestNotificationPermission() {
             });
         }
     } else {
+        // 對於Android環境，直接使用AndroidDevice
+        if (typeof AndroidDevice !== 'undefined' && AndroidDevice.requestBackgroundNotificationPermission) {
+            AndroidDevice.requestBackgroundNotificationPermission();
+        }
         showNotification('您的瀏覽器不支援通知功能', 'error');
         return Promise.resolve('unsupported');
     }
@@ -4008,6 +4020,18 @@ function checkProximityAlerts() {
         trackingTarget.lng
     );
     
+    // 向Service Worker發送位置檢查信息，支援背景通知
+    if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+        navigator.serviceWorker.controller.postMessage({
+            type: 'BACKGROUND_LOCATION_CHECK',
+            trackingTarget: trackingTarget,
+            currentPosition: currentPosition,
+            distance: distance,
+            alertDistance: alertDistance,
+            timestamp: Date.now()
+        });
+    }
+    
     if (distance <= alertDistance) {
         // 如果追蹤目標進入範圍
         if (!markersInRange.has(trackingTarget.id)) {
@@ -4020,6 +4044,21 @@ function checkProximityAlerts() {
             // 設定定時器進行重複通知
             startRepeatedAlert(trackingTarget.id, trackingTarget);
             console.log(`標註點 "${trackingTarget.name}" 進入範圍 (${Math.round(distance)}m)，開始定時通知`);
+            
+            // 向Service Worker發送進入範圍通知
+            if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+                navigator.serviceWorker.controller.postMessage({
+                    type: 'LOCATION_ALERT',
+                    title: '📍 位置提醒',
+                    body: `您已接近標記點 "${trackingTarget.name}"，距離約 ${Math.round(distance)} 公尺`,
+                    data: {
+                        markerId: trackingTarget.id,
+                        markerName: trackingTarget.name,
+                        distance: Math.round(distance),
+                        tag: `location-alert-${trackingTarget.id}`
+                    }
+                });
+            }
         }
         // 如果已經在範圍內，不做任何操作，讓定時器處理後續通知
     } else {
@@ -6725,6 +6764,36 @@ function initFloatingSettingsEventListeners() {
             }
         });
     }
+    
+    // 搜尋功能事件監聽器
+    const searchInput = document.getElementById('markerSearchInput');
+    const clearSearchBtn = document.getElementById('clearSearchBtn');
+    const searchResults = document.getElementById('searchResults');
+    
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            const query = this.value.trim();
+            if (query.length > 0) {
+                performMarkerSearch(query);
+                clearSearchBtn.style.display = 'flex';
+            } else {
+                hideSearchResults();
+                clearSearchBtn.style.display = 'none';
+            }
+        });
+        
+        searchInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                clearSearch();
+            }
+        });
+    }
+    
+    if (clearSearchBtn) {
+        clearSearchBtn.addEventListener('click', function() {
+            clearSearch();
+        });
+    }
 }
 
 function saveFloatingButtonPosition(x, y) {
@@ -7011,3 +7080,180 @@ document.addEventListener('DOMContentLoaded', function() {
         
     }, 100);
 });
+
+// 搜尋功能實現
+function performMarkerSearch(query) {
+    const searchResults = document.getElementById('searchResults');
+    if (!searchResults) return;
+    
+    // 模糊搜尋所有標註點
+    const results = fuzzySearchMarkers(query);
+    
+    if (results.length === 0) {
+        searchResults.innerHTML = '<div class="search-no-results">沒有找到符合的標註點</div>';
+        searchResults.style.display = 'block';
+        return;
+    }
+    
+    // 顯示搜尋結果
+    const resultsHTML = results.map(result => {
+        const marker = result.marker;
+        const group = groups.find(g => g.id === marker.groupId);
+        const subgroup = group ? group.subgroups.find(sg => sg.id === marker.subgroupId) : null;
+        
+        let groupInfo = '';
+        if (group) {
+            groupInfo = group.name;
+            if (subgroup) {
+                groupInfo += ` > ${subgroup.name}`;
+            }
+        } else {
+            groupInfo = '未分組';
+        }
+        
+        return `
+            <div class="search-result-item" onclick="selectSearchResult('${marker.id}')">
+                <div class="search-result-name">${highlightSearchText(marker.name, query)}</div>
+                <div class="search-result-description">${highlightSearchText(marker.description || '', query)}</div>
+                <div class="search-result-location">${marker.lat.toFixed(6)}, ${marker.lng.toFixed(6)}</div>
+                <div class="search-result-group">${groupInfo}</div>
+            </div>
+        `;
+    }).join('');
+    
+    searchResults.innerHTML = resultsHTML;
+    searchResults.style.display = 'block';
+}
+
+function fuzzySearchMarkers(query) {
+    const queryLower = query.toLowerCase();
+    const results = [];
+    
+    markers.forEach(marker => {
+        let score = 0;
+        let matches = [];
+        
+        // 檢查名稱匹配
+        if (marker.name && marker.name.toLowerCase().includes(queryLower)) {
+            score += 10;
+            matches.push('name');
+        }
+        
+        // 檢查描述匹配
+        if (marker.description && marker.description.toLowerCase().includes(queryLower)) {
+            score += 5;
+            matches.push('description');
+        }
+        
+        // 檢查組別名稱匹配
+        const group = groups.find(g => g.id === marker.groupId);
+        if (group && group.name.toLowerCase().includes(queryLower)) {
+            score += 3;
+            matches.push('group');
+        }
+        
+        // 檢查子組別名稱匹配
+        if (group) {
+            const subgroup = group.subgroups.find(sg => sg.id === marker.subgroupId);
+            if (subgroup && subgroup.name.toLowerCase().includes(queryLower)) {
+                score += 3;
+                matches.push('subgroup');
+            }
+        }
+        
+        // 模糊匹配（字符相似度）
+        if (score === 0) {
+            const nameScore = calculateFuzzyScore(marker.name || '', queryLower);
+            const descScore = calculateFuzzyScore(marker.description || '', queryLower);
+            
+            if (nameScore > 0.3 || descScore > 0.3) {
+                score += Math.max(nameScore, descScore) * 2;
+                matches.push('fuzzy');
+            }
+        }
+        
+        if (score > 0) {
+            results.push({
+                marker: marker,
+                score: score,
+                matches: matches
+            });
+        }
+    });
+    
+    // 按分數排序
+    return results.sort((a, b) => b.score - a.score);
+}
+
+function calculateFuzzyScore(text, query) {
+    if (!text || !query) return 0;
+    
+    const textLower = text.toLowerCase();
+    const queryLower = query.toLowerCase();
+    
+    // 簡單的字符匹配算法
+    let matches = 0;
+    let queryIndex = 0;
+    
+    for (let i = 0; i < textLower.length && queryIndex < queryLower.length; i++) {
+        if (textLower[i] === queryLower[queryIndex]) {
+            matches++;
+            queryIndex++;
+        }
+    }
+    
+    return matches / queryLower.length;
+}
+
+function highlightSearchText(text, query) {
+    if (!text || !query) return text;
+    
+    const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+    return text.replace(regex, '<span class="search-result-highlight">$1</span>');
+}
+
+function selectSearchResult(markerId) {
+    const marker = markers.find(m => m.id === markerId);
+    if (!marker) return;
+    
+    // 關閉搜尋結果
+    hideSearchResults();
+    clearSearch();
+    
+    // 關閉設定視窗
+    hideFloatingSettings();
+    
+    // 設定追蹤目標並聚焦到標註點
+    setTrackingTarget(markerId);
+    
+    // 顯示通知
+    showNotification(`🎯 開始追蹤: ${marker.name}`, 'success');
+}
+
+function clearSearch() {
+    const searchInput = document.getElementById('markerSearchInput');
+    const clearSearchBtn = document.getElementById('clearSearchBtn');
+    
+    if (searchInput) {
+        searchInput.value = '';
+    }
+    
+    if (clearSearchBtn) {
+        clearSearchBtn.style.display = 'none';
+    }
+    
+    hideSearchResults();
+}
+
+function hideSearchResults() {
+    const searchResults = document.getElementById('searchResults');
+    if (searchResults) {
+        searchResults.style.display = 'none';
+        searchResults.innerHTML = '';
+    }
+}
+
+// 將搜尋功能暴露到全域
+window.performMarkerSearch = performMarkerSearch;
+window.selectSearchResult = selectSearchResult;
+window.clearSearch = clearSearch;

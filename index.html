@@ -395,6 +395,18 @@
                     </div>
                 </div>
 
+                <!-- 搜尋標註點 -->
+                <div class="setting-group">
+                    <h4>🔍 搜尋標註點</h4>
+                    <div class="search-container">
+                        <input type="text" id="markerSearchInput" placeholder="輸入標註點名稱或描述..." class="search-input">
+                        <button id="clearSearchBtn" class="clear-search-btn" title="清除搜尋">×</button>
+                    </div>
+                    <div id="searchResults" class="search-results" style="display: none;">
+                        <!-- 搜尋結果將動態顯示在這裡 -->
+                    </div>
+                </div>
+
                 <!-- 組別管理 -->
                 <div class="setting-group">
                     <h4>📁 組別管理</h4>
@@ -539,20 +551,10 @@
     <!-- Android 整合腳本 -->
     <script src="android-integration.js"></script>
     
+
+    
     <script src="script.js?v=mobile-debug-version-20240927"></script>
     
-    <!-- Service Worker Registration -->
-    <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', function() {
-                navigator.serviceWorker.register('/sw.js')
-                    .then(function(registration) {
-                        console.log('ServiceWorker registration successful with scope: ', registration.scope);
-                    }, function(err) {
-                        console.log('ServiceWorker registration failed: ', err);
-                    });
-            });
-        }
-    </script>
+
 </body>
 </html>
