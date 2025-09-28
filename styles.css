@@ -2272,7 +2272,7 @@ input:checked + .slider:before {
     max-width: 350px;
     word-wrap: break-word;
     white-space: pre-line;
-    font-size: 14px;
+    font-size: 11.2px;
     line-height: 1.4;
     border-left: 4px solid rgba(255,255,255,0.3);
 }
