@@ -856,6 +856,14 @@ form input:focus, form textarea:focus, form select:focus {
     box-shadow: 0 4px 12px rgba(255, 107, 107, 0.4);
 }
 
+.gif-btn {
+    background: linear-gradient(135deg, #9c27b0 0%, #673ab7 100%);
+}
+
+.gif-btn:hover {
+    box-shadow: 0 4px 12px rgba(156, 39, 176, 0.4);
+}
+
 /* 多張圖片預覽容器 */
 .image-preview-container {
     display: flex;
@@ -4575,7 +4583,7 @@ input:checked + .slider:before {
 .help-text {
     flex: 1;
     line-height: 1.28;
-    font-size: 14.4px;
+    font-size: 14.8px;
 }
 
 .help-text strong {
@@ -4632,7 +4640,7 @@ input:checked + .slider:before {
     .floating-help-btn {
         width: 32px;
         height: 32px;
-        font-size: 14.4px;
+        font-size: 12px;
         top: 100px;
         right: 10px;
     }
@@ -4653,5 +4661,281 @@ input:checked + .slider:before {
     .help-icon {
         margin-right: 0;
         margin-bottom: 8px;
+    }
+}
+
+/* GIF拍攝模態視窗樣式 */
+.gif-capture-modal {
+    z-index: 10001;
+}
+
+.gif-capture-content {
+    max-width: 600px;
+    width: 90%;
+    max-height: 90vh;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    overflow: hidden;
+}
+
+.gif-capture-header {
+    background: linear-gradient(135deg, #9c27b0, #673ab7);
+    color: white;
+    padding: 16px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.gif-capture-header h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.gif-capture-status {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    font-size: 12px;
+}
+
+.gif-capture-body {
+    padding: 20px;
+    text-align: center;
+}
+
+#gifCameraVideo {
+    width: 100%;
+    max-width: 400px;
+    height: auto;
+    border-radius: 8px;
+    background: #000;
+    margin-bottom: 16px;
+}
+
+.gif-preview-container {
+    margin-bottom: 16px;
+}
+
+#gifPreviewImg {
+    max-width: 100%;
+    max-height: 300px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.gif-controls {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.gif-control-btn {
+    padding: 10px 16px;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-width: 100px;
+}
+
+.gif-control-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.start-btn {
+    background: linear-gradient(135deg, #e74c3c, #c0392b);
+    color: white;
+}
+
+.stop-btn {
+    background: linear-gradient(135deg, #95a5a6, #7f8c8d);
+    color: white;
+}
+
+.retake-btn {
+    background: linear-gradient(135deg, #f39c12, #e67e22);
+    color: white;
+}
+
+.save-btn {
+    background: linear-gradient(135deg, #27ae60, #229954);
+    color: white;
+}
+
+.gif-settings {
+    background: #f8f9fa;
+    padding: 16px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    justify-content: center;
+}
+
+.gif-settings label {
+    font-weight: 500;
+    color: #495057;
+}
+
+#gifDuration {
+    flex: 1;
+    max-width: 150px;
+}
+
+#gifDurationValue {
+    font-weight: 600;
+    color: #9c27b0;
+    min-width: 40px;
+}
+
+.gif-capture-close {
+    position: absolute;
+    top: 16px;
+    right: 20px;
+    font-size: 24px;
+    color: white;
+    cursor: pointer;
+    z-index: 1;
+}
+
+.gif-capture-close:hover {
+    opacity: 0.8;
+}
+
+/* GIF預覽在圖片容器中的樣式 */
+.gif-preview-item {
+    position: relative;
+}
+
+.gif-preview-item::after {
+    content: "GIF";
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    background: rgba(156, 39, 176, 0.9);
+    color: white;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: bold;
+}
+
+/* 響應式設計 */
+@media (max-width: 768px) {
+    .gif-capture-content {
+        width: 95%;
+        max-height: 95vh;
+    }
+    
+    .gif-capture-body {
+        padding: 16px;
+    }
+    
+    .gif-controls {
+        gap: 8px;
+    }
+    
+    .gif-control-btn {
+        padding: 8px 12px;
+        font-size: 12px;
+        min-width: 80px;
+    }
+    
+    .gif-settings {
+        flex-direction: column;
+        gap: 8px;
+    }
+}
+
+/* ===== 增強的GIF預覽樣式 ===== */
+.gif-preview-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f5f5f5;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.gif-thumbnail {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px;
+}
+
+.gif-label {
+    position: absolute;
+    top: 5px;
+    left: 5px;
+    background: rgba(156, 39, 176, 0.9);
+    color: white;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: bold;
+    z-index: 2;
+}
+
+.gif-play-btn {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 40px;
+    height: 40px;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    z-index: 3;
+    border: 2px solid rgba(255, 255, 255, 0.8);
+}
+
+.gif-play-btn:hover {
+    background: rgba(156, 39, 176, 0.9);
+    transform: translate(-50%, -50%) scale(1.1);
+    border-color: white;
+}
+
+/* GIF預覽在圖片預覽容器中的樣式 */
+.image-preview .gif-preview-container {
+    width: 100%;
+    height: 100%;
+}
+
+.image-preview:hover .gif-play-btn {
+    background: rgba(156, 39, 176, 0.8);
+    transform: translate(-50%, -50%) scale(1.05);
+}
+
+/* 響應式設計 - GIF預覽 */
+@media (max-width: 768px) {
+    .gif-label {
+        font-size: 8px;
+        padding: 1px 4px;
+    }
+    
+    .gif-play-btn {
+        width: 30px;
+        height: 30px;
+        font-size: 12px;
+        border-width: 1px;
     }
 }
