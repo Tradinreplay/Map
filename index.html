@@ -100,14 +100,13 @@
                     <textarea id="markerDescription" rows="2"></textarea>
                     
                     <div class="image-upload-section">
-                        <label for="markerImages">圖片與GIF (最多6個檔案):</label>
+                        <label for="markerImages">圖片 (最多6張):</label>
                         <div class="image-upload-container">
                             <input type="file" id="markerImages" accept="image/*" multiple style="display: none;">
                             <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display: none;">
                             <div class="upload-buttons">
                                 <button type="button" id="uploadImageBtn" class="upload-btn">📁 選擇檔案</button>
                                 <button type="button" id="cameraBtn" class="upload-btn camera-btn">📷 拍照</button>
-                                <button type="button" id="gifCameraBtn" class="upload-btn gif-btn">🎬 拍攝GIF</button>
                             </div>
                             <div id="imagePreviewContainer" class="image-preview-container">
                                 <!-- 動態生成的圖片預覽將顯示在這裡 -->
@@ -260,38 +259,6 @@
                 <img id="modalPreviewImg" src="" alt="預覽圖片">
                 <div id="imageThumbnailContainer" class="image-thumbnail-container">
                     <!-- 縮圖將動態生成在這裡 -->
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- GIF拍攝模態視窗 -->
-    <div id="gifCaptureModal" class="modal gif-capture-modal">
-        <div class="modal-content gif-capture-content">
-            <span class="close gif-capture-close">&times;</span>
-            <div class="gif-capture-header">
-                <h3>🎬 拍攝GIF</h3>
-                <div class="gif-capture-status">
-                    <span id="gifStatus">準備拍攝</span>
-                    <span id="gifTimer">0.0s</span>
-                </div>
-            </div>
-            <div class="gif-capture-body">
-                <video id="gifCameraVideo" autoplay muted playsinline></video>
-                <canvas id="gifCaptureCanvas" style="display: none;"></canvas>
-                <div class="gif-preview-container" id="gifPreviewContainer" style="display: none;">
-                    <img id="gifPreviewImg" src="" alt="GIF預覽">
-                </div>
-                <div class="gif-controls">
-                    <button id="startGifBtn" class="gif-control-btn start-btn">🔴 開始錄製</button>
-                    <button id="stopGifBtn" class="gif-control-btn stop-btn" style="display: none;">⏹️ 停止錄製</button>
-                    <button id="retakeGifBtn" class="gif-control-btn retake-btn" style="display: none;">🔄 重新拍攝</button>
-                    <button id="saveGifBtn" class="gif-control-btn save-btn" style="display: none;">💾 儲存GIF</button>
-                </div>
-                <div class="gif-settings">
-                    <label for="gifDuration">錄製時長 (秒):</label>
-                    <input type="range" id="gifDuration" min="1" max="20" value="3" step="0.5">
-                    <span id="gifDurationValue">3.0s</span>
                 </div>
             </div>
         </div>
