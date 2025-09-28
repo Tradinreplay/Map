@@ -4557,7 +4557,7 @@ function focusMarker(markerId) {
 }
 
 // 通知系統
-function showNotification(message, type = 'success', duration = 4000) {
+function showNotification(message, type = 'success', duration = 1000) {
     // 移除現有的通知（避免重疊）
     const existingNotifications = document.querySelectorAll('.notification');
     existingNotifications.forEach(notification => {
@@ -4636,8 +4636,8 @@ function showAutoCloseNotification(message, type = 'info') {
     lastLocationNotificationTime = currentTime;
     lastLocationNotificationMessage = message;
     
-    // 使用現有的showNotification函數，設置3秒自動關閉
-    showNotification(message, type, 3000);
+    // 使用現有的showNotification函數，設置1秒自動關閉
+    showNotification(message, type, 1000);
 }
 
 // 群組按鈕提示管理
