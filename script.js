@@ -4895,7 +4895,8 @@ function saveData() {
             subgroupId: marker.subgroupId,
             color: marker.color,
             icon: marker.icon,
-            imageData: marker.imageData
+            imageData: marker.imageData,
+            routeRecords: marker.routeRecords || []
             // 不包含 leafletMarker 屬性
         }));
         
@@ -4967,8 +4968,8 @@ function loadData() {
             });
             
             // 重建標記
-            markers = data.markers.map(markerData => 
-                new Marker(
+            markers = data.markers.map(markerData => {
+                const marker = new Marker(
                     markerData.id,
                     markerData.name,
                     markerData.description,
@@ -4979,8 +4980,15 @@ function loadData() {
                     markerData.color || 'red',
                     markerData.icon || '📍',
                     markerData.imageData || null
-                )
-            );
+                );
+                
+                // 恢復路線記錄
+                if (markerData.routeRecords && Array.isArray(markerData.routeRecords)) {
+                    marker.routeRecords = markerData.routeRecords;
+                }
+                
+                return marker;
+            });
             
             // 重建關聯關係
             markers.forEach(marker => {
@@ -6073,11 +6081,6 @@ function performMergeImport(importData, comparison) {
                 newMarker.routeRecords = markerData.routeRecords;
             }
             
-            // 恢復路線記錄
-            if (markerData.routeRecords && Array.isArray(markerData.routeRecords)) {
-                newMarker.routeRecords = markerData.routeRecords;
-            }
-            
             markers.push(newMarker);
             targetGroup.addMarker(newMarker);
             
@@ -6144,6 +6147,11 @@ function performUpdateImport(importData, comparison) {
                 markerData.icon || '📍',
                 markerData.imageData || null
             );
+            
+            // 恢復路線記錄
+            if (markerData.routeRecords && Array.isArray(markerData.routeRecords)) {
+                newMarker.routeRecords = markerData.routeRecords;
+            }
             
             markers.push(newMarker);
             targetGroup.addMarker(newMarker);
