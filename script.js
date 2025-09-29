@@ -68,6 +68,17 @@ let routeLine = null; // 當前顯示的路徑線
 let routeDistance = 0; // 路徑總距離
 let routeInfoControl = null; // 路徑資訊控制項
 
+// 路線追蹤相關變數
+let isRecordingRoute = false; // 是否正在記錄路線
+let currentRouteData = null; // 當前記錄的路線數據
+let routeRecordingStartTime = null; // 路線記錄開始時間
+let displayedRoutes = new Map(); // 當前顯示在地圖上的路線 (routeId -> leaflet polyline)
+let routeRecordingInterval = null; // 路線記錄定時器
+
+// 螢幕恆亮相關變數
+let wakeLock = null; // 螢幕恆亮鎖定物件
+let isWakeLockEnabled = false; // 螢幕恆亮是否啟用
+
 // 資料結構
 class Group {
     constructor(id, name) {
@@ -124,6 +135,80 @@ class Marker {
         this.icon = icon;
         this.imageData = imageData; // base64編碼的圖片數據
         this.leafletMarker = null;
+        
+        // 路線記錄數據結構 - 支持最多10筆路線
+        this.routeRecords = []; // 存儲路線記錄的陣列
+        this.maxRoutes = 10; // 最大路線記錄數量
+    }
+    
+    // 添加新的路線記錄
+    addRoute(routeData) {
+        // 如果已達到最大數量，移除最舊的記錄
+        if (this.routeRecords.length >= this.maxRoutes) {
+            this.routeRecords.shift();
+        }
+        
+        // 生成隨機顏色
+        const randomColor = this.generateRandomColor();
+        
+        // 創建路線記錄對象
+        const route = {
+            id: Date.now() + Math.random(), // 唯一ID
+            name: routeData.name || `路線 ${this.routeRecords.length + 1}`,
+            color: randomColor,
+            coordinates: routeData.coordinates || [], // 座標點陣列 [{lat, lng, timestamp}]
+            distance: routeData.distance || 0, // 總距離（公尺）
+            duration: routeData.duration || 0, // 總時間（毫秒）
+            createdAt: new Date().toISOString(),
+            isActive: false // 是否為當前活動路線
+        };
+        
+        this.routeRecords.push(route);
+        return route;
+    }
+    
+    // 刪除指定路線
+    removeRoute(routeId) {
+        this.routeRecords = this.routeRecords.filter(route => route.id !== routeId);
+    }
+    
+    // 獲取所有路線
+    getRoutes() {
+        return this.routeRecords;
+    }
+    
+    // 獲取指定路線
+    getRoute(routeId) {
+        return this.routeRecords.find(route => route.id === routeId);
+    }
+    
+    // 設置活動路線
+    setActiveRoute(routeId) {
+        this.routeRecords.forEach(route => {
+            route.isActive = route.id === routeId;
+        });
+    }
+    
+    // 清除所有活動路線
+    clearActiveRoutes() {
+        this.routeRecords.forEach(route => {
+            route.isActive = false;
+        });
+    }
+    
+    // 生成隨機顏色
+    generateRandomColor() {
+        const colors = [
+            '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7',
+            '#DDA0DD', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9',
+            '#F8C471', '#82E0AA', '#F1948A', '#85C1E9', '#D7BDE2'
+        ];
+        return colors[Math.floor(Math.random() * colors.length)];
+    }
+    
+    // 檢查是否有路線記錄
+    hasRoutes() {
+        return this.routeRecords.length > 0;
     }
 }
 
@@ -167,6 +252,9 @@ function initializeApp() {
     
     // 初始化設定按鈕
     initSettingsButtons();
+    
+    // 初始化螢幕恆亮功能
+    initWakeLock();
     
     // 自動定位功能 - 在頁面載入時自動獲取當前位置（無論是否完成初始設定）
     setTimeout(() => {
@@ -956,6 +1044,10 @@ document.getElementById('createGroupForm').addEventListener('submit', handleCrea
                                     
                                     updateLocationDisplay();
                                     updateCurrentLocationMarker();
+                                    
+                                    // 更新路線記錄（如果正在記錄）
+                                    updateRouteRecording(currentPosition);
+                                    
                                     refreshAllMarkerPopups(); // 更新所有標記的提示窗距離顯示
                                     updateLocationStatus('追蹤中 (強制更新)');
                                 }
@@ -3072,6 +3164,8 @@ function setTrackingTarget(markerId) {
             stopRepeatedAlert(trackingTarget.id);
             // 清除之前追蹤目標的群組按鈕效果
             clearGroupButtonHighlight();
+            // 停止之前的路線記錄
+            stopRouteRecording();
         }
         
         trackingTarget = marker;
@@ -3083,6 +3177,11 @@ function setTrackingTarget(markerId) {
         // 顯示路徑線和距離資訊
         if (currentPosition) {
             showRouteLine();
+        }
+        
+        // 開始路線記錄
+        if (currentPosition) {
+            startRouteRecording(marker);
         }
         
         // 如果正在追蹤位置，開始距離檢查定時器
@@ -3107,6 +3206,9 @@ function clearTrackingTarget() {
         
         // 立即清除所有群組按鈕效果
         clearGroupButtonHighlight();
+        
+        // 停止路線記錄並保存
+        stopRouteRecording();
         
         // 清除追蹤目標
         trackingTarget = null;
@@ -3179,6 +3281,14 @@ function updateMarkerPopup(marker) {
     const trackingButton = isCurrentTarget 
         ? `<button onclick="clearTrackingTarget()" style="padding: 4px 8px; font-size: 12px; background-color: #ef4444; color: white;">取消追蹤</button>`
         : `<button onclick="setTrackingTarget('${marker.id}')" style="padding: 4px 8px; font-size: 12px;">追蹤</button>`;
+    
+    // 路線管理按鈕
+    let routeManagementButton = '';
+    if (marker.routeRecords && marker.routeRecords.length > 0) {
+        routeManagementButton = `<button onclick="showRouteManagement('${marker.id}')" style="padding: 4px 8px; font-size: 12px; background-color: #2196F3; color: white;">路線管理 (${marker.routeRecords.length})</button>`;
+    } else {
+        routeManagementButton = `<button onclick="showDefaultRoute('${marker.id}')" style="padding: 4px 8px; font-size: 12px; background-color: #ff9800; color: white;">顯示預設路線</button>`;
+    }
     
     // 多張圖片顯示
     let imageDisplay = '';
@@ -3284,6 +3394,7 @@ function updateMarkerPopup(marker) {
             <div style="display: flex; gap: 5px; justify-content: center; flex-wrap: wrap;">
                 <button onclick="editMarker('${marker.id}')" style="padding: 4px 8px; font-size: 12px;">編輯</button>
                 ${trackingButton}
+                ${routeManagementButton}
                 <button onclick="showOnlyThisMarker('${marker.id}')" style="padding: 4px 8px; font-size: 12px;">只顯示</button>
             </div>
         </div>
@@ -3473,6 +3584,9 @@ function startTracking() {
                 updateLocationDisplay();
                             updateCurrentLocationMarker();
                             
+                            // 更新路線記錄（如果正在記錄）
+                            updateRouteRecording(currentPosition);
+                            
                             // 如果啟用保持地圖居中，強制居中到當前位置
                             if (keepMapCentered) {
                                 centerMapToCurrentPosition(true);
@@ -3565,6 +3679,9 @@ function startTracking() {
                             
                             updateLocationDisplay();
                             updateCurrentLocationMarker();
+                            
+                            // 更新路線記錄（如果正在記錄）
+                            updateRouteRecording(currentPosition);
                             
                             // 如果啟用保持地圖居中，強制居中到當前位置
                             if (keepMapCentered) {
@@ -5328,7 +5445,8 @@ async function exportMarkerData() {
                 subgroupId: marker.subgroupId,
                 color: marker.color || 'red',
                 icon: marker.icon || '📍',
-                imageData: compressedImageData
+                imageData: compressedImageData,
+                routeRecords: marker.routeRecords || []
             };
         }));
         
@@ -5386,9 +5504,22 @@ async function exportMarkerData() {
         
         const markerCount = markersToExport.length;
         const groupCount = groupsToExport.length;
+        
+        // 計算路線記錄統計
+        let totalRoutes = 0;
+        let markersWithRoutes = 0;
+        markersToExport.forEach(marker => {
+            if (marker.routeRecords && marker.routeRecords.length > 0) {
+                totalRoutes += marker.routeRecords.length;
+                markersWithRoutes++;
+            }
+        });
+        
         const timestamp = new Date().toLocaleString('zh-TW');
+        const routeInfo = totalRoutes > 0 ? `\n路線記錄：${totalRoutes} 條 (${markersWithRoutes} 個標註點)` : '';
+        
         showNotification(
-            `📤 資料匯出成功！\n檔案：${filename}\n時間：${timestamp}\n包含：${markerCount} 個標註點，${groupCount} 個群組`, 
+            `📤 資料匯出成功！\n檔案：${filename}\n時間：${timestamp}\n包含：${markerCount} 個標註點，${groupCount} 個群組${routeInfo}`, 
             'success', 
             6000
         );
@@ -5470,8 +5601,8 @@ function performDirectImport(importData) {
     });
     
     // 重建標註點
-    markers = importData.markers.map(markerData => 
-        new Marker(
+    markers = importData.markers.map(markerData => {
+        const marker = new Marker(
             markerData.id,
             markerData.name,
             markerData.description,
@@ -5482,8 +5613,15 @@ function performDirectImport(importData) {
             markerData.color || 'red',
             markerData.icon || '📍',
             markerData.imageData || null
-        )
-    );
+        );
+        
+        // 恢復路線記錄
+        if (markerData.routeRecords && Array.isArray(markerData.routeRecords)) {
+            marker.routeRecords = markerData.routeRecords;
+        }
+        
+        return marker;
+    });
     
     // 將標註點加入對應的群組和子群組
     markers.forEach(marker => {
@@ -5527,9 +5665,21 @@ function performDirectImport(importData) {
     const importDate = importData.exportDate ? 
         new Date(importData.exportDate).toLocaleString('zh-TW') : '未知';
     
+    // 計算路線記錄統計
+    let totalRoutes = 0;
+    let markersWithRoutes = 0;
+    importData.markers.forEach(markerData => {
+        if (markerData.routeRecords && markerData.routeRecords.length > 0) {
+            totalRoutes += markerData.routeRecords.length;
+            markersWithRoutes++;
+        }
+    });
+    
+    const routeInfo = totalRoutes > 0 ? `\n路線記錄：${totalRoutes} 條 (${markersWithRoutes} 個標註點)` : '';
+    
     showNotification(
-        `資料匯入成功！\n` +
-        `包含 ${markerCount} 個標註點，${groupCount} 個群組\n` +
+        `📥 資料匯入成功！\n` +
+        `包含 ${markerCount} 個標註點，${groupCount} 個群組${routeInfo}\n` +
         `(匯出時間: ${importDate})`, 
         'success'
     );
@@ -5800,8 +5950,21 @@ function handleImportOption(option) {
             // 只增加新的標註點
             performMergeImport(importData, comparison);
             const mergeTimestamp = new Date().toLocaleString('zh-TW');
+            
+            // 計算新增標註點的路線記錄統計
+            let newRoutes = 0;
+            let newMarkersWithRoutes = 0;
+            comparison.newMarkers.forEach(markerData => {
+                if (markerData.routeRecords && markerData.routeRecords.length > 0) {
+                    newRoutes += markerData.routeRecords.length;
+                    newMarkersWithRoutes++;
+                }
+            });
+            
+            const newRouteInfo = newRoutes > 0 ? `\n新增路線記錄：${newRoutes} 條 (${newMarkersWithRoutes} 個標註點)` : '';
+            
             showNotification(
-                `📥 資料合併匯入成功！\n時間：${mergeTimestamp}\n新增：${comparison.newMarkers.length} 個標註點\n原有資料保持不變`, 
+                `📥 資料合併匯入成功！\n時間：${mergeTimestamp}\n新增：${comparison.newMarkers.length} 個標註點${newRouteInfo}\n原有資料保持不變`, 
                 'success', 
                 6000
             );
@@ -5810,9 +5973,34 @@ function handleImportOption(option) {
         case 'update':
             // 更新重複的，增加新的
             performUpdateImport(importData, comparison);
+            
+            // 計算路線記錄統計
+            let updatedRoutes = 0;
+            let updatedMarkersWithRoutes = 0;
+            let updateNewRoutes = 0;
+            let updateNewMarkersWithRoutes = 0;
+            
+            comparison.duplicateMarkers.forEach(markerData => {
+                if (markerData.routeRecords && markerData.routeRecords.length > 0) {
+                    updatedRoutes += markerData.routeRecords.length;
+                    updatedMarkersWithRoutes++;
+                }
+            });
+            
+            comparison.newMarkers.forEach(markerData => {
+                if (markerData.routeRecords && markerData.routeRecords.length > 0) {
+                    updateNewRoutes += markerData.routeRecords.length;
+                    updateNewMarkersWithRoutes++;
+                }
+            });
+            
+            const routeUpdateInfo = updatedRoutes > 0 ? `\n更新路線記錄：${updatedRoutes} 條 (${updatedMarkersWithRoutes} 個標註點)` : '';
+            const routeNewInfo = updateNewRoutes > 0 ? `\n新增路線記錄：${updateNewRoutes} 條 (${updateNewMarkersWithRoutes} 個標註點)` : '';
+            
             showNotification(
-                `已更新 ${comparison.duplicateMarkers.length} 個重複標註點，新增 ${comparison.newMarkers.length} 個新標註點`, 
-                'success'
+                `📥 資料更新匯入成功！\n已更新 ${comparison.duplicateMarkers.length} 個重複標註點，新增 ${comparison.newMarkers.length} 個新標註點${routeUpdateInfo}${routeNewInfo}`, 
+                'success',
+                6000
             );
             break;
     }
@@ -5879,6 +6067,16 @@ function performMergeImport(importData, comparison) {
                 markerData.icon || '📍',
                 markerData.imageData || null
             );
+            
+            // 恢復路線記錄
+            if (markerData.routeRecords && Array.isArray(markerData.routeRecords)) {
+                newMarker.routeRecords = markerData.routeRecords;
+            }
+            
+            // 恢復路線記錄
+            if (markerData.routeRecords && Array.isArray(markerData.routeRecords)) {
+                newMarker.routeRecords = markerData.routeRecords;
+            }
             
             markers.push(newMarker);
             targetGroup.addMarker(newMarker);
@@ -5972,6 +6170,32 @@ function performUpdateImport(importData, comparison) {
         existingMarker.icon = importMarker.icon || existingMarker.icon;
         if (importMarker.imageData) {
             existingMarker.imageData = importMarker.imageData;
+        }
+        
+        // 合併路線記錄
+        if (importMarker.routeRecords && Array.isArray(importMarker.routeRecords)) {
+            if (!existingMarker.routeRecords) {
+                existingMarker.routeRecords = [];
+            }
+            
+            // 合併路線記錄，避免重複
+            importMarker.routeRecords.forEach(importRoute => {
+                // 檢查是否已存在相同的路線記錄（基於創建時間和距離）
+                const isDuplicate = existingMarker.routeRecords.some(existingRoute => {
+                    return existingRoute.createdAt === importRoute.createdAt && 
+                           Math.abs(existingRoute.distance - importRoute.distance) < 10; // 10公尺誤差
+                });
+                
+                if (!isDuplicate) {
+                    existingMarker.routeRecords.push(importRoute);
+                }
+            });
+            
+            // 限制路線記錄數量，保留最新的10條
+            if (existingMarker.routeRecords.length > 10) {
+                existingMarker.routeRecords.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+                existingMarker.routeRecords = existingMarker.routeRecords.slice(0, 10);
+            }
         }
     });
     
@@ -6643,6 +6867,10 @@ function initFloatingSettingsEventListeners() {
                                     
                                     updateLocationDisplay();
                                     updateCurrentLocationMarker();
+                                    
+                                    // 更新路線記錄（如果正在記錄）
+                                    updateRouteRecording(currentPosition);
+                                    
                                     refreshAllMarkerPopups(); // 更新所有標記的提示窗距離顯示
                                     updateLocationStatus('追蹤中 (強制更新)');
                                 }
@@ -6715,6 +6943,10 @@ function initFloatingSettingsEventListeners() {
                                     
                                     updateLocationDisplay();
                                     updateCurrentLocationMarker();
+                                    
+                                    // 更新路線記錄（如果正在記錄）
+                                    updateRouteRecording(currentPosition);
+                                    
                                     refreshAllMarkerPopups(); // 更新所有標記的提示窗距離顯示
                                     updateLocationStatus('追蹤中 (強制更新)');
                                 }
@@ -7456,6 +7688,589 @@ document.addEventListener('DOMContentLoaded', function() {
     initHelpButton();
 });
 
+// ==================== 路線記錄功能 ====================
+
+// 開始路線記錄
+function startRouteRecording(targetMarker) {
+    if (isRecordingRoute) {
+        stopRouteRecording();
+    }
+    
+    if (!currentPosition || !targetMarker) {
+        console.warn('無法開始路線記錄：缺少當前位置或目標標記');
+        return;
+    }
+    
+    isRecordingRoute = true;
+    routeRecordingStartTime = Date.now();
+    
+    // 初始化路線數據
+    currentRouteData = {
+        targetMarkerId: targetMarker.id,
+        coordinates: [{
+            lat: currentPosition.lat,
+            lng: currentPosition.lng,
+            timestamp: Date.now()
+        }],
+        distance: 0,
+        startTime: routeRecordingStartTime
+    };
+    
+    // 創建藍色實體線顯示當前記錄的路線
+    const routePolyline = L.polyline([[currentPosition.lat, currentPosition.lng]], {
+        color: '#007AFF', // 藍色
+        weight: 4,
+        opacity: 0.8,
+        smoothFactor: 1
+    }).addTo(map);
+    
+    // 存儲當前記錄路線的引用
+    currentRouteData.polyline = routePolyline;
+    
+    console.log(`開始記錄到 "${targetMarker.name}" 的路線`);
+    showNotification(`🔵 開始記錄路線到 "${targetMarker.name}"`, 'info');
+}
+
+// 停止路線記錄並保存
+function stopRouteRecording() {
+    if (!isRecordingRoute || !currentRouteData) {
+        return;
+    }
+    
+    isRecordingRoute = false;
+    
+    // 計算總時間
+    const totalDuration = Date.now() - routeRecordingStartTime;
+    
+    // 移除當前記錄路線的顯示
+    if (currentRouteData.polyline) {
+        map.removeLayer(currentRouteData.polyline);
+    }
+    
+    // 如果路線有足夠的點數，保存到目標標記
+    if (currentRouteData.coordinates.length >= 2) {
+        const targetMarker = markers.find(m => m.id === currentRouteData.targetMarkerId);
+        if (targetMarker) {
+            // 創建路線記錄
+            const routeRecord = {
+                name: `路線 ${new Date().toLocaleString()}`,
+                coordinates: currentRouteData.coordinates,
+                distance: currentRouteData.distance,
+                duration: totalDuration,
+                color: generateRandomColor(),
+                createdAt: Date.now()
+            };
+            
+            // 確保標記有 routeRecords 陣列
+            if (!targetMarker.routeRecords) {
+                targetMarker.routeRecords = [];
+            }
+            
+            // 檢查是否超過最大記錄數量
+            if (targetMarker.routeRecords.length >= 10) {
+                // 移除最舊的記錄
+                targetMarker.routeRecords.shift();
+            }
+            
+            // 添加新記錄
+            targetMarker.routeRecords.push(routeRecord);
+            
+            console.log(`路線記錄已保存到 "${targetMarker.name}"`);
+            showNotification(`✅ 路線已保存到 "${targetMarker.name}"`, 'success');
+            
+            // 保存數據到本地存儲
+            saveMarkersToStorage();
+        }
+    }
+    
+    // 清理
+    currentRouteData = null;
+    routeRecordingStartTime = null;
+}
+
+// 生成隨機顏色
+function generateRandomColor() {
+    const colors = [
+        '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7',
+        '#DDA0DD', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9',
+        '#F8C471', '#82E0AA', '#F1948A', '#85C1E9', '#D7BDE2',
+        '#A3E4D7', '#F9E79F', '#D5A6BD', '#AED6F1', '#A9DFBF'
+    ];
+    return colors[Math.floor(Math.random() * colors.length)];
+}
+
+// 更新路線記錄（在位置更新時調用）
+function updateRouteRecording(newPosition) {
+    if (!isRecordingRoute || !currentRouteData || !newPosition) {
+        return;
+    }
+    
+    const lastCoordinate = currentRouteData.coordinates[currentRouteData.coordinates.length - 1];
+    
+    // 計算與上一個點的距離
+    const distance = calculateDistance(
+        lastCoordinate.lat, lastCoordinate.lng,
+        newPosition.lat, newPosition.lng
+    );
+    
+    // 只有當移動距離超過5公尺時才記錄新點（避免記錄過多細微移動）
+    if (distance > 5) {
+        // 添加新座標點
+        currentRouteData.coordinates.push({
+            lat: newPosition.lat,
+            lng: newPosition.lng,
+            timestamp: Date.now()
+        });
+        
+        // 更新總距離
+        currentRouteData.distance += distance;
+        
+        // 更新藍色路線顯示
+        if (currentRouteData.polyline) {
+            const latLngs = currentRouteData.coordinates.map(coord => [coord.lat, coord.lng]);
+            currentRouteData.polyline.setLatLngs(latLngs);
+        }
+    }
+}
+
+// 顯示標記的路線記錄
+function displayMarkerRoutes(marker, routeIds = null) {
+    if (!marker || !marker.hasRoutes()) {
+        return;
+    }
+    
+    const routes = routeIds ? 
+        routeIds.map(id => marker.getRoute(id)).filter(r => r) : 
+        marker.getRoutes();
+    
+    routes.forEach(route => {
+        if (route.coordinates.length >= 2) {
+            const latLngs = route.coordinates.map(coord => [coord.lat, coord.lng]);
+            const polyline = L.polyline(latLngs, {
+                color: route.color,
+                weight: 3,
+                opacity: 0.7,
+                smoothFactor: 1
+            }).addTo(map);
+            
+            // 添加路線信息彈出框
+            const routeInfo = `
+                <div style="font-size: 12px;">
+                    <strong>${route.name}</strong><br>
+                    距離: ${(route.distance / 1000).toFixed(2)} km<br>
+                    時間: ${formatDuration(route.duration)}<br>
+                    建立: ${new Date(route.createdAt).toLocaleString()}
+                </div>
+            `;
+            polyline.bindPopup(routeInfo);
+            
+            // 存儲顯示的路線引用
+            displayedRoutes.set(route.id, polyline);
+        }
+    });
+}
+
+// 隱藏標記的路線記錄
+function hideMarkerRoutes(marker, routeIds = null) {
+    if (!marker) {
+        return;
+    }
+    
+    const routes = routeIds ? 
+        routeIds.map(id => marker.getRoute(id)).filter(r => r) : 
+        marker.getRoutes();
+    
+    routes.forEach(route => {
+        const polyline = displayedRoutes.get(route.id);
+        if (polyline) {
+            map.removeLayer(polyline);
+            displayedRoutes.delete(route.id);
+        }
+    });
+}
+
+// 格式化時間長度
+function formatDuration(milliseconds) {
+    const seconds = Math.floor(milliseconds / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+    
+    if (hours > 0) {
+        return `${hours}時${minutes % 60}分`;
+    } else if (minutes > 0) {
+        return `${minutes}分${seconds % 60}秒`;
+    } else {
+        return `${seconds}秒`;
+    }
+}
+
 // 將幫助功能暴露到全域
 window.showHelpModal = showHelpModal;
 window.hideHelpModal = hideHelpModal;
+
+// 路線管理功能
+function showRouteManagement(markerId) {
+    const marker = markers.find(m => m.id === markerId);
+    if (!marker || !marker.routeRecords || marker.routeRecords.length === 0) {
+        alert('此標記沒有記錄的路線');
+        return;
+    }
+    
+    // 創建路線管理模態框
+    const modal = document.createElement('div');
+    modal.id = 'routeManagementModal';
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 10000;
+    `;
+    
+    const modalContent = document.createElement('div');
+    modalContent.style.cssText = `
+        background: white;
+        border-radius: 8px;
+        padding: 20px;
+        max-width: 500px;
+        max-height: 80vh;
+        overflow-y: auto;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    `;
+    
+    let routeListHtml = `
+        <h3 style="margin-top: 0; text-align: center; color: #333;">
+            ${marker.icon} ${marker.name} - 路線管理
+        </h3>
+        <div style="margin-bottom: 15px; text-align: center;">
+            <button onclick="startNewRouteRecording('${markerId}')" 
+                    style="padding: 8px 16px; background-color: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                新增路線記錄
+            </button>
+        </div>
+        <div style="border-top: 1px solid #eee; padding-top: 15px;">
+    `;
+    
+    marker.routeRecords.forEach((route, index) => {
+        const distance = (route.distance / 1000).toFixed(2);
+        const duration = formatDuration(route.duration);
+        const createdAt = new Date(route.createdAt).toLocaleString();
+        
+        routeListHtml += `
+            <div style="border: 1px solid #ddd; border-radius: 6px; padding: 12px; margin-bottom: 10px; background-color: #f9f9f9;">
+                <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                    <div style="width: 20px; height: 20px; background-color: ${route.color}; border-radius: 50%; margin-right: 10px;"></div>
+                    <strong style="color: #333;">路線 ${index + 1}</strong>
+                </div>
+                <div style="font-size: 12px; color: #666; margin-bottom: 8px;">
+                    距離: ${distance} km | 時間: ${duration}<br>
+                    建立時間: ${createdAt}
+                </div>
+                <div style="display: flex; gap: 5px; flex-wrap: wrap;">
+                    <button onclick="displayRoute('${markerId}', ${index})" 
+                            style="padding: 4px 8px; font-size: 11px; background-color: #2196F3; color: white; border: none; border-radius: 3px; cursor: pointer;">
+                        顯示
+                    </button>
+                    <button onclick="hideRoute('${markerId}', ${index})" 
+                            style="padding: 4px 8px; font-size: 11px; background-color: #757575; color: white; border: none; border-radius: 3px; cursor: pointer;">
+                        隱藏
+                    </button>
+                    <button onclick="useRoute('${markerId}', ${index})" 
+                            style="padding: 4px 8px; font-size: 11px; background-color: #FF9800; color: white; border: none; border-radius: 3px; cursor: pointer;">
+                        使用
+                    </button>
+                    <button onclick="deleteRoute('${markerId}', ${index})" 
+                            style="padding: 4px 8px; font-size: 11px; background-color: #f44336; color: white; border: none; border-radius: 3px; cursor: pointer;">
+                        刪除
+                    </button>
+                </div>
+            </div>
+        `;
+    });
+    
+    routeListHtml += `
+        </div>
+        <div style="text-align: center; margin-top: 15px; border-top: 1px solid #eee; padding-top: 15px;">
+            <button onclick="closeRouteManagement()" 
+                    style="padding: 8px 16px; background-color: #757575; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                關閉
+            </button>
+        </div>
+    `;
+    
+    modalContent.innerHTML = routeListHtml;
+    modal.appendChild(modalContent);
+    document.body.appendChild(modal);
+}
+
+// 顯示預設路線（紅色虛線）
+function showDefaultRoute(markerId) {
+    const marker = markers.find(m => m.id === markerId);
+    if (!marker || !currentPosition) {
+        alert('無法顯示預設路線：找不到標記或當前位置');
+        return;
+    }
+    
+    // 移除之前的預設路線
+    if (window.defaultRouteLine) {
+        map.removeLayer(window.defaultRouteLine);
+    }
+    
+    // 創建紅色虛線路線
+    const latLngs = [
+        [currentPosition.lat, currentPosition.lng],
+        [marker.lat, marker.lng]
+    ];
+    
+    window.defaultRouteLine = L.polyline(latLngs, {
+        color: '#ff0000',
+        weight: 3,
+        opacity: 0.7,
+        dashArray: '10, 10'
+    }).addTo(map);
+    
+    // 添加路線信息
+    const distance = calculateDistance(currentPosition.lat, currentPosition.lng, marker.lat, marker.lng);
+    const routeInfo = `
+        <div style="font-size: 12px;">
+            <strong>預設路線</strong><br>
+            目標: ${marker.name}<br>
+            直線距離: ${distance < 1000 ? Math.round(distance) + '公尺' : (distance / 1000).toFixed(2) + '公里'}
+        </div>
+    `;
+    window.defaultRouteLine.bindPopup(routeInfo);
+    
+    // 3秒後自動隱藏
+    setTimeout(() => {
+        if (window.defaultRouteLine) {
+            map.removeLayer(window.defaultRouteLine);
+            window.defaultRouteLine = null;
+        }
+    }, 3000);
+}
+
+// 關閉路線管理模態框
+function closeRouteManagement() {
+    const modal = document.getElementById('routeManagementModal');
+    if (modal) {
+        modal.remove();
+    }
+}
+
+// 開始新的路線記錄
+function startNewRouteRecording(markerId) {
+    const marker = markers.find(m => m.id === markerId);
+    if (!marker) {
+        alert('找不到指定的標記');
+        return;
+    }
+    
+    // 檢查是否已達到最大路線數量
+    if (marker.routeRecords && marker.routeRecords.length >= 10) {
+        alert('此標記已達到最大路線記錄數量（10條）');
+        return;
+    }
+    
+    // 設置追蹤目標並開始記錄
+    setTrackingTarget(markerId);
+    closeRouteManagement();
+    alert('開始記錄新路線，請移動以記錄路徑');
+}
+
+// 顯示指定路線
+function displayRoute(markerId, routeIndex) {
+    const marker = markers.find(m => m.id === markerId);
+    if (!marker || !marker.routeRecords || !marker.routeRecords[routeIndex]) {
+        alert('找不到指定的路線');
+        return;
+    }
+    
+    const route = marker.routeRecords[routeIndex];
+    const routeId = `${markerId}_${routeIndex}`;
+    
+    // 移除之前顯示的此路線
+    if (window.displayedRouteLines && window.displayedRouteLines[routeId]) {
+        map.removeLayer(window.displayedRouteLines[routeId]);
+    }
+    
+    if (!window.displayedRouteLines) {
+        window.displayedRouteLines = {};
+    }
+    
+    // 創建路線
+    const latLngs = route.coordinates.map(coord => [coord.lat, coord.lng]);
+    const polyline = L.polyline(latLngs, {
+        color: route.color,
+        weight: 4,
+        opacity: 0.8,
+        smoothFactor: 1
+    }).addTo(map);
+    
+    // 添加路線信息
+    const distance = (route.distance / 1000).toFixed(2);
+    const duration = formatDuration(route.duration);
+    const routeInfo = `
+        <div style="font-size: 12px;">
+            <strong>路線 ${routeIndex + 1}</strong><br>
+            距離: ${distance} km<br>
+            時間: ${duration}<br>
+            建立: ${new Date(route.createdAt).toLocaleString()}
+        </div>
+    `;
+    polyline.bindPopup(routeInfo);
+    
+    window.displayedRouteLines[routeId] = polyline;
+}
+
+// 隱藏指定路線
+function hideRoute(markerId, routeIndex) {
+    const routeId = `${markerId}_${routeIndex}`;
+    
+    if (window.displayedRouteLines && window.displayedRouteLines[routeId]) {
+        map.removeLayer(window.displayedRouteLines[routeId]);
+        delete window.displayedRouteLines[routeId];
+    }
+}
+
+// 使用指定路線進行導航
+function useRoute(markerId, routeIndex) {
+    const marker = markers.find(m => m.id === markerId);
+    if (!marker || !marker.routeRecords || !marker.routeRecords[routeIndex]) {
+        alert('找不到指定的路線');
+        return;
+    }
+    
+    const route = marker.routeRecords[routeIndex];
+    
+    // 顯示路線
+    displayRoute(markerId, routeIndex);
+    
+    // 設置追蹤目標
+    setTrackingTarget(markerId);
+    
+    // 關閉模態框
+    closeRouteManagement();
+    
+    alert(`開始使用路線 ${routeIndex + 1} 進行導航`);
+}
+
+// 刪除指定路線
+function deleteRoute(markerId, routeIndex) {
+    const marker = markers.find(m => m.id === markerId);
+    if (!marker || !marker.routeRecords || !marker.routeRecords[routeIndex]) {
+        alert('找不到指定的路線');
+        return;
+    }
+    
+    if (confirm(`確定要刪除路線 ${routeIndex + 1} 嗎？此操作無法復原。`)) {
+        // 先隱藏路線
+        hideRoute(markerId, routeIndex);
+        
+        // 從記錄中刪除
+        marker.routeRecords.splice(routeIndex, 1);
+        
+        // 保存到本地存儲
+        saveMarkersToStorage();
+        
+        // 重新打開路線管理界面
+        closeRouteManagement();
+        setTimeout(() => {
+            if (marker.routeRecords.length > 0) {
+                showRouteManagement(markerId);
+            } else {
+                alert('所有路線已刪除');
+            }
+        }, 100);
+    }
+}
+
+// ==================== 螢幕恆亮功能 ====================
+
+// 初始化螢幕恆亮功能
+async function initWakeLock() {
+    // 檢查瀏覽器是否支援 Screen Wake Lock API
+    if ('wakeLock' in navigator) {
+        try {
+            // 自動啟用螢幕恆亮
+            await requestWakeLock();
+            console.log('螢幕恆亮功能已初始化');
+        } catch (error) {
+            console.warn('無法啟用螢幕恆亮:', error);
+            showNotification('⚠️ 螢幕恆亮功能不可用', 'warning');
+        }
+    } else {
+        console.warn('此瀏覽器不支援螢幕恆亮功能');
+        showNotification('⚠️ 此瀏覽器不支援螢幕恆亮功能', 'warning');
+    }
+    
+    // 監聽頁面可見性變化
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+}
+
+// 請求螢幕恆亮
+async function requestWakeLock() {
+    if ('wakeLock' in navigator && !wakeLock) {
+        try {
+            wakeLock = await navigator.wakeLock.request('screen');
+            isWakeLockEnabled = true;
+            
+            wakeLock.addEventListener('release', () => {
+                console.log('螢幕恆亮已釋放');
+                isWakeLockEnabled = false;
+                wakeLock = null;
+            });
+            
+            console.log('螢幕恆亮已啟用');
+            showNotification('🔆 螢幕恆亮已啟用', 'success');
+            
+        } catch (error) {
+            console.error('無法啟用螢幕恆亮:', error);
+            throw error;
+        }
+    }
+}
+
+// 釋放螢幕恆亮
+async function releaseWakeLock() {
+    if (wakeLock) {
+        try {
+            await wakeLock.release();
+            wakeLock = null;
+            isWakeLockEnabled = false;
+            console.log('螢幕恆亮已手動釋放');
+            showNotification('🌙 螢幕恆亮已關閉', 'info');
+        } catch (error) {
+            console.error('釋放螢幕恆亮時發生錯誤:', error);
+        }
+    }
+}
+
+// 處理頁面可見性變化
+async function handleVisibilityChange() {
+    if (document.visibilityState === 'visible' && !wakeLock && isWakeLockEnabled) {
+        // 頁面重新可見時，重新啟用螢幕恆亮
+        try {
+            await requestWakeLock();
+        } catch (error) {
+            console.warn('重新啟用螢幕恆亮失敗:', error);
+        }
+    }
+}
+
+// 切換螢幕恆亮狀態
+async function toggleWakeLock() {
+    if (wakeLock) {
+        await releaseWakeLock();
+    } else {
+        try {
+            await requestWakeLock();
+        } catch (error) {
+            showNotification('❌ 無法啟用螢幕恆亮', 'error');
+        }
+    }
+}
