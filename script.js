@@ -48,6 +48,36 @@ let markersInRange = new Set(); // 記錄當前在範圍內的標註點
 let trackingTarget = null; // 當前追蹤的目標標註點
 let currentFilter = null; // 當前過濾設定 { type: 'marker'|'group'|'subgroup', id: string }
 
+// 調試：監控 displayedRouteLines 的變化
+let originalDisplayedRouteLines = null;
+function setupRouteLineMonitoring() {
+    // 創建一個代理來監控 displayedRouteLines 的變化
+    if (typeof window.displayedRouteLines === 'undefined') {
+        window.displayedRouteLines = {};
+    }
+    
+    const handler = {
+        set(target, property, value) {
+            console.log(`displayedRouteLines 變化: ${property} = `, value);
+            console.trace('變化來源:');
+            target[property] = value;
+            return true;
+        },
+        deleteProperty(target, property) {
+            console.log(`displayedRouteLines 刪除: ${property}`);
+            console.trace('刪除來源:');
+            delete target[property];
+            return true;
+        }
+    };
+    
+    // 如果還沒有設置代理，則設置
+    if (!originalDisplayedRouteLines) {
+        originalDisplayedRouteLines = window.displayedRouteLines;
+        window.displayedRouteLines = new Proxy(window.displayedRouteLines, handler);
+    }
+}
+
 // 即時定位設定
 let enableHighAccuracy = true; // 高精度模式
 let autoStartTracking = true; // 自動開始追蹤（修改為預設開啟）
@@ -3325,12 +3355,79 @@ function updateMarkerPopup(marker) {
         ? `<button onclick="clearTrackingTarget()" style="padding: 4px 8px; font-size: 12px; background-color: #ef4444; color: white;">取消追蹤</button>`
         : `<button onclick="setTrackingTarget('${marker.id}')" style="padding: 4px 8px; font-size: 12px;">追蹤</button>`;
     
-    // 路線管理按鈕
-    let routeManagementButton = '';
+    // 路線管理區域
+    let routeManagementSection = '';
     if (marker.routeRecords && marker.routeRecords.length > 0) {
-        routeManagementButton = `<button onclick="showRouteManagement('${marker.id}')" style="padding: 4px 8px; font-size: 12px; background-color: #2196F3; color: white;">路線管理 (${marker.routeRecords.length})</button>`;
+        // 生成路線列表
+        let routeListHtml = '';
+        marker.routeRecords.forEach((route, index) => {
+            const distance = (route.distance / 1000).toFixed(2);
+            const duration = formatDuration(route.duration);
+            const routeId = `${marker.id}_${index}`;
+            const isDisplayed = window.displayedRouteLines && window.displayedRouteLines[routeId];
+            
+            routeListHtml += `
+                <div style="border: 1px solid #ddd; border-radius: 4px; padding: 8px; margin: 4px 0; background-color: #f9f9f9; font-size: 11px;">
+                    <div style="display: flex; align-items: center; margin-bottom: 4px;">
+                        <div style="width: 12px; height: 12px; background-color: ${route.color}; border-radius: 50%; margin-right: 6px;"></div>
+                        <strong>路線 ${index + 1}</strong>
+                    </div>
+                    <div style="color: #666; margin-bottom: 6px;">
+                        ${distance} km | ${duration}
+                    </div>
+                    <div style="display: flex; gap: 3px; flex-wrap: wrap;">
+                        ${isDisplayed ? 
+                            `<button onclick="hideRoute('${marker.id}', ${index}); updateMarkerPopup(markers.find(m => m.id === '${marker.id}'))" 
+                                     style="padding: 2px 6px; font-size: 10px; background-color: #757575; color: white; border: none; border-radius: 2px; cursor: pointer;">
+                                隱藏
+                             </button>` :
+                            `<button onclick="displayRoute('${marker.id}', ${index}); updateMarkerPopup(markers.find(m => m.id === '${marker.id}'))" 
+                                     style="padding: 2px 6px; font-size: 10px; background-color: #2196F3; color: white; border: none; border-radius: 2px; cursor: pointer;">
+                                顯示
+                             </button>`
+                        }
+                        <button onclick="useRoute('${marker.id}', ${index})" 
+                                style="padding: 2px 6px; font-size: 10px; background-color: #FF9800; color: white; border: none; border-radius: 2px; cursor: pointer;">
+                            使用
+                        </button>
+                        <button onclick="deleteRoute('${marker.id}', ${index}); updateMarkerPopup(markers.find(m => m.id === '${marker.id}'))" 
+                                style="padding: 2px 6px; font-size: 10px; background-color: #f44336; color: white; border: none; border-radius: 2px; cursor: pointer;">
+                            刪除
+                        </button>
+                    </div>
+                </div>
+            `;
+        });
+        
+        routeManagementSection = `
+            <div style="margin: 8px 0; border-top: 1px solid #eee; padding-top: 8px;">
+                <div style="font-size: 12px; font-weight: bold; margin-bottom: 6px; color: #333;">路線記錄 (${marker.routeRecords.length})</div>
+                ${routeListHtml}
+                <div style="text-align: center; margin-top: 6px;">
+                    <button onclick="startNewRouteRecording('${marker.id}')" 
+                            style="padding: 4px 8px; font-size: 11px; background-color: #4CAF50; color: white; border: none; border-radius: 3px; cursor: pointer;">
+                        新增路線記錄
+                    </button>
+                    <button onclick="showRouteManagement('${marker.id}')" 
+                            style="padding: 4px 8px; font-size: 11px; background-color: #2196F3; color: white; border: none; border-radius: 3px; cursor: pointer; margin-left: 4px;">
+                        詳細管理
+                    </button>
+                </div>
+            </div>
+        `;
     } else {
-        routeManagementButton = `<button onclick="showDefaultRoute('${marker.id}')" style="padding: 4px 8px; font-size: 12px; background-color: #ff9800; color: white;">顯示預設路線</button>`;
+        routeManagementSection = `
+            <div style="margin: 8px 0; border-top: 1px solid #eee; padding-top: 8px; text-align: center;">
+                <button onclick="showDefaultRoute('${marker.id}')" 
+                        style="padding: 4px 8px; font-size: 11px; background-color: #ff9800; color: white; border: none; border-radius: 3px; cursor: pointer;">
+                    顯示預設路線
+                </button>
+                <button onclick="startNewRouteRecording('${marker.id}')" 
+                        style="padding: 4px 8px; font-size: 11px; background-color: #4CAF50; color: white; border: none; border-radius: 3px; cursor: pointer; margin-left: 4px;">
+                    新增路線記錄
+                </button>
+            </div>
+        `;
     }
     
     // 多張圖片顯示
@@ -3427,7 +3524,7 @@ function updateMarkerPopup(marker) {
     }
     
     const popupContent = `
-        <div style="text-align: center; min-width: 200px;">
+        <div style="text-align: center; min-width: 200px; max-width: 300px;">
             <div style="font-size: 18px; margin-bottom: 8px;">${marker.icon} <strong>${marker.name}</strong></div>
             ${marker.description ? `<div style="font-size: 14px; color: #333; margin-bottom: 8px; text-align: left; padding: 0 10px;">${marker.description}</div>` : ''}
             ${imageDisplay}
@@ -3437,9 +3534,9 @@ function updateMarkerPopup(marker) {
             <div style="display: flex; gap: 5px; justify-content: center; flex-wrap: wrap;">
                 <button onclick="editMarker('${marker.id}')" style="padding: 4px 8px; font-size: 12px;">編輯</button>
                 ${trackingButton}
-                ${routeManagementButton}
                 <button onclick="showOnlyThisMarker('${marker.id}')" style="padding: 4px 8px; font-size: 12px;">只顯示</button>
             </div>
+            ${routeManagementSection}
         </div>
     `;
     
@@ -5464,6 +5561,11 @@ function resetToDefaultSettings() {
 // 匯出標註點資料
 async function exportMarkerData() {
     try {
+        // 調試：記錄匯出前的路線狀態
+        console.log('匯出前的路線狀態:', {
+            displayedRouteLines: window.displayedRouteLines,
+            routeCount: window.displayedRouteLines ? Object.keys(window.displayedRouteLines).length : 0
+        });
         // 準備匯出資料，包含標註點、群組和設定
         const markersToExport = await Promise.all(markers.map(async marker => {
             let compressedImageData = null;
@@ -5576,6 +5678,12 @@ async function exportMarkerData() {
         );
         
         console.log('Data exported successfully:', exportData);
+        
+        // 調試：記錄匯出後的路線狀態
+        console.log('匯出後的路線狀態:', {
+            displayedRouteLines: window.displayedRouteLines,
+            routeCount: window.displayedRouteLines ? Object.keys(window.displayedRouteLines).length : 0
+        });
     } catch (error) {
         console.error('Error exporting data:', error);
         showNotification(
@@ -7380,6 +7488,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // 檢查移動設備兼容性
     checkMobileCompatibility();
     
+    // 初始化路線監控（調試用）
+    setupRouteLineMonitoring();
+    
     initEventListeners();
     initializeApp();
     
@@ -8054,17 +8165,22 @@ function showRouteManagement(markerId) {
     `;
     
     let routeListHtml = `
-        <h3 style="margin-top: 0; text-align: center; color: #333;">
-            ${marker.icon} ${marker.name} - 路線管理
-        </h3>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <h3 style="margin: 0; color: #333;">
+                ${marker.icon} ${marker.name} - 路線管理
+            </h3>
+            <button onclick="closeRouteManagement()" 
+                    style="padding: 4px 8px; background-color: #757575; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px;">
+                ✕
+            </button>
+        </div>
         <div style="margin-bottom: 15px; text-align: center;">
             <button onclick="startNewRouteRecording('${markerId}')" 
                     style="padding: 8px 16px; background-color: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer;">
                 新增路線記錄
             </button>
         </div>
-        <div style="border-top: 1px solid #eee; padding-top: 15px;">
-    `;
+        <div style="border-top: 1px solid #eee; padding-top: 15px;">`;
     
     marker.routeRecords.forEach((route, index) => {
         const distance = (route.distance / 1000).toFixed(2);
@@ -8245,9 +8361,6 @@ function displayRoute(markerId, routeIndex) {
     polyline.bindPopup(routeInfo);
     
     window.displayedRouteLines[routeId] = polyline;
-    
-    // 關閉浮動視窗
-    closeRouteManagement();
 }
 
 // 隱藏指定路線
@@ -8258,9 +8371,6 @@ function hideRoute(markerId, routeIndex) {
         map.removeLayer(window.displayedRouteLines[routeId]);
         delete window.displayedRouteLines[routeId];
     }
-    
-    // 關閉浮動視窗
-    closeRouteManagement();
 }
 
 // 隱藏指定標記的所有顯示路線
