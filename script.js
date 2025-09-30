@@ -3197,6 +3197,45 @@ function setTrackingTarget(markerId) {
     }
 }
 
+// 設置追蹤目標但不記錄新路線（用於導航模式）
+function setTrackingTargetForNavigation(markerId) {
+    const marker = markers.find(m => m.id === markerId);
+    if (marker) {
+        // 清除之前的追蹤目標提醒
+        if (trackingTarget) {
+            stopRepeatedAlert(trackingTarget.id);
+            // 清除之前追蹤目標的群組按鈕效果
+            clearGroupButtonHighlight();
+            // 停止之前的路線記錄
+            stopRouteRecording();
+        }
+        
+        trackingTarget = marker;
+        showNotification(`已設定 "${marker.name}" 為導航目標`);
+        
+        // 立即為相關群組按鈕添加追蹤圖標
+        showGroupTrackingIcon(marker.groupId, marker.subgroupId);
+        
+        // 顯示路徑線和距離資訊
+        if (currentPosition) {
+            showRouteLine();
+        }
+        
+        // 注意：這裡不開始路線記錄，因為是導航模式
+        
+        // 如果正在追蹤位置，開始距離檢查定時器
+        if (isTracking && currentPosition) {
+            startProximityCheck();
+        }
+        
+        // 重新渲染所有標記的popup以更新按鈕狀態
+        refreshAllMarkerPopups();
+        
+        // 更新標註點列表以顯示追蹤目標的醒目樣式
+        updateMarkersList();
+    }
+}
+
 function clearTrackingTarget() {
     if (trackingTarget) {
         const targetName = trackingTarget.name;
@@ -8112,9 +8151,19 @@ function startNewRouteRecording(markerId) {
         return;
     }
     
+    // 隱藏所有現有的路線記錄
+    if (marker.routeRecords && marker.routeRecords.length > 0) {
+        marker.routeRecords.forEach((route, index) => {
+            hideRoute(markerId, index);
+        });
+    }
+    
     // 設置追蹤目標並開始記錄
     setTrackingTarget(markerId);
+    
+    // 關閉浮動視窗
     closeRouteManagement();
+    
     alert('開始記錄新路線，請移動以記錄路徑');
 }
 
@@ -8161,6 +8210,9 @@ function displayRoute(markerId, routeIndex) {
     polyline.bindPopup(routeInfo);
     
     window.displayedRouteLines[routeId] = polyline;
+    
+    // 關閉浮動視窗
+    closeRouteManagement();
 }
 
 // 隱藏指定路線
@@ -8171,6 +8223,9 @@ function hideRoute(markerId, routeIndex) {
         map.removeLayer(window.displayedRouteLines[routeId]);
         delete window.displayedRouteLines[routeId];
     }
+    
+    // 關閉浮動視窗
+    closeRouteManagement();
 }
 
 // 使用指定路線進行導航
@@ -8186,8 +8241,8 @@ function useRoute(markerId, routeIndex) {
     // 顯示路線
     displayRoute(markerId, routeIndex);
     
-    // 設置追蹤目標
-    setTrackingTarget(markerId);
+    // 設置追蹤目標但不記錄新路線
+    setTrackingTargetForNavigation(markerId);
     
     // 關閉模態框
     closeRouteManagement();
@@ -8213,8 +8268,10 @@ function deleteRoute(markerId, routeIndex) {
         // 保存到本地存儲
         saveMarkersToStorage();
         
-        // 重新打開路線管理界面
+        // 關閉浮動視窗
         closeRouteManagement();
+        
+        // 重新打開路線管理界面以更新顯示
         setTimeout(() => {
             if (marker.routeRecords.length > 0) {
                 showRouteManagement(markerId);
