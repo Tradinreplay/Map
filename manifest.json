@@ -13,7 +13,7 @@
   "icons": [
     {
       "src": "./Target.png",
-      "sizes": "192x192",
+      "sizes": "100x100",
       "type": "image/png",
       "purpose": "any"
     },
@@ -25,7 +25,7 @@
     },
     {
       "src": "./Target.png",
-      "sizes": "192x192",
+      "sizes": "100x100",
       "type": "image/png",
       "purpose": "maskable"
     }

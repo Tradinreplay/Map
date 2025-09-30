@@ -226,14 +226,22 @@ class Marker {
         });
     }
     
-    // 生成隨機顏色
+    // 生成隨機顏色或使用選擇的顏色
     generateRandomColor() {
-        const colors = [
-            '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7',
-            '#DDA0DD', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9',
-            '#F8C471', '#82E0AA', '#F1948A', '#85C1E9', '#D7BDE2'
-        ];
-        return colors[Math.floor(Math.random() * colors.length)];
+        // 檢查是否有選擇的顏色
+        const selectedColorRadio = document.querySelector('input[name="pathColor"]:checked');
+        
+        if (selectedColorRadio && selectedColorRadio.value !== 'random') {
+            return selectedColorRadio.value;
+        } else {
+            // 隨機顏色
+            const colors = [
+                '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7',
+                '#DDA0DD', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9',
+                '#F8C471', '#82E0AA', '#F1948A', '#85C1E9', '#D7BDE2'
+            ];
+            return colors[Math.floor(Math.random() * colors.length)];
+        }
     }
     
     // 檢查是否有路線記錄
@@ -8009,15 +8017,23 @@ function stopRouteRecording() {
     routeRecordingStartTime = null;
 }
 
-// 生成隨機顏色
+// 獲取路徑顏色（自選或隨機）
 function generateRandomColor() {
-    const colors = [
-        '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7',
-        '#DDA0DD', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9',
-        '#F8C471', '#82E0AA', '#F1948A', '#85C1E9', '#D7BDE2',
-        '#A3E4D7', '#F9E79F', '#D5A6BD', '#AED6F1', '#A9DFBF'
-    ];
-    return colors[Math.floor(Math.random() * colors.length)];
+    // 檢查是否有選擇的顏色
+    const selectedColorRadio = document.querySelector('input[name="pathColor"]:checked');
+    
+    if (selectedColorRadio && selectedColorRadio.value !== 'random') {
+        return selectedColorRadio.value;
+    } else {
+        // 隨機顏色
+        const colors = [
+            '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7',
+            '#DDA0DD', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9',
+            '#F8C471', '#82E0AA', '#F1948A', '#85C1E9', '#D7BDE2',
+            '#A3E4D7', '#F9E79F', '#D5A6BD', '#AED6F1', '#A9DFBF'
+        ];
+        return colors[Math.floor(Math.random() * colors.length)];
+    }
 }
 
 // 更新路線記錄（在位置更新時調用）

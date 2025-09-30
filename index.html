@@ -24,6 +24,7 @@
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="styles.css?v=mobile-debug-version-20240927">
+    <link rel="stylesheet" href="path-color.css">
 </head>
 <body>
 
@@ -494,6 +495,30 @@
                             <span class="slider"></span>
                         </label>
                         <span>保持地圖中央</span>
+                    </div>
+                    
+                    <!-- 路徑顏色設定 -->
+                    <div class="setting-row">
+                        <label>路徑顏色</label>
+                        <div class="path-color-options">
+                            <input type="radio" id="path-color-random" name="pathColor" value="random" checked>
+                            <label for="path-color-random" class="path-color-option random">隨機</label>
+                            
+                            <input type="radio" id="path-color-red" name="pathColor" value="#FF6B6B">
+                            <label for="path-color-red" class="path-color-option" style="background-color: #FF6B6B;"></label>
+                            
+                            <input type="radio" id="path-color-blue" name="pathColor" value="#45B7D1">
+                            <label for="path-color-blue" class="path-color-option" style="background-color: #45B7D1;"></label>
+                            
+                            <input type="radio" id="path-color-green" name="pathColor" value="#82E0AA">
+                            <label for="path-color-green" class="path-color-option" style="background-color: #82E0AA;"></label>
+                            
+                            <input type="radio" id="path-color-purple" name="pathColor" value="#BB8FCE">
+                            <label for="path-color-purple" class="path-color-option" style="background-color: #BB8FCE;"></label>
+                            
+                            <input type="radio" id="path-color-orange" name="pathColor" value="#F8C471">
+                            <label for="path-color-orange" class="path-color-option" style="background-color: #F8C471;"></label>
+                        </div>
                     </div>
 
                     <div class="setting-row">
