@@ -3239,6 +3239,7 @@ function setTrackingTargetForNavigation(markerId) {
 function clearTrackingTarget() {
     if (trackingTarget) {
         const targetName = trackingTarget.name;
+        const targetId = trackingTarget.id;
         
         // 停止重複提醒
         stopRepeatedAlert(trackingTarget.id);
@@ -3248,6 +3249,9 @@ function clearTrackingTarget() {
         
         // 停止路線記錄並保存
         stopRouteRecording();
+        
+        // 隱藏所有顯示的路線記錄
+        hideAllDisplayedRoutes(targetId);
         
         // 清除追蹤目標
         trackingTarget = null;
@@ -8226,6 +8230,27 @@ function hideRoute(markerId, routeIndex) {
     
     // 關閉浮動視窗
     closeRouteManagement();
+}
+
+// 隱藏指定標記的所有顯示路線
+function hideAllDisplayedRoutes(markerId) {
+    if (!window.displayedRouteLines) {
+        return;
+    }
+    
+    // 找到所有屬於該標記的路線並隱藏
+    const routeKeysToRemove = [];
+    for (const routeId in window.displayedRouteLines) {
+        if (routeId.startsWith(`${markerId}_`)) {
+            map.removeLayer(window.displayedRouteLines[routeId]);
+            routeKeysToRemove.push(routeId);
+        }
+    }
+    
+    // 從記錄中刪除
+    routeKeysToRemove.forEach(routeId => {
+        delete window.displayedRouteLines[routeId];
+    });
 }
 
 // 使用指定路線進行導航
