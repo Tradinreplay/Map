@@ -5873,6 +5873,14 @@ function showImportOptionsModal(importData) {
                     <span class="stat-label">新增標註點：</span>
                     <span class="stat-value">${comparison.newMarkers.length} 個</span>
                 </div>
+                <div class="stat-item">
+                    <span class="stat-label">匯入路線記錄：</span>
+                    <span class="stat-value">${comparison.importRouteCount} 條</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">現有路線記錄：</span>
+                    <span class="stat-value">${comparison.existingRouteCount} 條</span>
+                </div>
             </div>
         </div>
     `;
@@ -5922,6 +5930,24 @@ function compareImportData(importData) {
     const newMarkers = [];
     const LOCATION_THRESHOLD = 0.0001; // 約10公尺的誤差範圍
     
+    // 計算路線記錄統計
+    let importRouteCount = 0;
+    let existingRouteCount = 0;
+    
+    // 計算匯入資料中的路線記錄總數
+    importData.markers.forEach(marker => {
+        if (marker.routeRecords && Array.isArray(marker.routeRecords)) {
+            importRouteCount += marker.routeRecords.length;
+        }
+    });
+    
+    // 計算現有資料中的路線記錄總數
+    markers.forEach(marker => {
+        if (marker.routeRecords && Array.isArray(marker.routeRecords)) {
+            existingRouteCount += marker.routeRecords.length;
+        }
+    });
+    
     importData.markers.forEach(importMarker => {
         const existingMarker = markers.find(existing => {
             const latDiff = Math.abs(existing.lat - importMarker.lat);
@@ -5943,7 +5969,9 @@ function compareImportData(importData) {
         duplicateMarkers,
         newMarkers,
         totalImport: importData.markers.length,
-        totalExisting: markers.length
+        totalExisting: markers.length,
+        importRouteCount,
+        existingRouteCount
     };
 }
 
