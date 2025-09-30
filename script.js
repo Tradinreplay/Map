@@ -6128,12 +6128,24 @@ function performMergeImport(importData, comparison) {
     
     // 只添加新的標註點
     comparison.newMarkers.forEach(markerData => {
-        const targetGroupId = groupMapping.get(markerData.groupId);
-        const targetSubgroupId = markerData.subgroupId ? subgroupMapping.get(markerData.subgroupId) : null;
+        let targetGroupId = groupMapping.get(markerData.groupId);
+        let targetSubgroupId = markerData.subgroupId ? subgroupMapping.get(markerData.subgroupId) : null;
         
-        if (targetGroupId) {
-            const targetGroup = groups.find(g => g.id === targetGroupId);
-            
+        // 如果群組映射失敗，創建一個預設群組
+        if (!targetGroupId) {
+            console.warn(`群組映射失敗，為標記 "${markerData.name}" 創建預設群組`);
+            let defaultGroup = groups.find(g => g.name === '匯入的標註點');
+            if (!defaultGroup) {
+                defaultGroup = new Group(generateId(), '匯入的標註點');
+                groups.push(defaultGroup);
+            }
+            targetGroupId = defaultGroup.id;
+            targetSubgroupId = null; // 重置子群組
+        }
+        
+        const targetGroup = groups.find(g => g.id === targetGroupId);
+        
+        if (targetGroup) {
             const newMarker = new Marker(
                 generateId(),
                 markerData.name,
@@ -6150,6 +6162,7 @@ function performMergeImport(importData, comparison) {
             // 恢復路線記錄
             if (markerData.routeRecords && Array.isArray(markerData.routeRecords)) {
                 newMarker.routeRecords = markerData.routeRecords;
+                console.log(`為標記 "${markerData.name}" 恢復了 ${markerData.routeRecords.length} 條路線記錄`);
             }
             
             markers.push(newMarker);
@@ -6162,6 +6175,8 @@ function performMergeImport(importData, comparison) {
                     targetSubgroup.addMarker(newMarker);
                 }
             }
+        } else {
+            console.error(`無法找到目標群組，跳過標記 "${markerData.name}"`);
         }
     });
     
@@ -6201,8 +6216,21 @@ function performUpdateImport(importData, comparison) {
     
     // 添加新的標註點
     comparison.newMarkers.forEach(markerData => {
-        const targetGroupId = groupMapping.get(markerData.groupId);
-        const targetSubgroupId = markerData.subgroupId ? subgroupMapping.get(markerData.subgroupId) : null;
+        let targetGroupId = groupMapping.get(markerData.groupId);
+        let targetSubgroupId = markerData.subgroupId ? subgroupMapping.get(markerData.subgroupId) : null;
+        
+        // 如果群組映射失敗，創建一個預設群組
+        if (!targetGroupId) {
+            console.warn(`群組映射失敗，為標記 "${markerData.name}" 創建預設群組`);
+            let defaultGroup = groups.find(g => g.name === '匯入的標註點');
+            if (!defaultGroup) {
+                defaultGroup = new Group(generateId(), '匯入的標註點');
+                groups.push(defaultGroup);
+            }
+            targetGroupId = defaultGroup.id;
+            targetSubgroupId = null; // 重置子群組
+        }
+        
         const targetGroup = groups.find(g => g.id === targetGroupId);
         
         if (targetGroup) {
@@ -6222,6 +6250,7 @@ function performUpdateImport(importData, comparison) {
             // 恢復路線記錄
             if (markerData.routeRecords && Array.isArray(markerData.routeRecords)) {
                 newMarker.routeRecords = markerData.routeRecords;
+                console.log(`為標記 "${markerData.name}" 恢復了 ${markerData.routeRecords.length} 條路線記錄`);
             }
             
             markers.push(newMarker);
@@ -6234,6 +6263,8 @@ function performUpdateImport(importData, comparison) {
                     targetSubgroup.addMarker(newMarker);
                 }
             }
+        } else {
+            console.error(`無法找到目標群組，跳過標記 "${markerData.name}"`);
         }
     });
     
