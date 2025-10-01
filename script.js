@@ -5320,8 +5320,9 @@ function saveCurrentSettings() {
             // 標註點和群組資料
             markers: markersToSave,
             groups: groupsToSave,
-            currentGroup: currentGroup,
-            currentSubgroup: currentSubgroup,
+            // 僅保存必要欄位以避免循環引用（Leaflet 物件）
+            currentGroup: currentGroup ? { id: currentGroup.id, name: currentGroup.name } : null,
+            currentSubgroup: currentSubgroup ? { id: currentSubgroup.id, name: currentSubgroup.name, groupId: currentSubgroup.groupId } : null,
             
             // 儲存時間戳
             savedAt: new Date().toISOString()
@@ -5658,12 +5659,30 @@ async function exportMarkerData() {
                     return enableNotificationsEl ? enableNotificationsEl.checked : false;
                 })()
             },
-            currentGroup: currentGroup,
-            currentSubgroup: currentSubgroup
+            // 僅保存必要資訊，避免循環引用（如 Leaflet 物件）
+            currentGroup: currentGroup ? { id: currentGroup.id, name: currentGroup.name } : null,
+            currentSubgroup: currentSubgroup ? { id: currentSubgroup.id, name: currentSubgroup.name, groupId: currentSubgroup.groupId } : null
         };
         
-        // 建立下載連結
-        const dataStr = JSON.stringify(exportData, null, 2);
+        // 建立下載連結（加入安全序列化回退，避免循環引用）
+        let dataStr;
+        try {
+            dataStr = JSON.stringify(exportData, null, 2);
+        } catch (jsonErr) {
+            console.warn('JSON.stringify 發生循環引用，改用安全序列化：', jsonErr);
+            const seen = new WeakSet();
+            const replacer = (key, value) => {
+                if (typeof value === 'object' && value !== null) {
+                    if (seen.has(value)) return undefined;
+                    // 過濾可能的 Leaflet 物件以避免循環
+                    if (value._map || value._leaflet_id || value._layers || value._path) return undefined;
+                    if (typeof value.addTo === 'function' || typeof value.on === 'function') return undefined;
+                    seen.add(value);
+                }
+                return value;
+            };
+            dataStr = JSON.stringify(exportData, replacer, 2);
+        }
         const dataBlob = new Blob([dataStr], { type: 'application/json' });
         const url = URL.createObjectURL(dataBlob);
         
@@ -5843,8 +5862,17 @@ function performDirectImport(importData) {
         }
     }
     
-    currentGroup = importData.currentGroup;
-    currentSubgroup = importData.currentSubgroup;
+    // 以 ID 還原目前選取的群組/子群組，避免將整個物件（含 Leaflet 參考）寫回
+    if (importData.currentGroup) {
+        currentGroup = groups.find(g => g.id === importData.currentGroup.id) || null;
+    } else {
+        currentGroup = null;
+    }
+    if (importData.currentSubgroup && currentGroup) {
+        currentSubgroup = currentGroup.subgroups.find(sg => sg.id === importData.currentSubgroup.id) || null;
+    } else {
+        currentSubgroup = null;
+    }
     
     updateGroupsList();
     updateMarkersList();
