@@ -3373,7 +3373,12 @@ function updateMarkerPopup(marker) {
             routeListHtml = `
                 <div style="display:flex; align-items:center; gap:6px; margin-bottom:6px;">
                     <label for="routeSelect_${marker.id}" style="font-size:11px; color:#333;">選擇路線：</label>
-                    <select id="routeSelect_${marker.id}" style="flex:1; font-size:11px; padding:2px 6px;">
+                    <select id="routeSelect_${marker.id}" 
+                            style="flex:1; font-size:11px; padding:2px 6px;"
+                            onfocus="expandRouteSelect('${marker.id}')"
+                            onclick="expandRouteSelect('${marker.id}')"
+                            ontouchstart="expandRouteSelect('${marker.id}')"
+                            onchange="collapseRouteSelect('${marker.id}')">
                         ${marker.routeRecords.map((route, idx) => {
                             const distance = (route.distance / 1000).toFixed(2);
                             const duration = formatDuration(route.duration);
@@ -8497,10 +8502,42 @@ function handleRouteAction(markerId, action) {
         default:
             console.warn('未知的操作:', action);
     }
+    // 操作後，於手機模式收合選擇框
+    collapseRouteSelect(markerId);
     const marker = markers.find(m => m.id === markerId);
     if (marker) {
         updateMarkerPopup(marker);
     }
+}
+
+// ==== 手機模式：路線下拉選擇框展開/收合輔助 ====
+function isMobileDevice() {
+    try {
+        return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) ||
+               (window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+    } catch (e) {
+        return false;
+    }
+}
+
+function expandRouteSelect(markerId) {
+    const select = document.getElementById(`routeSelect_${markerId}`);
+    if (!select) return;
+    if (!isMobileDevice()) return;
+    // 展開為清單，避免手機原生選單自動收合
+    const optionCount = Math.max(2, Math.min(select.options.length, 6));
+    select.size = optionCount;
+    select.style.height = 'auto';
+    select.style.maxHeight = '128px';
+    select.style.overflowY = 'auto';
+}
+
+function collapseRouteSelect(markerId) {
+    const select = document.getElementById(`routeSelect_${markerId}`);
+    if (!select) return;
+    select.size = 1;
+    // 失焦以收合鍵盤/原生 UI
+    try { select.blur(); } catch (e) {}
 }
 
 // ==================== 螢幕恆亮功能 ====================
