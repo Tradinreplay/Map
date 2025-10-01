@@ -3563,6 +3563,16 @@ function updateMarkerPopup(marker) {
         }
     }
     
+    // 在更新前保存目前下拉清單的捲動位置（若存在）
+    let savedDropdownScrollTop = 0;
+    try {
+        const existingMenuEl = document.getElementById(`routeDropdownMenu_${marker.id}`);
+        if (existingMenuEl) {
+            savedDropdownScrollTop = existingMenuEl.scrollTop || 0;
+        } else if (window.routeDropdownScroll && typeof window.routeDropdownScroll[marker.id] === 'number') {
+            savedDropdownScrollTop = window.routeDropdownScroll[marker.id] || 0;
+        }
+    } catch (e) {}
     const popupContent = `
         <div style="text-align: center; min-width: 200px; max-width: 300px;">
             <div style="font-size: 18px; margin-bottom: 8px;">${marker.icon} <strong>${marker.name}</strong></div>
@@ -3586,6 +3596,21 @@ function updateMarkerPopup(marker) {
     } else {
         marker.leafletMarker.setPopupContent(popupContent);
     }
+    // 內容更新後，恢復自製下拉清單的捲動位置並綁定保存事件
+    setTimeout(() => {
+        try {
+            const menuEl = document.getElementById(`routeDropdownMenu_${marker.id}`);
+            if (menuEl) {
+                if (!window.routeDropdownScroll) window.routeDropdownScroll = {};
+                if (typeof savedDropdownScrollTop === 'number' && savedDropdownScrollTop > 0) {
+                    menuEl.scrollTop = savedDropdownScrollTop;
+                }
+                menuEl.addEventListener('scroll', () => {
+                    window.routeDropdownScroll[marker.id] = menuEl.scrollTop;
+                }, { passive: true });
+            }
+        } catch (e) {}
+    }, 0);
 }
 
 function deleteCurrentMarker() {
@@ -8713,6 +8738,12 @@ function toggleRouteDropdown(markerId) {
     menu.style.display = show ? 'block' : 'none';
     if (!window.routeDropdownOpen) window.routeDropdownOpen = {};
     window.routeDropdownOpen[markerId] = show;
+    // 展開時恢復既有捲動位置
+    if (show) {
+        if (!window.routeDropdownScroll) window.routeDropdownScroll = {};
+        const saved = window.routeDropdownScroll[markerId] || 0;
+        try { menu.scrollTop = saved; } catch (e) {}
+    }
 }
 
 function selectRouteIndex(markerId, idx) {
