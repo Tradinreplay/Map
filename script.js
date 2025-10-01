@@ -7941,6 +7941,48 @@ document.addEventListener('DOMContentLoaded', function() {
     initHelpButton();
 });
 
+// 路徑顏色持久化：儲存/讀取/初始化
+function getSavedPathColor() {
+    try {
+        return localStorage.getItem('pathColorSelection') || 'random';
+    } catch (e) {
+        return 'random';
+    }
+}
+
+function saveSelectedPathColor(value) {
+    try {
+        localStorage.setItem('pathColorSelection', value);
+    } catch (e) {}
+}
+
+function initPathColorPersistence() {
+    const radios = document.querySelectorAll('input[name="pathColor"]');
+    if (!radios || !radios.length) return;
+
+    const saved = getSavedPathColor();
+    let matched = false;
+    radios.forEach(radio => {
+        if (radio.value === saved) {
+            radio.checked = true;
+            matched = true;
+        }
+        radio.addEventListener('change', () => {
+            if (radio.checked) {
+                saveSelectedPathColor(radio.value);
+            }
+        });
+    });
+
+    if (!matched) {
+        const randomRadio = Array.from(radios).find(r => r.value === 'random');
+        if (randomRadio) randomRadio.checked = true;
+    }
+}
+
+// 在 DOM 載入完成後初始化路徑顏色持久化
+document.addEventListener('DOMContentLoaded', initPathColorPersistence);
+
 // ==================== 路線記錄功能 ====================
 
 // 開始路線記錄
@@ -8010,7 +8052,7 @@ function stopRouteRecording() {
                 coordinates: currentRouteData.coordinates,
                 distance: currentRouteData.distance,
                 duration: totalDuration,
-                color: generateRandomColor(),
+                color: ((getSavedPathColor && (getSavedPathColor() || 'random') !== 'random') ? getSavedPathColor() : generateRandomColor()),
                 createdAt: Date.now()
             };
             
