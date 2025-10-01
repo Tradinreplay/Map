@@ -8576,13 +8576,13 @@ function selectRouteIndex(markerId, idx) {
         const duration = formatDuration(r.duration);
         labelEl.textContent = `路線 ${idx + 1}｜${distance} km｜${duration}`;
     }
-    // 保持菜單展開，使用者可選後再操作按鈕
     const menu = document.getElementById(`routeDropdownMenu_${markerId}`);
     if (menu) {
-        // 高亮目前選擇
+        // 高亮目前選擇並在點選後收合
         Array.from(menu.children).forEach((item, i) => {
             item.style.background = (i === idx) ? '#e3f2fd' : '';
         });
+        menu.style.display = 'none';
     }
 }
 

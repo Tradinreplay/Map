@@ -4475,8 +4475,8 @@ input:checked + .slider:before {
 .help-modal-content {
     background: white;
     border-radius: 12px;
-    max-width: 72%;
-    max-height: 72%;
+    max-width: 92%;
+    max-height: 92vh;
     width: 640px;
     box-shadow: 0 16px 48px rgba(0, 0, 0, 0.3);
     overflow: hidden;
@@ -4532,7 +4532,7 @@ input:checked + .slider:before {
 
 .help-modal-body {
     padding: 16px;
-    max-height: 70vh;
+    max-height: 86vh;
     overflow-y: auto;
 }
 
@@ -4594,8 +4594,8 @@ input:checked + .slider:before {
     }
     
     .help-modal-content {
-        max-width: 76%;
-        max-height: 76%;
+        max-width: 94%;
+        max-height: 92vh;
         margin: 8px;
     }
     
@@ -4609,7 +4609,7 @@ input:checked + .slider:before {
     
     .help-modal-body {
         padding: 12px;
-        max-height: 75vh;
+        max-height: 88vh;
     }
     
     .help-section h3 {
@@ -4635,6 +4635,15 @@ input:checked + .slider:before {
         font-size: 12px;
         top: 100px;
         right: 10px;
+    }
+    
+    .help-modal-content {
+        max-width: 96%;
+        max-height: 92vh;
+    }
+    
+    .help-modal-body {
+        max-height: 88vh;
     }
     
     .help-modal-header h2 {
