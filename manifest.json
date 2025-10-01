@@ -12,22 +12,22 @@
   "categories": ["navigation", "utilities"],
   "icons": [
     {
-      "src": "./Target.png",
-      "sizes": "100x100",
+      "src": "./TG.png",
+      "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any"
+      "purpose": "any maskable"
     },
     {
-      "src": "./Target.png",
+      "src": "./TG.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any"
+      "purpose": "any maskable"
     },
     {
-      "src": "./Target.png",
-      "sizes": "100x100",
+      "src": "./TG.png",
+      "sizes": "384x384",
       "type": "image/png",
-      "purpose": "maskable"
+      "purpose": "any maskable"
     }
   ],
   "permissions": [
