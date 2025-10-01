@@ -7913,9 +7913,37 @@ function hideHelpModal() {
 }
 
 // 初始化幫助按鈕
+// 初始化：幫助按鈕與路徑顏色持久化
 document.addEventListener('DOMContentLoaded', function() {
     initHelpButton();
+    initPathColorPersistence();
 });
+
+// 路徑顏色選擇持久化：保存使用者選擇並在重新載入時還原
+function initPathColorPersistence() {
+    try {
+        const saved = localStorage.getItem('selectedPathColor');
+        if (saved) {
+            const input = document.querySelector(`input[name="pathColor"][value="${saved}"]`);
+            if (input) {
+                input.checked = true;
+            }
+        }
+        const radios = document.querySelectorAll('input[name="pathColor"]');
+        if (radios && radios.length) {
+            radios.forEach(r => {
+                r.addEventListener('change', () => {
+                    const current = document.querySelector('input[name="pathColor"]:checked');
+                    if (current && current.value) {
+                        localStorage.setItem('selectedPathColor', current.value);
+                    }
+                });
+            });
+        }
+    } catch (e) {
+        console.warn('路徑顏色持久化初始化失敗:', e);
+    }
+}
 
 // ==================== 路線記錄功能 ====================
 
@@ -8008,7 +8036,14 @@ function stopRouteRecording() {
             showNotification(`✅ 路線已保存到 "${targetMarker.name}"`, 'success');
             
             // 保存數據到本地存儲
-            saveMarkersToStorage();
+            // 舊路徑：部分功能使用 mapMarkers
+            if (typeof saveMarkersToStorage === 'function') {
+                saveMarkersToStorage();
+            }
+            // 新路徑：統一寫入 mapAnnotationData，避免重載後記錄遺失
+            if (typeof saveData === 'function') {
+                saveData();
+            }
         }
     }
     
@@ -8448,7 +8483,12 @@ function deleteRoute(markerId, routeIndex) {
         marker.routeRecords.splice(routeIndex, 1);
         
         // 保存到本地存儲
-        saveMarkersToStorage();
+        if (typeof saveMarkersToStorage === 'function') {
+            saveMarkersToStorage();
+        }
+        if (typeof saveData === 'function') {
+            saveData();
+        }
         
         // 關閉浮動視窗
         closeRouteManagement();
