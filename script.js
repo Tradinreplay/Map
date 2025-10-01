@@ -3366,60 +3366,76 @@ function updateMarkerPopup(marker) {
     // 路線管理區域
     let routeManagementSection = '';
     if (marker.routeRecords && marker.routeRecords.length > 0) {
-        // 生成路線列表
+        const count = marker.routeRecords.length;
         let routeListHtml = '';
-        marker.routeRecords.forEach((route, index) => {
+        if (count > 1) {
+            // 兩條以上記錄：使用下拉選單搭配操作按鈕
+            routeListHtml = `
+                <div style="display:flex; align-items:center; gap:6px; margin-bottom:6px;">
+                    <label for="routeSelect_${marker.id}" style="font-size:11px; color:#333;">選擇路線：</label>
+                    <select id="routeSelect_${marker.id}" style="flex:1; font-size:11px; padding:2px 6px;">
+                        ${marker.routeRecords.map((route, idx) => {
+                            const distance = (route.distance / 1000).toFixed(2);
+                            const duration = formatDuration(route.duration);
+                            return `<option value="${idx}">路線 ${idx + 1}｜${distance} km｜${duration}</option>`;
+                        }).join('')}
+                    </select>
+                </div>
+                <div style="display:flex; gap:4px; flex-wrap:wrap;">
+                    <button onclick="handleRouteAction('${marker.id}', 'display')" 
+                            style="padding: 2px 6px; font-size: 10px; background-color: #2196F3; color: white; border: none; border-radius: 2px; cursor: pointer;">顯示</button>
+                    <button onclick="handleRouteAction('${marker.id}', 'hide')" 
+                            style="padding: 2px 6px; font-size: 10px; background-color: #757575; color: white; border: none; border-radius: 2px; cursor: pointer;">隱藏</button>
+                    <button onclick="handleRouteAction('${marker.id}', 'use')" 
+                            style="padding: 2px 6px; font-size: 10px; background-color: #FF9800; color: white; border: none; border-radius: 2px; cursor: pointer;">使用</button>
+                    <button onclick="handleRouteAction('${marker.id}', 'delete'); updateMarkerPopup(markers.find(m => m.id === '${marker.id}'))" 
+                            style="padding: 2px 6px; font-size: 10px; background-color: #f44336; color: white; border: none; border-radius: 2px; cursor: pointer;">刪除</button>
+                    <button onclick="hideAllDisplayedRoutes('${marker.id}'); updateMarkerPopup(markers.find(m => m.id === '${marker.id}'))" 
+                            style="padding: 2px 6px; font-size: 10px; background-color: #9E9E9E; color: white; border: none; border-radius: 2px; cursor: pointer;">全部隱藏</button>
+                </div>
+            `;
+        } else {
+            // 僅一條記錄：顯示單路線卡片
+            const route = marker.routeRecords[0];
+            const index = 0;
             const distance = (route.distance / 1000).toFixed(2);
             const duration = formatDuration(route.duration);
             const routeId = `${marker.id}_${index}`;
             const isDisplayed = window.displayedRouteLines && window.displayedRouteLines[routeId];
-            
-            routeListHtml += `
+            routeListHtml = `
                 <div style="border: 1px solid #ddd; border-radius: 4px; padding: 8px; margin: 4px 0; background-color: #f9f9f9; font-size: 11px;">
                     <div style="display: flex; align-items: center; margin-bottom: 4px;">
                         <div style="width: 12px; height: 12px; background-color: ${route.color}; border-radius: 50%; margin-right: 6px;"></div>
                         <strong>路線 ${index + 1}</strong>
                     </div>
-                    <div style="color: #666; margin-bottom: 6px;">
-                        ${distance} km | ${duration}
-                    </div>
+                    <div style="color: #666; margin-bottom: 6px;">${distance} km | ${duration}</div>
                     <div style="display: flex; gap: 3px; flex-wrap: wrap;">
                         ${isDisplayed ? 
                             `<button onclick="hideRoute('${marker.id}', ${index}); updateMarkerPopup(markers.find(m => m.id === '${marker.id}'))" 
-                                     style="padding: 2px 6px; font-size: 10px; background-color: #757575; color: white; border: none; border-radius: 2px; cursor: pointer;">
-                                隱藏
-                             </button>` :
+                                     style="padding: 2px 6px; font-size: 10px; background-color: #757575; color: white; border: none; border-radius: 2px; cursor: pointer;">隱藏</button>` :
                             `<button onclick="displayRoute('${marker.id}', ${index}); updateMarkerPopup(markers.find(m => m.id === '${marker.id}'))" 
-                                     style="padding: 2px 6px; font-size: 10px; background-color: #2196F3; color: white; border: none; border-radius: 2px; cursor: pointer;">
-                                顯示
-                             </button>`
+                                     style="padding: 2px 6px; font-size: 10px; background-color: #2196F3; color: white; border: none; border-radius: 2px; cursor: pointer;">顯示</button>`
                         }
                         <button onclick="useRoute('${marker.id}', ${index})" 
-                                style="padding: 2px 6px; font-size: 10px; background-color: #FF9800; color: white; border: none; border-radius: 2px; cursor: pointer;">
-                            使用
-                        </button>
+                                style="padding: 2px 6px; font-size: 10px; background-color: #FF9800; color: white; border: none; border-radius: 2px; cursor: pointer;">使用</button>
                         <button onclick="deleteRoute('${marker.id}', ${index}); updateMarkerPopup(markers.find(m => m.id === '${marker.id}'))" 
-                                style="padding: 2px 6px; font-size: 10px; background-color: #f44336; color: white; border: none; border-radius: 2px; cursor: pointer;">
-                            刪除
-                        </button>
+                                style="padding: 2px 6px; font-size: 10px; background-color: #f44336; color: white; border: none; border-radius: 2px; cursor: pointer;">刪除</button>
+                        <button onclick="hideAllDisplayedRoutes('${marker.id}'); updateMarkerPopup(markers.find(m => m.id === '${marker.id}'))" 
+                                style="padding: 2px 6px; font-size: 10px; background-color: #9E9E9E; color: white; border: none; border-radius: 2px; cursor: pointer;">全部隱藏</button>
                     </div>
                 </div>
             `;
-        });
+        }
         
         routeManagementSection = `
             <div style="margin: 8px 0; border-top: 1px solid #eee; padding-top: 8px;">
-                <div style="font-size: 12px; font-weight: bold; margin-bottom: 6px; color: #333;">路線記錄 (${marker.routeRecords.length})</div>
+                <div style="font-size: 12px; font-weight: bold; margin-bottom: 6px; color: #333;">路線記錄 (${count})</div>
                 ${routeListHtml}
                 <div style="text-align: center; margin-top: 6px;">
                     <button onclick="startNewRouteRecording('${marker.id}')" 
-                            style="padding: 4px 8px; font-size: 11px; background-color: #4CAF50; color: white; border: none; border-radius: 3px; cursor: pointer;">
-                        新增路線記錄
-                    </button>
+                            style="padding: 4px 8px; font-size: 11px; background-color: #4CAF50; color: white; border: none; border-radius: 3px; cursor: pointer;">新增路線記錄</button>
                     <button onclick="showRouteManagement('${marker.id}')" 
-                            style="padding: 4px 8px; font-size: 11px; background-color: #2196F3; color: white; border: none; border-radius: 3px; cursor: pointer; margin-left: 4px;">
-                        詳細管理
-                    </button>
+                            style="padding: 4px 8px; font-size: 11px; background-color: #2196F3; color: white; border: none; border-radius: 3px; cursor: pointer; margin-left: 4px;">詳細管理</button>
                 </div>
             </div>
         `;
@@ -3427,13 +3443,9 @@ function updateMarkerPopup(marker) {
         routeManagementSection = `
             <div style="margin: 8px 0; border-top: 1px solid #eee; padding-top: 8px; text-align: center;">
                 <button onclick="showDefaultRoute('${marker.id}')" 
-                        style="padding: 4px 8px; font-size: 11px; background-color: #ff9800; color: white; border: none; border-radius: 3px; cursor: pointer;">
-                    顯示預設路線
-                </button>
+                        style="padding: 4px 8px; font-size: 11px; background-color: #ff9800; color: white; border: none; border-radius: 3px; cursor: pointer;">顯示預設路線</button>
                 <button onclick="startNewRouteRecording('${marker.id}')" 
-                        style="padding: 4px 8px; font-size: 11px; background-color: #4CAF50; color: white; border: none; border-radius: 3px; cursor: pointer; margin-left: 4px;">
-                    新增路線記錄
-                </button>
+                        style="padding: 4px 8px; font-size: 11px; background-color: #4CAF50; color: white; border: none; border-radius: 3px; cursor: pointer; margin-left: 4px;">新增路線記錄</button>
             </div>
         `;
     }
@@ -7913,37 +7925,9 @@ function hideHelpModal() {
 }
 
 // 初始化幫助按鈕
-// 初始化：幫助按鈕與路徑顏色持久化
 document.addEventListener('DOMContentLoaded', function() {
     initHelpButton();
-    initPathColorPersistence();
 });
-
-// 路徑顏色選擇持久化：保存使用者選擇並在重新載入時還原
-function initPathColorPersistence() {
-    try {
-        const saved = localStorage.getItem('selectedPathColor');
-        if (saved) {
-            const input = document.querySelector(`input[name="pathColor"][value="${saved}"]`);
-            if (input) {
-                input.checked = true;
-            }
-        }
-        const radios = document.querySelectorAll('input[name="pathColor"]');
-        if (radios && radios.length) {
-            radios.forEach(r => {
-                r.addEventListener('change', () => {
-                    const current = document.querySelector('input[name="pathColor"]:checked');
-                    if (current && current.value) {
-                        localStorage.setItem('selectedPathColor', current.value);
-                    }
-                });
-            });
-        }
-    } catch (e) {
-        console.warn('路徑顏色持久化初始化失敗:', e);
-    }
-}
 
 // ==================== 路線記錄功能 ====================
 
@@ -8036,14 +8020,7 @@ function stopRouteRecording() {
             showNotification(`✅ 路線已保存到 "${targetMarker.name}"`, 'success');
             
             // 保存數據到本地存儲
-            // 舊路徑：部分功能使用 mapMarkers
-            if (typeof saveMarkersToStorage === 'function') {
-                saveMarkersToStorage();
-            }
-            // 新路徑：統一寫入 mapAnnotationData，避免重載後記錄遺失
-            if (typeof saveData === 'function') {
-                saveData();
-            }
+            saveMarkersToStorage();
         }
     }
     
@@ -8483,12 +8460,7 @@ function deleteRoute(markerId, routeIndex) {
         marker.routeRecords.splice(routeIndex, 1);
         
         // 保存到本地存儲
-        if (typeof saveMarkersToStorage === 'function') {
-            saveMarkersToStorage();
-        }
-        if (typeof saveData === 'function') {
-            saveData();
-        }
+        saveMarkersToStorage();
         
         // 關閉浮動視窗
         closeRouteManagement();
@@ -8501,6 +8473,33 @@ function deleteRoute(markerId, routeIndex) {
                 alert('所有路線已刪除');
             }
         }, 100);
+    }
+}
+
+// 下拉選單路線操作輔助：顯示/隱藏/使用/刪除
+function handleRouteAction(markerId, action) {
+    const select = document.getElementById(`routeSelect_${markerId}`);
+    const routeIndex = select ? parseInt(select.value, 10) : 0;
+    if (Number.isNaN(routeIndex)) return;
+    switch (action) {
+        case 'display':
+            displayRoute(markerId, routeIndex);
+            break;
+        case 'hide':
+            hideRoute(markerId, routeIndex);
+            break;
+        case 'use':
+            useRoute(markerId, routeIndex);
+            break;
+        case 'delete':
+            deleteRoute(markerId, routeIndex);
+            break;
+        default:
+            console.warn('未知的操作:', action);
+    }
+    const marker = markers.find(m => m.id === markerId);
+    if (marker) {
+        updateMarkerPopup(marker);
     }
 }
 
