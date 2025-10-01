@@ -3383,7 +3383,7 @@ function updateMarkerPopup(marker) {
                                 style="width:100%; padding:2px 6px; font-size:11px; text-align:left; border:1px solid #ccc; border-radius:2px; background:#fff; cursor:pointer;">
                             ${selectedLabel}
                         </button>
-                        <div id="routeDropdownMenu_${marker.id}" style="display:none; position:absolute; top:100%; left:0; right:0; background:#fff; border:1px solid #ddd; border-radius:2px; max-height:160px; overflow:auto; z-index:9999; box-shadow:0 2px 8px rgba(0,0,0,0.15);">
+                        <div id="routeDropdownMenu_${marker.id}" style="display:${window.routeDropdownOpen && window.routeDropdownOpen[marker.id] ? 'block' : 'none'}; position:absolute; top:100%; left:0; right:0; background:#fff; border:1px solid #ddd; border-radius:2px; max-height:160px; overflow:auto; z-index:9999; box-shadow:0 2px 8px rgba(0,0,0,0.15);">
                             ${marker.routeRecords.map((route, idx) => {
                                 const distance = (route.distance / 1000).toFixed(2);
                                 const duration = formatDuration(route.duration);
@@ -8563,6 +8563,8 @@ function toggleRouteDropdown(markerId) {
     if (!menu) return;
     const show = menu.style.display === 'none' || menu.style.display === '';
     menu.style.display = show ? 'block' : 'none';
+    if (!window.routeDropdownOpen) window.routeDropdownOpen = {};
+    window.routeDropdownOpen[markerId] = show;
 }
 
 function selectRouteIndex(markerId, idx) {
@@ -8584,6 +8586,8 @@ function selectRouteIndex(markerId, idx) {
         });
         menu.style.display = 'none';
     }
+    if (!window.routeDropdownOpen) window.routeDropdownOpen = {};
+    window.routeDropdownOpen[markerId] = false;
 }
 
 // 點擊外部區域時收合清單
@@ -8594,6 +8598,12 @@ document.addEventListener('click', function(e) {
             const parent = menu.parentElement;
             if (parent && !parent.contains(e.target)) {
                 menu.style.display = 'none';
+                const idMatch = menu.id.match(/^routeDropdownMenu_(.+)$/);
+                if (idMatch) {
+                    const markerId = idMatch[1];
+                    if (!window.routeDropdownOpen) window.routeDropdownOpen = {};
+                    window.routeDropdownOpen[markerId] = false;
+                }
             }
         }
     });
