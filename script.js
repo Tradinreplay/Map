@@ -5238,6 +5238,19 @@ function loadData() {
     }
 }
 
+// 封裝：立即保存標註與路線資料到 localStorage
+function saveMarkersToStorage() {
+    try {
+        // 使用既有的 saveData，確保 routeRecords 一併持久化
+        saveData();
+    } catch (error) {
+        console.error('保存標註與路線資料失敗:', error);
+        try {
+            showNotification('❌ 保存路線資料失敗', 'error');
+        } catch (e) {}
+    }
+}
+
 // 全域函數（供HTML調用）
 window.editMarker = editMarker;
 window.selectGroup = selectGroup;
