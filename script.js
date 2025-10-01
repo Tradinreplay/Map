@@ -3374,7 +3374,9 @@ function updateMarkerPopup(marker) {
             const selectedRoute = marker.routeRecords[selectedIndex] || marker.routeRecords[0];
             const selectedDistance = (selectedRoute.distance / 1000).toFixed(2);
             const selectedDuration = formatDuration(selectedRoute.duration);
-            const selectedLabel = `路線 ${selectedIndex + 1}｜${selectedDistance} km｜${selectedDuration}`;
+            const selectedStartCoord = (selectedRoute.coordinates && selectedRoute.coordinates.length > 0) ? selectedRoute.coordinates[0] : null;
+            const selectedStartText = selectedStartCoord ? `${selectedStartCoord.lat.toFixed(5)}, ${selectedStartCoord.lng.toFixed(5)}` : '未知';
+            const selectedLabel = `路線 ${selectedIndex + 1}｜${selectedDistance} km｜${selectedDuration}｜起點: ${selectedStartText}｜終點: ${marker.icon || ''} ${marker.name}`;
             routeListHtml = `
                 <div style="display:flex; align-items:center; gap:6px; margin-bottom:6px;">
                     <label style="font-size:11px; color:#333;">選擇路線：</label>
@@ -3387,8 +3389,10 @@ function updateMarkerPopup(marker) {
                             ${marker.routeRecords.map((route, idx) => {
                                 const distance = (route.distance / 1000).toFixed(2);
                                 const duration = formatDuration(route.duration);
+                                const startCoord = (route.coordinates && route.coordinates.length > 0) ? route.coordinates[0] : null;
+                                const startText = startCoord ? `${startCoord.lat.toFixed(5)}, ${startCoord.lng.toFixed(5)}` : '未知';
                                 const active = (idx === selectedIndex) ? 'background:#e3f2fd;' : '';
-                                return `<div style="padding:4px 8px; cursor:pointer; border-bottom:1px solid #eee; ${active}" onclick="selectRouteIndex('${marker.id}', ${idx})">路線 ${idx + 1}｜${distance} km｜${duration}</div>`;
+                                return `<div style="padding:4px 8px; cursor:pointer; border-bottom:1px solid #eee; ${active}" onclick="selectRouteIndex('${marker.id}', ${idx})">路線 ${idx + 1}｜${distance} km｜${duration}｜起點: ${startText}｜終點: ${marker.icon || ''} ${marker.name}</div>`;
                             }).join('')}
                         </div>
                     </div>
@@ -3412,6 +3416,8 @@ function updateMarkerPopup(marker) {
             const index = 0;
             const distance = (route.distance / 1000).toFixed(2);
             const duration = formatDuration(route.duration);
+            const startCoord = (route.coordinates && route.coordinates.length > 0) ? route.coordinates[0] : null;
+            const startText = startCoord ? `${startCoord.lat.toFixed(5)}, ${startCoord.lng.toFixed(5)}` : '未知';
             const routeId = `${marker.id}_${index}`;
             const isDisplayed = window.displayedRouteLines && window.displayedRouteLines[routeId];
             routeListHtml = `
@@ -3420,6 +3426,8 @@ function updateMarkerPopup(marker) {
                         <div style="width: 12px; height: 12px; background-color: ${route.color}; border-radius: 50%; margin-right: 6px;"></div>
                         <strong>路線 ${index + 1}</strong>
                     </div>
+                    <div style="color: #666; margin-bottom: 6px;">起點: ${startText}</div>
+                    <div style="color: #666; margin-bottom: 6px;">終點: ${marker.icon || ''} ${marker.name}</div>
                     <div style="color: #666; margin-bottom: 6px;">${distance} km | ${duration}</div>
                     <div style="display: flex; gap: 3px; flex-wrap: wrap;">
                         ${isDisplayed ? 
@@ -5696,8 +5704,8 @@ async function exportMarkerData() {
             };
             dataStr = JSON.stringify(exportData, replacer, 2);
         }
-        const dataBlob = new Blob([dataStr], { type: 'application/json' });
-        const url = URL.createObjectURL(dataBlob);
+        // 若可用，使用 gzip 壓縮以縮小檔案大小
+        const canGzip = typeof window !== 'undefined' && window.pako && typeof window.pako.gzip === 'function';
         
         // 建立下載檔案名稱
         const now = new Date();
@@ -5706,7 +5714,25 @@ async function exportMarkerData() {
         const day = String(now.getDate()).padStart(2, '0');
         const dateStr = `${year}-${month}-${day}`;
         const timeStr = now.toTimeString().split(' ')[0].replace(/:/g, '-');
-        const filename = `地圖標註資料_${dateStr}_${timeStr}.json`;
+        let url;
+        let filename;
+        if (canGzip) {
+            try {
+                const gzipped = window.pako.gzip(dataStr);
+                const gzipBlob = new Blob([gzipped], { type: 'application/gzip' });
+                url = URL.createObjectURL(gzipBlob);
+                filename = `地圖標註資料_${dateStr}_${timeStr}.json.gz`;
+            } catch (gzipErr) {
+                console.warn('gzip 壓縮失敗，改用未壓縮 JSON：', gzipErr);
+                const dataBlob = new Blob([dataStr], { type: 'application/json' });
+                url = URL.createObjectURL(dataBlob);
+                filename = `地圖標註資料_${dateStr}_${timeStr}.json`;
+            }
+        } else {
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            url = URL.createObjectURL(dataBlob);
+            filename = `地圖標註資料_${dateStr}_${timeStr}.json`;
+        }
         
         // 觸發下載
         const downloadLink = document.createElement('a');
@@ -5762,9 +5788,32 @@ async function exportMarkerData() {
 function importMarkerData(file) {
     try {
         const reader = new FileReader();
+        const isGzip = file && file.name && file.name.toLowerCase().endsWith('.gz');
         reader.onload = function(e) {
             try {
-                const importData = JSON.parse(e.target.result);
+                let contentStr;
+                if (isGzip) {
+                    // 嘗試解壓縮 gzip 檔案
+                    const arrayBuffer = e.target.result;
+                    try {
+                        if (window.pako && typeof window.pako.ungzip === 'function') {
+                            contentStr = window.pako.ungzip(new Uint8Array(arrayBuffer), { to: 'string' });
+                        } else {
+                            throw new Error('缺少解壓縮庫 pako，無法解析 .gz 檔案');
+                        }
+                    } catch (decompressErr) {
+                        console.error('Gzip 解壓失敗：', decompressErr);
+                        showNotification(
+                            `❌ 解壓縮失敗\n無法解析壓縮檔\n錯誤：${decompressErr.message}`,
+                            'error',
+                            6000
+                        );
+                        return;
+                    }
+                } else {
+                    contentStr = e.target.result;
+                }
+                const importData = JSON.parse(contentStr);
                 
                 // 驗證資料格式
                 if (!importData.markers || !importData.groups) {
@@ -5792,7 +5841,11 @@ function importMarkerData(file) {
             }
         };
         
-        reader.readAsText(file);
+        if (isGzip) {
+            reader.readAsArrayBuffer(file);
+        } else {
+            reader.readAsText(file);
+        }
         
         // 清空檔案輸入，允許重複選擇同一檔案
         // 注意：只有浮動設定視窗有匯入功能
@@ -8094,7 +8147,10 @@ function stopRouteRecording() {
                 distance: currentRouteData.distance,
                 duration: totalDuration,
                 color: ((getSavedPathColor && (getSavedPathColor() || 'random') !== 'random') ? getSavedPathColor() : generateRandomColor()),
-                createdAt: Date.now()
+                createdAt: Date.now(),
+                // 標註追蹤目標的資訊，方便顯示與後續擴充
+                targetMarkerId: targetMarker.id,
+                targetMarkerName: targetMarker.name
             };
             
             // 確保標記有 routeRecords 陣列
@@ -8198,9 +8254,13 @@ function displayMarkerRoutes(marker, routeIds = null) {
             }).addTo(map);
             
             // 添加路線信息彈出框
+            const startCoord = (route.coordinates && route.coordinates.length > 0) ? route.coordinates[0] : null;
+            const startText = startCoord ? `${startCoord.lat.toFixed(5)}, ${startCoord.lng.toFixed(5)}` : '未知';
             const routeInfo = `
                 <div style="font-size: 12px;">
                     <strong>${route.name}</strong><br>
+                    起點: ${startText}<br>
+                    終點: ${marker.icon || ''} ${marker.name}<br>
                     距離: ${(route.distance / 1000).toFixed(2)} km<br>
                     時間: ${formatDuration(route.duration)}<br>
                     建立: ${new Date(route.createdAt).toLocaleString()}
@@ -8309,6 +8369,8 @@ function showRouteManagement(markerId) {
         const distance = (route.distance / 1000).toFixed(2);
         const duration = formatDuration(route.duration);
         const createdAt = new Date(route.createdAt).toLocaleString();
+        const startCoord = (route.coordinates && route.coordinates.length > 0) ? route.coordinates[0] : null;
+        const startText = startCoord ? `${startCoord.lat.toFixed(5)}, ${startCoord.lng.toFixed(5)}` : '未知';
         
         routeListHtml += `
             <div style="border: 1px solid #ddd; border-radius: 6px; padding: 12px; margin-bottom: 10px; background-color: #f9f9f9;">
@@ -8317,6 +8379,8 @@ function showRouteManagement(markerId) {
                     <strong style="color: #333;">路線 ${index + 1}</strong>
                 </div>
                 <div style="font-size: 12px; color: #666; margin-bottom: 8px;">
+                    起點: ${startText}<br>
+                    終點: ${marker.icon || ''} ${marker.name}<br>
                     距離: ${distance} km | 時間: ${duration}<br>
                     建立時間: ${createdAt}
                 </div>
@@ -8476,6 +8540,7 @@ function displayRoute(markerId, routeIndex) {
     const routeInfo = `
         <div style="font-size: 12px;">
             <strong>路線 ${routeIndex + 1}</strong><br>
+            終點: ${marker.icon || ''} ${marker.name}<br>
             距離: ${distance} km<br>
             時間: ${duration}<br>
             建立: ${new Date(route.createdAt).toLocaleString()}

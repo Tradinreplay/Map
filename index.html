@@ -568,13 +568,13 @@
                 <div class="data-actions">
                     <button id="floatingExportDataBtn" class="settings-btn export-btn">
                         <span>📤</span>
-                        匯出標註點
+                        匯出全部紀錄（壓縮）
                     </button>
                     <button id="floatingImportDataBtn" class="settings-btn import-btn">
                         <span>📥</span>
                         匯入標註點
                     </button>
-                    <input type="file" id="floatingImportFileInput" accept=".json" style="display: none;">
+                    <input type="file" id="floatingImportFileInput" accept=".json,.json.gz" style="display: none;">
                 </div>
             </div>
         </div>
@@ -759,7 +759,9 @@
     <!-- Android 整合腳本 -->
     <script src="android-integration.js"></script>
     
-
+    <!-- 壓縮/解壓縮庫（pako） -->
+    <script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"></script>
+    
     
     <script src="script.js?v=mobile-debug-version-20240927"></script>
     
