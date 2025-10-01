@@ -3369,22 +3369,29 @@ function updateMarkerPopup(marker) {
         const count = marker.routeRecords.length;
         let routeListHtml = '';
         if (count > 1) {
-            // 兩條以上記錄：使用下拉選單搭配操作按鈕
+            // 兩條以上記錄：使用自製下拉清單以改善手機體驗
+            const selectedIndex = (window.routeSelectIndex && typeof window.routeSelectIndex[marker.id] === 'number') ? window.routeSelectIndex[marker.id] : 0;
+            const selectedRoute = marker.routeRecords[selectedIndex] || marker.routeRecords[0];
+            const selectedDistance = (selectedRoute.distance / 1000).toFixed(2);
+            const selectedDuration = formatDuration(selectedRoute.duration);
+            const selectedLabel = `路線 ${selectedIndex + 1}｜${selectedDistance} km｜${selectedDuration}`;
             routeListHtml = `
                 <div style="display:flex; align-items:center; gap:6px; margin-bottom:6px;">
-                    <label for="routeSelect_${marker.id}" style="font-size:11px; color:#333;">選擇路線：</label>
-                    <select id="routeSelect_${marker.id}" 
-                            style="flex:1; font-size:11px; padding:2px 6px;"
-                            onfocus="expandRouteSelect('${marker.id}')"
-                            onclick="expandRouteSelect('${marker.id}')"
-                            ontouchstart="expandRouteSelect('${marker.id}')"
-                            onchange="collapseRouteSelect('${marker.id}')">
-                        ${marker.routeRecords.map((route, idx) => {
-                            const distance = (route.distance / 1000).toFixed(2);
-                            const duration = formatDuration(route.duration);
-                            return `<option value="${idx}">路線 ${idx + 1}｜${distance} km｜${duration}</option>`;
-                        }).join('')}
-                    </select>
+                    <label style="font-size:11px; color:#333;">選擇路線：</label>
+                    <div id="routeDropdown_${marker.id}" style="flex:1; position:relative; font-size:11px;">
+                        <button type="button" id="routeDropdown_${marker.id}_label" onclick="toggleRouteDropdown('${marker.id}')" 
+                                style="width:100%; padding:2px 6px; font-size:11px; text-align:left; border:1px solid #ccc; border-radius:2px; background:#fff; cursor:pointer;">
+                            ${selectedLabel}
+                        </button>
+                        <div id="routeDropdownMenu_${marker.id}" style="display:none; position:absolute; top:100%; left:0; right:0; background:#fff; border:1px solid #ddd; border-radius:2px; max-height:160px; overflow:auto; z-index:9999; box-shadow:0 2px 8px rgba(0,0,0,0.15);">
+                            ${marker.routeRecords.map((route, idx) => {
+                                const distance = (route.distance / 1000).toFixed(2);
+                                const duration = formatDuration(route.duration);
+                                const active = (idx === selectedIndex) ? 'background:#e3f2fd;' : '';
+                                return `<div style="padding:4px 8px; cursor:pointer; border-bottom:1px solid #eee; ${active}" onclick="selectRouteIndex('${marker.id}', ${idx})">路線 ${idx + 1}｜${distance} km｜${duration}</div>`;
+                            }).join('')}
+                        </div>
+                    </div>
                 </div>
                 <div style="display:flex; gap:4px; flex-wrap:wrap;">
                     <button onclick="handleRouteAction('${marker.id}', 'display')" 
@@ -8483,8 +8490,7 @@ function deleteRoute(markerId, routeIndex) {
 
 // 下拉選單路線操作輔助：顯示/隱藏/使用/刪除
 function handleRouteAction(markerId, action) {
-    const select = document.getElementById(`routeSelect_${markerId}`);
-    const routeIndex = select ? parseInt(select.value, 10) : 0;
+    const routeIndex = getSelectedRouteIndex(markerId);
     if (Number.isNaN(routeIndex)) return;
     switch (action) {
         case 'display':
@@ -8539,6 +8545,59 @@ function collapseRouteSelect(markerId) {
     // 失焦以收合鍵盤/原生 UI
     try { select.blur(); } catch (e) {}
 }
+
+// ==== 自製路線選擇清單輔助 ====
+function getSelectedRouteIndex(markerId) {
+    const selectEl = document.getElementById(`routeSelect_${markerId}`);
+    if (selectEl) {
+        const v = parseInt(selectEl.value, 10);
+        if (!Number.isNaN(v)) return v;
+    }
+    if (!window.routeSelectIndex) window.routeSelectIndex = {};
+    const v2 = window.routeSelectIndex[markerId];
+    return (typeof v2 === 'number' && !Number.isNaN(v2)) ? v2 : 0;
+}
+
+function toggleRouteDropdown(markerId) {
+    const menu = document.getElementById(`routeDropdownMenu_${markerId}`);
+    if (!menu) return;
+    const show = menu.style.display === 'none' || menu.style.display === '';
+    menu.style.display = show ? 'block' : 'none';
+}
+
+function selectRouteIndex(markerId, idx) {
+    if (!window.routeSelectIndex) window.routeSelectIndex = {};
+    window.routeSelectIndex[markerId] = idx;
+    const labelEl = document.getElementById(`routeDropdown_${markerId}_label`);
+    const marker = markers.find(m => m.id === markerId);
+    if (labelEl && marker && marker.routeRecords && marker.routeRecords[idx]) {
+        const r = marker.routeRecords[idx];
+        const distance = (r.distance / 1000).toFixed(2);
+        const duration = formatDuration(r.duration);
+        labelEl.textContent = `路線 ${idx + 1}｜${distance} km｜${duration}`;
+    }
+    // 保持菜單展開，使用者可選後再操作按鈕
+    const menu = document.getElementById(`routeDropdownMenu_${markerId}`);
+    if (menu) {
+        // 高亮目前選擇
+        Array.from(menu.children).forEach((item, i) => {
+            item.style.background = (i === idx) ? '#e3f2fd' : '';
+        });
+    }
+}
+
+// 點擊外部區域時收合清單
+document.addEventListener('click', function(e) {
+    const menus = document.querySelectorAll('[id^="routeDropdownMenu_"]');
+    menus.forEach(menu => {
+        if (menu.style.display === 'block') {
+            const parent = menu.parentElement;
+            if (parent && !parent.contains(e.target)) {
+                menu.style.display = 'none';
+            }
+        }
+    });
+});
 
 // ==================== 螢幕恆亮功能 ====================
 
