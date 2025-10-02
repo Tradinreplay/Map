@@ -76,7 +76,7 @@
 /* 對於 img 型標記（默認圖示），直接縮放元素本身，但以左上角為基準避免位移 */
 .map-container.map-rotated .leaflet-marker-icon:not(.current-location-marker) {
   scale: var(--marker-combined-scale, 0.75);
-  transform-origin: 50% 50%;
+  transform-origin: 50% 100%; /* 底部中心為錨點，避免縮放位移 */
   transition: scale 120ms ease;
 }
 
@@ -84,7 +84,7 @@
 .map-container.map-rotated .leaflet-div-icon > *,
 .map-container.map-rotated .custom-marker-icon > * {
   transform: scale(var(--marker-combined-scale, 0.75));
-  transform-origin: 50% 50%;
+  transform-origin: 50% 100%;
   transition: transform 120ms ease;
 }
 

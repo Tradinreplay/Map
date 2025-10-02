@@ -404,7 +404,7 @@ body {
 /* 一般模式：讓標註依地圖縮放同步縮小（排除定位點外層避免位移） */
 .map-container .leaflet-marker-icon:not(.current-location-marker) {
     scale: var(--marker-zoom-scale, 1);
-    transform-origin: 50% 50%;
+    transform-origin: 50% 100%; /* 以底部中心為錨點，避免縮放位移 */
     transition: scale 120ms ease;
 }
 
@@ -412,7 +412,7 @@ body {
 .map-container .leaflet-div-icon > *,
 .map-container .custom-marker-icon > * {
     scale: var(--marker-zoom-scale, 1);
-    transform-origin: 50% 50%;
+    transform-origin: 50% 100%; /* 內部元素也以底部中心縮放，配合常見iconAnchor */
     transition: scale 120ms ease;
 }
 
