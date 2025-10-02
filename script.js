@@ -300,6 +300,9 @@ function initializeApp() {
     setTimeout(() => {
         autoGetCurrentLocation();
     }, 500);
+
+    // 啟動裝置指南針監聽（DeviceOrientation）
+    initCompassOrientation();
     
     // 檢查是否是第一次使用
     const hasSeenSetup = localStorage.getItem('hasSeenSetup');
@@ -3880,6 +3883,35 @@ function startTracking() {
                     timestamp: now,
                     speed: speed
                 };
+
+                // 更新行進方向（bearing）並派發事件，供地圖旋轉使用
+                try {
+                    let newBearing = null;
+                    // 優先使用原生 heading（度，0=北，順時針）
+                    if (position.coords && position.coords.heading != null && isFinite(position.coords.heading)) {
+                        newBearing = position.coords.heading;
+                    } else if (lastPosition) {
+                        // 以前後兩點計算 bearing，避免小幅抖動（距離門檻2m）
+                        const moveDist = calculateDistance(
+                            lastPosition.lat, lastPosition.lng,
+                            currentPosition.lat, currentPosition.lng
+                        );
+                        if (moveDist >= 2) {
+                            newBearing = calculateBearing(
+                                lastPosition.lat, lastPosition.lng,
+                                currentPosition.lat, currentPosition.lng
+                            );
+                        }
+                    }
+
+                    if (newBearing != null && isFinite(newBearing)) {
+                        currentBearing = newBearing;
+                        window.currentBearing = newBearing;
+                        document.dispatchEvent(new Event('bearingUpdated'));
+                    }
+                } catch (e) {
+                    console.warn('更新行進方向失敗:', e);
+                }
                 
                 updateLocationDisplay();
                             updateCurrentLocationMarker();
@@ -3976,6 +4008,32 @@ function startTracking() {
                                 timestamp: now,
                                 speed: speed
                             };
+
+                            // 定時強制更新時同步更新行進方向並派發事件
+                            try {
+                                let newBearing = null;
+                                if (position.coords && position.coords.heading != null && isFinite(position.coords.heading)) {
+                                    newBearing = position.coords.heading;
+                                } else if (lastPosition) {
+                                    const moveDist = calculateDistance(
+                                        lastPosition.lat, lastPosition.lng,
+                                        currentPosition.lat, currentPosition.lng
+                                    );
+                                    if (moveDist >= 2) {
+                                        newBearing = calculateBearing(
+                                            lastPosition.lat, lastPosition.lng,
+                                            currentPosition.lat, currentPosition.lng
+                                        );
+                                    }
+                                }
+                                if (newBearing != null && isFinite(newBearing)) {
+                                    currentBearing = newBearing;
+                                    window.currentBearing = newBearing;
+                                    document.dispatchEvent(new Event('bearingUpdated'));
+                                }
+                            } catch (e) {
+                                console.warn('定時更新行進方向失敗:', e);
+                            }
                             
                             updateLocationDisplay();
                             updateCurrentLocationMarker();
@@ -4254,6 +4312,78 @@ function calculateBearing(lat1, lng1, lat2, lng2) {
     
     // 轉換為0-360度
     return (θ * 180/Math.PI + 360) % 360;
+}
+
+// ===== 裝置方向（指南針）整合 =====
+let compassBearing = null; // 由裝置方向取得的方位（0-360）
+let lastBearingUpdateTs = 0; // 最近一次更新 bearing 的時間戳
+
+function initCompassOrientation() {
+    // iOS 13+ 需要權限
+    const requestIOSPermission = async () => {
+        try {
+            if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+                const res = await DeviceOrientationEvent.requestPermission();
+                console.log('DeviceOrientation permission:', res);
+            }
+        } catch (e) {
+            console.warn('DeviceOrientation 權限請求失敗:', e);
+        }
+    };
+
+    // 嘗試請求（在部分瀏覽器需由使用者手勢觸發，這裡容忍失敗）
+    requestIOSPermission();
+
+    const handleOrientation = (event) => {
+        let deg = null;
+        // iOS Safari 提供 webkitCompassHeading（0=北，順時針）
+        if (typeof event.webkitCompassHeading === 'number' && isFinite(event.webkitCompassHeading)) {
+            deg = event.webkitCompassHeading;
+        } else if (event.absolute && typeof event.alpha === 'number' && isFinite(event.alpha)) {
+            // 絕對方位，alpha 通常為相對北的角度（0-360）
+            deg = event.alpha;
+        } else if (typeof event.alpha === 'number' && isFinite(event.alpha)) {
+            // 非絕對模式，仍可作為近似值
+            deg = event.alpha;
+        }
+
+        if (deg != null) {
+            // 正規化到 0-360
+            deg = ((deg % 360) + 360) % 360;
+            compassBearing = deg;
+            window.compassBearing = deg;
+            maybeUseCompassBearing();
+        }
+    };
+
+    // 監聽裝置方向（不同瀏覽器提供不同事件）
+    window.addEventListener('deviceorientationabsolute', handleOrientation);
+    window.addEventListener('deviceorientation', handleOrientation);
+}
+
+function maybeUseCompassBearing() {
+    // 在停走或無法由 GPS 得到 heading 時，使用指南針方位維持地圖朝向
+    if (compassBearing == null) return;
+    const now = Date.now();
+
+    // 當速度低於 0.5 m/s，或兩次位置距離小於 1.5m，視為停走
+    let isStationary = false;
+    if (currentPosition && typeof currentPosition.speed === 'number') {
+        isStationary = currentPosition.speed < 0.5;
+    }
+    if (!isStationary && lastPosition && currentPosition) {
+        const dist = calculateDistance(lastPosition.lat, lastPosition.lng, currentPosition.lat, currentPosition.lng);
+        isStationary = dist < 1.5;
+    }
+
+    // 若停走，或沒有可靠的 GPS heading，使用指南針
+    const hasGpsHeading = (typeof currentBearing === 'number' && isFinite(currentBearing));
+    if (isStationary || !hasGpsHeading) {
+        currentBearing = compassBearing;
+        window.currentBearing = compassBearing;
+        lastBearingUpdateTs = now;
+        document.dispatchEvent(new Event('bearingUpdated'));
+    }
 }
 
 // 路徑顯示功能
