@@ -3374,9 +3374,11 @@ function updateMarkerPopup(marker) {
             const selectedRoute = marker.routeRecords[selectedIndex] || marker.routeRecords[0];
             const selectedDistance = (selectedRoute.distance / 1000).toFixed(2);
             const selectedDuration = formatDuration(selectedRoute.duration);
-            const selectedStartCoord = (selectedRoute.coordinates && selectedRoute.coordinates.length > 0) ? selectedRoute.coordinates[0] : null;
-            const selectedStartText = selectedStartCoord ? `${selectedStartCoord.lat.toFixed(5)}, ${selectedStartCoord.lng.toFixed(5)}` : '未知';
-            const selectedLabel = `路線 ${selectedIndex + 1}｜${selectedDistance} km｜${selectedDuration}｜起點: ${selectedStartText}｜終點: ${marker.icon || ''} ${marker.name}`;
+            const selectedStartName = selectedRoute.startMarkerName || '未知';
+            const targetMarkerObjForSelected = selectedRoute.targetMarkerId ? markers.find(m => m.id === selectedRoute.targetMarkerId) : null;
+            const selectedTargetIcon = targetMarkerObjForSelected && targetMarkerObjForSelected.icon ? targetMarkerObjForSelected.icon : '';
+            const selectedTargetName = selectedRoute.targetMarkerName || (targetMarkerObjForSelected ? targetMarkerObjForSelected.name : '未知');
+            const selectedLabel = `路線 ${selectedIndex + 1}｜${selectedDistance} km｜${selectedDuration}｜起點: ${selectedStartName}｜終點: ${selectedTargetIcon} ${selectedTargetName}`;
             routeListHtml = `
                 <div style="display:flex; align-items:center; gap:6px; margin-bottom:6px;">
                     <label style="font-size:11px; color:#333;">選擇路線：</label>
@@ -3389,10 +3391,12 @@ function updateMarkerPopup(marker) {
                             ${marker.routeRecords.map((route, idx) => {
                                 const distance = (route.distance / 1000).toFixed(2);
                                 const duration = formatDuration(route.duration);
-                                const startCoord = (route.coordinates && route.coordinates.length > 0) ? route.coordinates[0] : null;
-                                const startText = startCoord ? `${startCoord.lat.toFixed(5)}, ${startCoord.lng.toFixed(5)}` : '未知';
+                                const startName = route.startMarkerName || '未知';
                                 const active = (idx === selectedIndex) ? 'background:#e3f2fd;' : '';
-                                return `<div style="padding:4px 8px; cursor:pointer; border-bottom:1px solid #eee; ${active}" onclick="selectRouteIndex('${marker.id}', ${idx})">路線 ${idx + 1}｜${distance} km｜${duration}｜起點: ${startText}｜終點: ${marker.icon || ''} ${marker.name}</div>`;
+                                const targetObj = route.targetMarkerId ? markers.find(m => m.id === route.targetMarkerId) : null;
+                                const targetIcon = targetObj && targetObj.icon ? targetObj.icon : '';
+                                const targetName = route.targetMarkerName || (targetObj ? targetObj.name : '未知');
+                                return `<div style="padding:4px 8px; cursor:pointer; border-bottom:1px solid #eee; ${active}" onclick="selectRouteIndex('${marker.id}', ${idx})">路線 ${idx + 1}｜${distance} km｜${duration}｜起點: ${startName}｜終點: ${targetIcon} ${targetName}</div>`;
                             }).join('')}
                         </div>
                     </div>
@@ -3416,18 +3420,20 @@ function updateMarkerPopup(marker) {
             const index = 0;
             const distance = (route.distance / 1000).toFixed(2);
             const duration = formatDuration(route.duration);
-            const startCoord = (route.coordinates && route.coordinates.length > 0) ? route.coordinates[0] : null;
-            const startText = startCoord ? `${startCoord.lat.toFixed(5)}, ${startCoord.lng.toFixed(5)}` : '未知';
+            const startName = route.startMarkerName || '未知';
             const routeId = `${marker.id}_${index}`;
             const isDisplayed = window.displayedRouteLines && window.displayedRouteLines[routeId];
+            const targetObjSingle = route.targetMarkerId ? markers.find(m => m.id === route.targetMarkerId) : null;
+            const targetIconSingle = targetObjSingle && targetObjSingle.icon ? targetObjSingle.icon : '';
+            const targetNameSingle = route.targetMarkerName || (targetObjSingle ? targetObjSingle.name : '未知');
             routeListHtml = `
                 <div style="border: 1px solid #ddd; border-radius: 4px; padding: 8px; margin: 4px 0; background-color: #f9f9f9; font-size: 11px;">
                     <div style="display: flex; align-items: center; margin-bottom: 4px;">
                         <div style="width: 12px; height: 12px; background-color: ${route.color}; border-radius: 50%; margin-right: 6px;"></div>
                         <strong>路線 ${index + 1}</strong>
                     </div>
-                    <div style="color: #666; margin-bottom: 6px;">起點: ${startText}</div>
-                    <div style="color: #666; margin-bottom: 6px;">終點: ${marker.icon || ''} ${marker.name}</div>
+                    <div style="color: #666; margin-bottom: 6px;">起點: ${startName}</div>
+                    <div style="color: #666; margin-bottom: 6px;">終點: ${targetIconSingle} ${targetNameSingle}</div>
                     <div style="color: #666; margin-bottom: 6px;">${distance} km | ${duration}</div>
                     <div style="display: flex; gap: 3px; flex-wrap: wrap;">
                         ${isDisplayed ? 
@@ -8105,7 +8111,7 @@ document.addEventListener('DOMContentLoaded', initPathColorPersistence);
 // ==================== 路線記錄功能 ====================
 
 // 開始路線記錄
-function startRouteRecording(targetMarker) {
+function startRouteRecording(targetMarker, selectedStartMarker) {
     if (isRecordingRoute) {
         stopRouteRecording();
     }
@@ -8118,9 +8124,19 @@ function startRouteRecording(targetMarker) {
     isRecordingRoute = true;
     routeRecordingStartTime = Date.now();
     
+    // 使用者選擇的起始標示點（不自動回退到目標標示點）
+    const startMarker = selectedStartMarker || null;
+    if (!startMarker) {
+        showNotification('⚠️ 請先選擇起始標示點再開始記錄', 'warning');
+        return;
+    }
+
     // 初始化路線數據
     currentRouteData = {
         targetMarkerId: targetMarker.id,
+        targetMarkerName: targetMarker.name,
+        startMarkerId: startMarker.id,
+        startMarkerName: startMarker.name,
         coordinates: [{
             lat: currentPosition.lat,
             lng: currentPosition.lng,
@@ -8161,10 +8177,13 @@ function stopRouteRecording() {
         map.removeLayer(currentRouteData.polyline);
     }
     
-    // 如果路線有足夠的點數，保存到目標標記
+    // 如果路線有足夠的點數，僅保存到「起始標示點」
     if (currentRouteData.coordinates.length >= 2) {
         const targetMarker = markers.find(m => m.id === currentRouteData.targetMarkerId);
-        if (targetMarker) {
+        const startMarker = currentRouteData.startMarkerId ? markers.find(m => m.id === currentRouteData.startMarkerId) : null;
+        if (!startMarker) {
+            showNotification('⚠️ 未選擇起始標示點，路線不會被保存', 'warning');
+        } else {
             // 創建路線記錄
             const routeRecord = {
                 name: `路線 ${new Date().toLocaleString()}`,
@@ -8173,27 +8192,29 @@ function stopRouteRecording() {
                 duration: totalDuration,
                 color: ((getSavedPathColor && (getSavedPathColor() || 'random') !== 'random') ? getSavedPathColor() : generateRandomColor()),
                 createdAt: Date.now(),
-                // 標註追蹤目標的資訊，方便顯示與後續擴充
-                targetMarkerId: targetMarker.id,
-                targetMarkerName: targetMarker.name
+                // 標註起點與終點資訊，方便顯示與後續導航
+                startMarkerId: startMarker.id,
+                startMarkerName: startMarker.name,
+                targetMarkerId: targetMarker ? targetMarker.id : null,
+                targetMarkerName: targetMarker ? targetMarker.name : null
             };
             
             // 確保標記有 routeRecords 陣列
-            if (!targetMarker.routeRecords) {
-                targetMarker.routeRecords = [];
+            if (!startMarker.routeRecords) {
+                startMarker.routeRecords = [];
             }
             
             // 檢查是否超過最大記錄數量
-            if (targetMarker.routeRecords.length >= 10) {
+            if (startMarker.routeRecords.length >= 10) {
                 // 移除最舊的記錄
-                targetMarker.routeRecords.shift();
+                startMarker.routeRecords.shift();
             }
             
             // 添加新記錄
-            targetMarker.routeRecords.push(routeRecord);
+            startMarker.routeRecords.push(routeRecord);
             
-            console.log(`路線記錄已保存到 "${targetMarker.name}"`);
-            showNotification(`✅ 路線已保存到 "${targetMarker.name}"`, 'success');
+            console.log(`路線記錄已保存到 "${startMarker.name}"（終點：${routeRecord.targetMarkerName || '未知'}）`);
+            showNotification(`✅ 路線已保存到 "${startMarker.name}"`, 'success');
             
             // 保存數據到本地存儲
             saveMarkersToStorage();
@@ -8500,7 +8521,7 @@ function closeRouteManagement() {
     }
 }
 
-// 開始新的路線記錄
+// 開始新的路線記錄（改為先選擇起始標示點）
 function startNewRouteRecording(markerId) {
     const marker = markers.find(m => m.id === markerId);
     if (!marker) {
@@ -8521,13 +8542,114 @@ function startNewRouteRecording(markerId) {
         });
     }
     
-    // 設置追蹤目標並開始記錄
-    setTrackingTarget(markerId);
+    // 開啟起點選擇器
+    showStartMarkerSelector(markerId);
+}
+
+// 顯示起點選擇模態視窗
+function showStartMarkerSelector(targetMarkerId) {
+    if (!currentPosition) {
+        alert('尚未取得目前位置，無法選擇起點');
+        return;
+    }
+    const targetMarker = markers.find(m => m.id === targetMarkerId);
+    if (!targetMarker) {
+        alert('找不到目標標示點');
+        return;
+    }
+    // 計算距離並取得 200m 內候選
+    const candidates = markers.map(m => {
+        const dist = calculateDistance(currentPosition.lat, currentPosition.lng, m.lat, m.lng);
+        return { marker: m, dist };
+    }).sort((a,b) => a.dist - b.dist);
+    const nearby = candidates.filter(c => c.dist <= 200);
     
-    // 關閉浮動視窗
+    // 建立模態容器
+    const modal = document.createElement('div');
+    modal.id = 'startMarkerSelectorModal';
+    modal.style.position = 'fixed';
+    modal.style.top = '0';
+    modal.style.left = '0';
+    modal.style.right = '0';
+    modal.style.bottom = '0';
+    modal.style.background = 'rgba(0,0,0,0.4)';
+    modal.style.zIndex = '99999';
+    modal.innerHTML = `
+        <div style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); background:#fff; width:320px; max-width:90vw; border-radius:8px; box-shadow:0 8px 24px rgba(0,0,0,0.2);">
+            <div style="padding:10px 12px; border-bottom:1px solid #eee; font-size:14px; font-weight:600;">選擇起始標示點</div>
+            <div style="padding:10px 12px; font-size:12px; color:#555;">
+                目標：${targetMarker.icon || ''} ${targetMarker.name}<br>
+                目前位置：${currentPosition.lat.toFixed(5)}, ${currentPosition.lng.toFixed(5)}
+            </div>
+            <div style="padding:8px 12px;">
+                <input id="startMarkerSearchInput" type="text" placeholder="搜尋標示點名稱" style="width:100%; padding:6px 8px; font-size:12px; border:1px solid #ccc; border-radius:4px;" />
+            </div>
+            <div id="nearbyStartList" style="padding:0 12px 8px; max-height:200px; overflow:auto;">
+                ${nearby.length > 0 ? nearby.map(c => `
+                    <div style="display:flex; align-items:center; justify-content:space-between; padding:6px 0; border-bottom:1px solid #f0f0f0;">
+                        <div style="font-size:12px;">
+                            ${c.marker.icon || ''} ${c.marker.name}
+                            <div style="font-size:11px; color:#777;">距離：約 ${Math.round(c.dist)} m</div>
+                        </div>
+                        <button onclick="beginRouteRecordingWithStart('${targetMarkerId}', '${c.marker.id}')" style="padding:4px 8px; font-size:12px;">選擇</button>
+                    </div>
+                `).join('') : `
+                    <div style="font-size:12px; color:#777; padding:6px 0;">附近（200m 內）沒有標示點，可從全部標示點選擇。</div>
+                `}
+            </div>
+            <div style="padding:6px 12px; border-top:1px solid #eee; background:#fafafa; font-size:12px;">全部標示點</div>
+            <div id="allStartList" style="padding:0 12px 12px; max-height:160px; overflow:auto;">
+                ${candidates.map(c => `
+                    <div style="display:flex; align-items:center; justify-content:space-between; padding:6px 0; border-bottom:1px solid #f0f0f0;">
+                        <div style="font-size:12px;">
+                            ${c.marker.icon || ''} ${c.marker.name}
+                            <div style="font-size:11px; color:#777;">距離：約 ${Math.round(c.dist)} m</div>
+                        </div>
+                        <button onclick="beginRouteRecordingWithStart('${targetMarkerId}', '${c.marker.id}')" style="padding:4px 8px; font-size:12px;">選擇</button>
+                    </div>
+                `).join('')}
+            </div>
+            <div style="display:flex; gap:8px; justify-content:flex-end; padding:10px 12px; border-top:1px solid #eee;">
+                <button onclick="(function(){const m=document.getElementById('startMarkerSelectorModal'); if(m) m.remove();})()" style="padding:6px 10px; font-size:12px;">取消</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    
+    // 搜尋過濾
+    const searchInput = modal.querySelector('#startMarkerSearchInput');
+    searchInput.addEventListener('input', () => {
+        const q = searchInput.value.trim();
+        const filter = (containerId) => {
+            const container = modal.querySelector(containerId);
+            if (!container) return;
+            Array.from(container.children).forEach(row => {
+                const text = row.innerText || '';
+                row.style.display = (q === '' || text.includes(q)) ? '' : 'none';
+            });
+        };
+        filter('#nearbyStartList');
+        filter('#allStartList');
+    });
+}
+
+// 以選定起點開始記錄路線
+function beginRouteRecordingWithStart(targetMarkerId, startMarkerId) {
+    const targetMarker = markers.find(m => m.id === targetMarkerId);
+    const startMarker = markers.find(m => m.id === startMarkerId);
+    if (!targetMarker || !startMarker) {
+        alert('找不到目標或起始標示點');
+        return;
+    }
+    // 設為追蹤目標（終點）
+    setTrackingTarget(targetMarkerId);
+    // 關閉路線管理與選擇器
     closeRouteManagement();
-    
-    alert('開始記錄新路線，請移動以記錄路徑');
+    const modal = document.getElementById('startMarkerSelectorModal');
+    if (modal) modal.remove();
+    // 開始記錄
+    startRouteRecording(targetMarker, startMarker);
+    alert(`開始記錄：起點「${startMarker.name}」 → 終點「${targetMarker.name}」`);
 }
 
 // 顯示指定路線
@@ -8562,10 +8684,13 @@ function displayRoute(markerId, routeIndex) {
     // 添加路線信息
     const distance = (route.distance / 1000).toFixed(2);
     const duration = formatDuration(route.duration);
+    const targetMarkerObj = route.targetMarkerId ? markers.find(m => m.id === route.targetMarkerId) : null;
+    const targetIcon = targetMarkerObj && targetMarkerObj.icon ? targetMarkerObj.icon : '';
+    const targetName = route.targetMarkerName || (targetMarkerObj ? targetMarkerObj.name : '未知終點');
     const routeInfo = `
         <div style="font-size: 12px;">
             <strong>路線 ${routeIndex + 1}</strong><br>
-            終點: ${marker.icon || ''} ${marker.name}<br>
+            終點: ${targetIcon} ${targetName}<br>
             距離: ${distance} km<br>
             時間: ${duration}<br>
             建立: ${new Date(route.createdAt).toLocaleString()}
@@ -8620,8 +8745,12 @@ function useRoute(markerId, routeIndex) {
     // 顯示路線
     displayRoute(markerId, routeIndex);
     
-    // 設置追蹤目標但不記錄新路線
-    setTrackingTargetForNavigation(markerId);
+    // 設置追蹤目標為此路線的終點（不記錄新路線）
+    if (route.targetMarkerId) {
+        setTrackingTargetForNavigation(route.targetMarkerId);
+    } else {
+        setTrackingTargetForNavigation(markerId);
+    }
     
     // 關閉模態框
     closeRouteManagement();
