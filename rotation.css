@@ -4,10 +4,16 @@
 }
 
 .map-container.map-rotated #map {
-  transform: rotate(var(--map-rotation-deg, 0deg)) scale(var(--map-rotation-scale, 1));
+  /* 改用擴增寬高避免縮放造成解析度下降 */
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: calc(100% * var(--map-rotation-scale, 1));
+  height: calc(100% * var(--map-rotation-scale, 1));
+  transform: translate(-50%, -50%) rotate(var(--map-rotation-deg, 0deg));
   transform-origin: 50% 50%;
   transition: transform 200ms ease;
-  will-change: transform;
+  will-change: transform, width, height;
 }
 
 /* 讓 Leaflet 控制項與彈窗在地圖旋轉時保持正向與正常尺寸 */
@@ -16,7 +22,8 @@
 .map-container.map-rotated .leaflet-bottom,
 .map-container.map-rotated .leaflet-popup-pane,
 .map-container.map-rotated .leaflet-tooltip-pane {
-  transform: rotate(calc(-1 * var(--map-rotation-deg, 0deg))) scale(var(--inverse-map-rotation-scale, 1));
+  /* 僅反向旋轉，移除反向縮放，保持原尺寸與清晰度 */
+  transform: rotate(calc(-1 * var(--map-rotation-deg, 0deg)));
   transform-origin: 50% 50%;
 }
 
