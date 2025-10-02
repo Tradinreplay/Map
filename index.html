@@ -24,6 +24,7 @@
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="styles.css?v=mobile-debug-version-20240927">
+    <link rel="stylesheet" href="rotation.css">
     <link rel="stylesheet" href="path-color.css">
 </head>
 <body>
@@ -47,6 +48,11 @@
             <!-- 自動居中按鈕 -->
             <button id="centerBtn" class="center-btn" title="開啟/關閉自動居中功能" onclick="handleCenterClick()">
                 <span id="centerIcon">🎯</span>
+            </button>
+
+            <!-- 地圖旋轉開關按鈕 -->
+            <button id="rotateBtn" class="rotate-btn" title="地圖旋轉開關" onclick="toggleMapRotation()">
+                <span id="rotateIcon">🔄</span>
             </button>
             
             <!-- 可移動的設定按鈕 -->
@@ -764,6 +770,7 @@
     
     
     <script src="script.js?v=mobile-debug-version-20240927"></script>
+    <script src="rotation.js"></script>
     
 
 </body>
