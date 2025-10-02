@@ -29,6 +29,11 @@
 </head>
 <body>
 
+    <!-- 地圖旋轉開關按鈕（置於 body，避免被地圖層覆蓋） -->
+    <button id="rotateBtn" class="rotate-btn" title="地圖旋轉開關" onclick="toggleMapRotation()">
+        <span id="rotateIcon">🔄</span>
+    </button>
+
 
     <div class="container">
         <!-- 地圖容器 -->
@@ -50,10 +55,7 @@
                 <span id="centerIcon">🎯</span>
             </button>
 
-            <!-- 地圖旋轉開關按鈕 -->
-            <button id="rotateBtn" class="rotate-btn" title="地圖旋轉開關" onclick="toggleMapRotation()">
-                <span id="rotateIcon">🔄</span>
-            </button>
+            
             
             <!-- 可移動的設定按鈕 -->
             <button id="floatingSettingsBtn" class="floating-settings-btn" title="設定">

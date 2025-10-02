@@ -5,6 +5,7 @@ let mapRotationDeg = 0; // fallback if currentBearing is unavailable
 function toggleMapRotation() {
   const container = document.querySelector('.map-container');
   const mapEl = document.getElementById('map');
+  const btn = document.getElementById('rotateBtn');
   if (!container || !mapEl) return;
 
   mapRotationEnabled = !mapRotationEnabled;
@@ -17,10 +18,12 @@ function toggleMapRotation() {
       mapRotationDeg = 30; // 預設 30 度
     }
     updateMapRotation();
+    if (btn) btn.classList.add('active');
   } else {
     container.classList.remove('map-rotated');
     container.style.setProperty('--map-rotation-deg', '0deg');
     container.style.setProperty('--map-rotation-scale', '1');
+    if (btn) btn.classList.remove('active');
   }
 }
 
@@ -70,5 +73,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const btn = document.getElementById('rotateBtn');
   if (btn) {
     btn.addEventListener('click', toggleMapRotation);
+    // 在部分手機瀏覽器上，使用 touchend 可提升點擊反應可靠度
+    btn.addEventListener('touchend', (e) => {
+      e.preventDefault();
+      toggleMapRotation();
+    }, { passive: false });
   }
 });

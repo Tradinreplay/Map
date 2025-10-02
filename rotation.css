@@ -21,6 +21,31 @@
   -webkit-tap-highlight-color: transparent;
   min-width: 44px;
   min-height: 44px;
+  width: 36px;
+  height: 36px;
+  background: rgba(255, 255, 255, 0.95);
+  border: 2px solid rgba(99, 102, 241, 0.3);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
+  backdrop-filter: blur(10px);
+  color: #4a5568;
+}
+
+.rotate-btn:hover {
+  transform: translateY(-2px) scale(1.05);
+  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.25);
+}
+
+.rotate-btn:active {
+  transform: translateY(-1px) scale(0.98);
+}
+
+.rotate-btn.active {
+  background: rgba(99, 102, 241, 0.15);
+  border-color: rgba(99, 102, 241, 0.45);
 }
 
 /* Ensure map uses dynamic viewport height when rotated/fullscreen */
