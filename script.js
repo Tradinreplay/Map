@@ -80,6 +80,8 @@ function setupRouteLineMonitoring() {
 
 // 即時定位設定
 let enableHighAccuracy = true; // 高精度模式
+// 是否在中國境內套用座標偏移校正（WGS84→GCJ-02），以貼齊Google在中國區域圖資的偏移
+let applyChinaOffset = true;
 let autoStartTracking = true; // 自動開始追蹤（修改為預設開啟）
 let keepMapCentered = false; // 保持地圖中央（預設關閉）
 let markerNotificationsEnabled = false; // 標註點通知開關（新增）
@@ -707,6 +709,66 @@ function initMap() {
             showMarkerModal(e.latlng.lat, e.latlng.lng);
         }
     });
+}
+
+// ===== 座標系轉換與區域判定（解決中國區域圖資與GPS座標偏移） =====
+// 判斷是否在「中國大陸」範圍（排除台灣、香港、澳門），避免在非偏移區域套用GCJ-02校正
+function isInMainlandChina(lat, lng) {
+    // 粗略大陸邊界盒（先快速排除）
+    const inChinaBox = (lng >= 72.004 && lng <= 137.8347 && lat >= 0.8293 && lat <= 55.8271);
+    if (!inChinaBox) return false;
+    // 排除台灣
+    const inTaiwan = (lng >= 119.3 && lng <= 122.5 && lat >= 21.5 && lat <= 25.6);
+    if (inTaiwan) return false;
+    // 排除香港
+    const inHongKong = (lng >= 113.7 && lng <= 114.5 && lat >= 22.15 && lat <= 22.6);
+    if (inHongKong) return false;
+    // 排除澳門
+    const inMacau = (lng >= 113.5 && lng <= 113.7 && lat >= 22.1 && lat <= 22.25);
+    if (inMacau) return false;
+    return true;
+}
+
+function transformLat(x, y) {
+    let ret = -100.0 + 2.0 * x + 3.0 * y + 0.2 * y * y + 0.1 * x * y + 0.2 * Math.sqrt(Math.abs(x));
+    ret += (20.0 * Math.sin(6.0 * x * Math.PI) + 20.0 * Math.sin(2.0 * x * Math.PI)) * 2.0 / 3.0;
+    ret += (20.0 * Math.sin(y * Math.PI) + 40.0 * Math.sin(y / 3.0 * Math.PI)) * 2.0 / 3.0;
+    ret += (160.0 * Math.sin(y / 12.0 * Math.PI) + 320.0 * Math.sin(y * Math.PI / 30.0)) * 2.0 / 3.0;
+    return ret;
+}
+
+function transformLon(x, y) {
+    let ret = 300.0 + x + 2.0 * y + 0.1 * x * x + 0.1 * x * y + 0.1 * Math.sqrt(Math.abs(x));
+    ret += (20.0 * Math.sin(6.0 * x * Math.PI) + 20.0 * Math.sin(2.0 * x * Math.PI)) * 2.0 / 3.0;
+    ret += (20.0 * Math.sin(x * Math.PI) + 40.0 * Math.sin(x / 3.0 * Math.PI)) * 2.0 / 3.0;
+    ret += (150.0 * Math.sin(x / 12.0 * Math.PI) + 300.0 * Math.sin(x / 30.0 * Math.PI)) * 2.0 / 3.0;
+    return ret;
+}
+
+// WGS84 → GCJ-02（僅在中國境內時應用）
+function wgs84ToGcj02(lat, lng) {
+    if (!isInMainlandChina(lat, lng)) return { lat, lng };
+    const a = 6378245.0;
+    const ee = 0.00669342162296594323;
+    let dLat = transformLat(lng - 105.0, lat - 35.0);
+    let dLng = transformLon(lng - 105.0, lat - 35.0);
+    const radLat = lat / 180.0 * Math.PI;
+    let magic = Math.sin(radLat);
+    magic = 1 - ee * magic * magic;
+    const sqrtMagic = Math.sqrt(magic);
+    dLat = (dLat * 180.0) / ((a * (1 - ee)) / (magic * sqrtMagic) * Math.PI);
+    dLng = (dLng * 180.0) / (a / sqrtMagic * Math.cos(radLat) * Math.PI);
+    const mgLat = lat + dLat;
+    const mgLng = lng + dLng;
+    return { lat: mgLat, lng: mgLng };
+}
+
+// 取得用於地圖顯示的座標（根據設定與區域自動校正）
+function getMapDisplayCoord(lat, lng) {
+    if (applyChinaOffset && isInMainlandChina(lat, lng)) {
+        return wgs84ToGcj02(lat, lng);
+    }
+    return { lat, lng };
 }
 
 // 創建當前位置圖示
@@ -2651,7 +2713,8 @@ function centerMapToCurrentPosition(forceCenter = false, zoomLevel = null) {
     // 如果強制居中或者啟用了自動居中功能
     if (forceCenter || keepMapCentered) {
         const currentZoom = zoomLevel || map.getZoom();
-        map.setView([currentPosition.lat, currentPosition.lng], currentZoom);
+        const disp = getMapDisplayCoord(currentPosition.lat, currentPosition.lng);
+        map.setView([disp.lat, disp.lng], currentZoom);
     }
 }
 
@@ -2664,7 +2727,8 @@ function updateCurrentLocationMarker() {
     }
     
     // 創建新的位置標記
-    currentLocationMarker = L.marker([currentPosition.lat, currentPosition.lng], {
+    const disp = getMapDisplayCoord(currentPosition.lat, currentPosition.lng);
+    currentLocationMarker = L.marker([disp.lat, disp.lng], {
         icon: createCurrentLocationIcon(),
         zIndexOffset: 1000 // 確保當前位置標記在最上層
     }).addTo(map);
@@ -2673,8 +2737,8 @@ function updateCurrentLocationMarker() {
     currentLocationMarker.bindPopup(`
         <div class="current-location-popup">
             <strong>📍 您的當前位置</strong><br>
-            緯度: ${currentPosition.lat.toFixed(6)}<br>
-            經度: ${currentPosition.lng.toFixed(6)}<br>
+            緯度: ${disp.lat.toFixed(6)}<br>
+            經度: ${disp.lng.toFixed(6)}<br>
             <small>點擊地圖其他位置可添加標註</small>
         </div>
     `);
@@ -3151,7 +3215,8 @@ function addMarkerToMap(marker) {
     
     // 創建自定義圖標
     const customIcon = createCustomMarkerIcon(marker.color || 'red', marker.icon || '📍');
-    const leafletMarker = L.marker([marker.lat, marker.lng], { icon: customIcon }).addTo(map);
+    const disp = getMapDisplayCoord(marker.lat, marker.lng);
+    const leafletMarker = L.marker([disp.lat, disp.lng], { icon: customIcon }).addTo(map);
     
     // 添加點擊事件，包含按壓效果和關閉浮動設定視窗
     leafletMarker.on('click', function(e) {
@@ -4000,7 +4065,8 @@ function centerMapToCurrentLocation() {
     }
     
     if (currentPosition) {
-        map.setView([currentPosition.lat, currentPosition.lng], 18);
+        const disp = getMapDisplayCoord(currentPosition.lat, currentPosition.lng);
+        map.setView([disp.lat, disp.lng], 18);
         updateCurrentLocationMarker();
         // 顯示當前位置標記的彈出視窗
         if (currentLocationMarker) {
@@ -4176,9 +4242,11 @@ function showRouteLine() {
     clearRouteLine();
     
     // 創建路徑線
+    const dispStart = getMapDisplayCoord(currentPosition.lat, currentPosition.lng);
+    const dispEnd = getMapDisplayCoord(trackingTarget.lat, trackingTarget.lng);
     const routeCoords = [
-        [currentPosition.lat, currentPosition.lng],
-        [trackingTarget.lat, trackingTarget.lng]
+        [dispStart.lat, dispStart.lng],
+        [dispEnd.lat, dispEnd.lng]
     ];
     
     routeLine = L.polyline(routeCoords, {
@@ -8147,7 +8215,8 @@ function startRouteRecording(targetMarker, selectedStartMarker) {
     };
     
     // 創建藍色實體線顯示當前記錄的路線
-    const routePolyline = L.polyline([[currentPosition.lat, currentPosition.lng]], {
+    const disp = getMapDisplayCoord(currentPosition.lat, currentPosition.lng);
+    const routePolyline = L.polyline([[disp.lat, disp.lng]], {
         color: '#007AFF', // 藍色
         weight: 4,
         opacity: 0.8,
@@ -8273,7 +8342,10 @@ function updateRouteRecording(newPosition) {
         
         // 更新藍色路線顯示
         if (currentRouteData.polyline) {
-            const latLngs = currentRouteData.coordinates.map(coord => [coord.lat, coord.lng]);
+            const latLngs = currentRouteData.coordinates.map(coord => {
+                const disp = getMapDisplayCoord(coord.lat, coord.lng);
+                return [disp.lat, disp.lng];
+            });
             currentRouteData.polyline.setLatLngs(latLngs);
         }
     }
@@ -8291,7 +8363,10 @@ function displayMarkerRoutes(marker, routeIds = null) {
     
     routes.forEach(route => {
         if (route.coordinates.length >= 2) {
-            const latLngs = route.coordinates.map(coord => [coord.lat, coord.lng]);
+            const latLngs = route.coordinates.map(coord => {
+                const disp = getMapDisplayCoord(coord.lat, coord.lng);
+                return [disp.lat, disp.lng];
+            });
             const polyline = L.polyline(latLngs, {
                 color: route.color,
                 weight: 3,
@@ -8481,9 +8556,11 @@ function showDefaultRoute(markerId) {
     }
     
     // 創建紅色虛線路線
+    const dispCur = getMapDisplayCoord(currentPosition.lat, currentPosition.lng);
+    const dispMarker = getMapDisplayCoord(marker.lat, marker.lng);
     const latLngs = [
-        [currentPosition.lat, currentPosition.lng],
-        [marker.lat, marker.lng]
+        [dispCur.lat, dispCur.lng],
+        [dispMarker.lat, dispMarker.lng]
     ];
     
     window.defaultRouteLine = L.polyline(latLngs, {
