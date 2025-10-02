@@ -7,16 +7,11 @@ const MAP_ROTATION_OVERSCAN = (typeof window !== 'undefined' && typeof window.ro
   : 1.25;
 // 旋轉時的常數縮放，避免角度變化導致縮放忽大忽小
 let rotationScaleConstant = 1;
-// 旋轉時標註點基礎縮放（縮小 25%）
-const ROTATION_MARKER_BASE_SCALE = 0.75;
-let markerZoomScale = 1; // 依縮放等級的動態縮放係數
-let rotationZoomListener = null;
-let rotationBaseZoom = null;
 
 // 抖動抑制與平滑參數
-const HEADING_SMOOTHING_ALPHA = 0.9   // 越大越平滑（0.8~0.92 建議值）
+const HEADING_SMOOTHING_ALPHA = 0.85   // 越大越平滑（0.8~0.92 建議值）
 const HEADING_DEADZONE_DEG = 5        // 小於此角度變化則忽略更新
-const MIN_ROTATION_INTERVAL_MS = 300; // 最小更新間隔，避免過於頻繁
+const MIN_ROTATION_INTERVAL_MS = 200; // 最小更新間隔，避免過於頻繁
 let displayRotationDeg = 0;           // 平滑後實際套用的角度
 let lastRotationUpdateTs = 0;         // 最後一次更新時間戳
 
@@ -44,25 +39,6 @@ function toggleMapRotation() {
     container.classList.add('map-rotated');
     // 啟用時固定縮放為最大需求值，避免旋轉時忽大忽小
     recomputeRotationScaleConstant();
-    // 設定標註點縮放變數（基礎縮放 * 縮放事件動態縮放）
-    markerZoomScale = 1;
-    rotationBaseZoom = (window.map && typeof window.map.getZoom === 'function') ? window.map.getZoom() : null;
-    container.style.setProperty('--marker-combined-scale', `${ROTATION_MARKER_BASE_SCALE}`);
-    if (window.map && typeof window.map.on === 'function' && rotationBaseZoom !== null) {
-      rotationZoomListener = () => {
-        const currentZoom = window.map.getZoom();
-        const delta = currentZoom - rotationBaseZoom; // < 0: 放大地圖視野（縮小地圖）
-        // 修正：縮小地圖時才縮小標註；放大地圖時不放大，避免在手機上視覺過度與偏移
-        markerZoomScale = (delta <= 0) ? Math.pow(0.9, -delta) : 1;
-        const combined = ROTATION_MARKER_BASE_SCALE * markerZoomScale;
-        container.style.setProperty('--marker-combined-scale', `${combined.toFixed(4)}`);
-      };
-      // 在縮放進行中與結束時即時更新縮放，避免視覺偏移
-      window.map.on('zoom', rotationZoomListener);
-      window.map.on('zoomend', rotationZoomListener);
-      // 初始化設定一次
-      rotationZoomListener();
-    }
     // 若沒有可用方位或為 0，給一個預設角度以提供視覺回饋
     const hasBearing = (typeof window.currentBearing === 'number' && isFinite(window.currentBearing));
     if (!hasBearing || window.currentBearing === 0) {
@@ -75,13 +51,6 @@ function toggleMapRotation() {
     container.style.setProperty('--map-rotation-deg', '0deg');
     container.style.setProperty('--map-rotation-scale', '1');
     container.style.setProperty('--inverse-map-rotation-scale', '1');
-    // 清除標註點縮放變數與監聽
-    container.style.setProperty('--marker-combined-scale', '1');
-    if (window.map && rotationZoomListener) {
-      window.map.off('zoom', rotationZoomListener);
-      window.map.off('zoomend', rotationZoomListener);
-      rotationZoomListener = null;
-    }
     if (btn) btn.classList.remove('active');
   }
 }

@@ -71,39 +71,3 @@
   height: 100svh;
   width: 100vw;
 }
-
-/* 在開啟地圖旋轉時，將所有標註點縮小（避開 Leaflet 內聯 transform） */
-/* 對於 img 型標記（默認圖示），直接縮放元素本身，但以左上角為基準避免位移 */
-.map-container.map-rotated .leaflet-marker-icon:not(.current-location-marker) {
-  scale: var(--marker-combined-scale, 0.75);
-  transform-origin: 50% 100%; /* 底部中心為錨點，避免縮放位移 */
-  transition: scale 120ms ease;
-}
-
-/* 對於 divIcon 型標記，縮放其內部元素，避免覆蓋外層的 translate */
-.map-container.map-rotated .leaflet-div-icon > *,
-.map-container.map-rotated .custom-marker-icon > * {
-  transform: scale(var(--marker-combined-scale, 0.75));
-  transform-origin: 50% 100%;
-  transition: transform 120ms ease;
-}
-
-/* 當前位置標記（脈衝容器）同步縮放 */
-.map-container.map-rotated .current-location-marker .location-pulse {
-  transform: scale(var(--marker-combined-scale, 0.75));
-  transform-origin: 50% 50%;
-  transition: none; /* 避免縮放動畫導致定位點視覺漂移 */
-}
-
-/* 旋轉模式：定位點中心圓點同步縮放（不影響定位錨點） */
-.map-container.map-rotated .current-location-marker .location-dot {
-  transform: scale(var(--marker-combined-scale, 0.75));
-  transform-origin: 50% 50%;
-  transition: none;
-}
-
-/* 在旋轉模式下，避免外層 hover/active 導致位置漂移 */
-.map-container.map-rotated .leaflet-marker-icon:hover,
-.map-container.map-rotated .leaflet-marker-icon:active {
-  transform: none !important;
-}

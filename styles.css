@@ -401,35 +401,6 @@ body {
     transition: transform 0.1s ease;
 }
 
-/* 一般模式：讓標註依地圖縮放同步縮小（排除定位點外層避免位移） */
-.map-container .leaflet-marker-icon:not(.current-location-marker) {
-    scale: var(--marker-zoom-scale, 1);
-    transform-origin: 50% 100%; /* 以底部中心為錨點，避免縮放位移 */
-    transition: scale 120ms ease;
-}
-
-/* 一般模式：divIcon 內部元素跟著縮放 */
-.map-container .leaflet-div-icon > *,
-.map-container .custom-marker-icon > * {
-    scale: var(--marker-zoom-scale, 1);
-    transform-origin: 50% 100%; /* 內部元素也以底部中心縮放，配合常見iconAnchor */
-    transition: scale 120ms ease;
-}
-
-/* 一般模式：定位點的脈衝圈跟著縮放（避免動畫位移） */
-.map-container .current-location-marker .location-pulse {
-    transform: scale(var(--marker-zoom-scale, 1));
-    transform-origin: 50% 50%;
-    transition: none;
-}
-
-/* 一般模式：定位點中心圓點同步縮放（不影響定位錨點） */
-.map-container .current-location-marker .location-dot {
-    transform: scale(var(--marker-zoom-scale, 1));
-    transform-origin: 50% 50%;
-    transition: none;
-}
-
 /* 地圖標記點按壓效果 */
 .leaflet-marker-icon:hover {
     transform: translateZ(0) scale(1.05);
