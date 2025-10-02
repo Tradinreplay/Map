@@ -11,6 +11,11 @@ function toggleMapRotation() {
 
   if (mapRotationEnabled) {
     container.classList.add('map-rotated');
+    // 若沒有可用方位或為 0，給一個預設角度以提供視覺回饋
+    const hasBearing = (typeof window.currentBearing === 'number' && isFinite(window.currentBearing));
+    if (!hasBearing || window.currentBearing === 0) {
+      mapRotationDeg = 30; // 預設 30 度
+    }
     updateMapRotation();
   } else {
     container.classList.remove('map-rotated');
@@ -57,4 +62,13 @@ window.addEventListener('orientationchange', () => {
 // Optional: if other code updates currentBearing, refresh rotation
 document.addEventListener('bearingUpdated', () => {
   if (mapRotationEnabled) updateMapRotation();
+});
+
+// 保證全域可呼叫，並在 DOM 準備好後綁定按鈕事件
+window.toggleMapRotation = toggleMapRotation;
+document.addEventListener('DOMContentLoaded', () => {
+  const btn = document.getElementById('rotateBtn');
+  if (btn) {
+    btn.addEventListener('click', toggleMapRotation);
+  }
 });
