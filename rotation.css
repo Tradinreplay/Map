@@ -92,5 +92,5 @@
 .map-container.map-rotated .current-location-marker .location-pulse {
   transform: scale(var(--marker-combined-scale, 0.75));
   transform-origin: 50% 50%;
-  transition: transform 120ms ease;
+  transition: none; /* 避免縮放動畫導致定位點視覺漂移 */
 }

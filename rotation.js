@@ -57,6 +57,8 @@ function toggleMapRotation() {
         const combined = ROTATION_MARKER_BASE_SCALE * markerZoomScale;
         container.style.setProperty('--marker-combined-scale', `${combined.toFixed(4)}`);
       };
+      // 在縮放進行中與結束時即時更新縮放，避免視覺偏移
+      window.map.on('zoom', rotationZoomListener);
       window.map.on('zoomend', rotationZoomListener);
       // 初始化設定一次
       rotationZoomListener();
@@ -76,6 +78,7 @@ function toggleMapRotation() {
     // 清除標註點縮放變數與監聽
     container.style.setProperty('--marker-combined-scale', '1');
     if (window.map && rotationZoomListener) {
+      window.map.off('zoom', rotationZoomListener);
       window.map.off('zoomend', rotationZoomListener);
       rotationZoomListener = null;
     }
