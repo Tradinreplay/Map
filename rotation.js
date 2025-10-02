@@ -5,6 +5,8 @@ let mapRotationDeg = 0; // fallback if currentBearing is unavailable
 const MAP_ROTATION_OVERSCAN = (typeof window !== 'undefined' && typeof window.rotationOverscanScale === 'number' && isFinite(window.rotationOverscanScale))
   ? window.rotationOverscanScale
   : 1.25;
+// 旋轉時的常數縮放，避免角度變化導致縮放忽大忽小
+let rotationScaleConstant = 1;
 
 // 抖動抑制與平滑參數
 const HEADING_SMOOTHING_ALPHA = 0.85   // 越大越平滑（0.8~0.92 建議值）
@@ -35,6 +37,8 @@ function toggleMapRotation() {
 
   if (mapRotationEnabled) {
     container.classList.add('map-rotated');
+    // 啟用時固定縮放為最大需求值，避免旋轉時忽大忽小
+    recomputeRotationScaleConstant();
     // 若沒有可用方位或為 0，給一個預設角度以提供視覺回饋
     const hasBearing = (typeof window.currentBearing === 'number' && isFinite(window.currentBearing));
     if (!hasBearing || window.currentBearing === 0) {
@@ -46,6 +50,7 @@ function toggleMapRotation() {
     container.classList.remove('map-rotated');
     container.style.setProperty('--map-rotation-deg', '0deg');
     container.style.setProperty('--map-rotation-scale', '1');
+    container.style.setProperty('--inverse-map-rotation-scale', '1');
     if (btn) btn.classList.remove('active');
   }
 }
@@ -79,30 +84,24 @@ function updateMapRotation() {
   const smoothFactor = 1 - HEADING_SMOOTHING_ALPHA; // 例如 0.15
   displayRotationDeg = normalizeAngle(displayRotationDeg + delta * smoothFactor);
   lastRotationUpdateTs = now;
-
-  const rad = (deg * Math.PI) / 180;
-  const w = container.clientWidth || window.innerWidth;
-  const h = container.clientHeight || window.innerHeight;
-
-  // Bounding box of rotated rectangle
-  const wPrime = Math.abs(w * Math.cos(rad)) + Math.abs(h * Math.sin(rad));
-  const hPrime = Math.abs(h * Math.cos(rad)) + Math.abs(w * Math.sin(rad));
-  const baseScale = Math.max(wPrime / w, hPrime / h);
-  const scale = baseScale * MAP_ROTATION_OVERSCAN;
-
-  // 設定地圖旋轉與縮放（覆蓋四角缺口），並提供反向縮放給內部控制項使用
   container.style.setProperty('--map-rotation-deg', `${displayRotationDeg}deg`);
-  container.style.setProperty('--map-rotation-scale', `${scale}`);
-  container.style.setProperty('--inverse-map-rotation-scale', `${1 / scale}`);
+  // 縮放固定為常數，避免旋轉時忽大忽小
+  // （rotationScaleConstant 於啟用時或視窗尺寸/方向變更時重算）
 }
 
 // Recompute on viewport changes
 window.addEventListener('resize', () => {
-  if (mapRotationEnabled) updateMapRotation();
+  if (mapRotationEnabled) {
+    recomputeRotationScaleConstant();
+    updateMapRotation();
+  }
 });
 
 window.addEventListener('orientationchange', () => {
-  if (mapRotationEnabled) setTimeout(updateMapRotation, 300);
+  if (mapRotationEnabled) setTimeout(() => {
+    recomputeRotationScaleConstant();
+    updateMapRotation();
+  }, 300);
 });
 
 // Optional: if other code updates currentBearing, refresh rotation
@@ -123,3 +122,18 @@ document.addEventListener('DOMContentLoaded', () => {
     }, { passive: false });
   }
 });
+// 計算在任意角度皆可覆蓋的最大邊界縮放，並設定為常數
+function recomputeRotationScaleConstant() {
+  const container = document.querySelector('.map-container');
+  if (!container) return;
+  const w = container.clientWidth || window.innerWidth || 1;
+  const h = container.clientHeight || window.innerHeight || 1;
+  const aspect = h / w;
+  // 最大縮放發生在 45 度（cos=sin=1/√2），推導後取兩者較大者
+  const maxScaleX = (1 + aspect) / Math.SQRT2;     // wPrime/w at 45°
+  const maxScaleY = (1 + (1 / aspect)) / Math.SQRT2; // hPrime/h at 45°
+  const baseMaxScale = Math.max(maxScaleX, maxScaleY);
+  rotationScaleConstant = baseMaxScale * MAP_ROTATION_OVERSCAN;
+  container.style.setProperty('--map-rotation-scale', `${rotationScaleConstant}`);
+  container.style.setProperty('--inverse-map-rotation-scale', `${1 / rotationScaleConstant}`);
+}
