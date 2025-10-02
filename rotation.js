@@ -51,9 +51,9 @@ function toggleMapRotation() {
     if (window.map && typeof window.map.on === 'function' && rotationBaseZoom !== null) {
       rotationZoomListener = () => {
         const currentZoom = window.map.getZoom();
-        const steps = rotationBaseZoom - currentZoom; // 往下縮小為正數
-        // 每級縮小約 10%，避免過度變化
-        markerZoomScale = Math.pow(0.9, steps);
+        const delta = currentZoom - rotationBaseZoom; // < 0: 放大地圖視野（縮小地圖）
+        // 修正：縮小地圖時才縮小標註；放大地圖時不放大，避免在手機上視覺過度與偏移
+        markerZoomScale = (delta <= 0) ? Math.pow(0.9, -delta) : 1;
         const combined = ROTATION_MARKER_BASE_SCALE * markerZoomScale;
         container.style.setProperty('--marker-combined-scale', `${combined.toFixed(4)}`);
       };
