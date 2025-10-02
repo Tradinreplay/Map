@@ -10,6 +10,16 @@
   will-change: transform;
 }
 
+/* 讓 Leaflet 控制項與彈窗在地圖旋轉時保持正向與正常尺寸 */
+.map-container.map-rotated .leaflet-control-container,
+.map-container.map-rotated .leaflet-top,
+.map-container.map-rotated .leaflet-bottom,
+.map-container.map-rotated .leaflet-popup-pane,
+.map-container.map-rotated .leaflet-tooltip-pane {
+  transform: rotate(calc(-1 * var(--map-rotation-deg, 0deg))) scale(var(--inverse-map-rotation-scale, 1));
+  transform-origin: 50% 50%;
+}
+
 /* Rotate button placement */
 .rotate-btn {
   position: fixed !important;
@@ -53,9 +63,11 @@
 .map-container.fullscreen {
   height: 100dvh;
   height: 100svh;
+  width: 100vw;
 }
 
 .map-container.fullscreen #map {
   height: 100dvh;
   height: 100svh;
+  width: 100vw;
 }

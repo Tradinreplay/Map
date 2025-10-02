@@ -1,6 +1,10 @@
 // Map rotation toggle and scale logic
 let mapRotationEnabled = false;
 let mapRotationDeg = 0; // fallback if currentBearing is unavailable
+// 超採樣縮放比例，用於旋轉時覆蓋四角缺口與提升可視範圍
+const MAP_ROTATION_OVERSCAN = (typeof window !== 'undefined' && typeof window.rotationOverscanScale === 'number' && isFinite(window.rotationOverscanScale))
+  ? window.rotationOverscanScale
+  : 1.25;
 
 function toggleMapRotation() {
   const container = document.querySelector('.map-container');
@@ -47,10 +51,13 @@ function updateMapRotation() {
   // Bounding box of rotated rectangle
   const wPrime = Math.abs(w * Math.cos(rad)) + Math.abs(h * Math.sin(rad));
   const hPrime = Math.abs(h * Math.cos(rad)) + Math.abs(w * Math.sin(rad));
-  const scale = Math.max(wPrime / w, hPrime / h);
+  const baseScale = Math.max(wPrime / w, hPrime / h);
+  const scale = baseScale * MAP_ROTATION_OVERSCAN;
 
+  // 設定地圖旋轉與縮放（覆蓋四角缺口），並提供反向縮放給內部控制項使用
   container.style.setProperty('--map-rotation-deg', `${deg}deg`);
   container.style.setProperty('--map-rotation-scale', `${scale}`);
+  container.style.setProperty('--inverse-map-rotation-scale', `${1 / scale}`);
 }
 
 // Recompute on viewport changes
