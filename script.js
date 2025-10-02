@@ -668,6 +668,23 @@ function initMap() {
         keepBuffer: 2,            // 保持額外的圖層緩存
         updateInterval: 150       // 更新間隔（毫秒）
     }).addTo(map);
+
+    // 全局標註縮放：地圖縮小時，標示點與定位點跟著縮小
+    const mapContainerEl = document.querySelector('.map-container');
+    if (mapContainerEl) {
+        const baseZoom = map.getZoom();
+        const updateGlobalMarkerZoomScale = () => {
+            const currentZoom = map.getZoom();
+            const delta = currentZoom - baseZoom;
+            // 只在縮小時依比例縮小；放大時維持原始大小
+            const zoomScale = (delta <= 0) ? Math.pow(0.9, -delta) : 1;
+            mapContainerEl.style.setProperty('--marker-zoom-scale', zoomScale.toFixed(4));
+        };
+        // 初次設定與事件綁定
+        updateGlobalMarkerZoomScale();
+        map.on('zoom', updateGlobalMarkerZoomScale);
+        map.on('zoomend', updateGlobalMarkerZoomScale);
+    }
     
     // Google地形圖
     const googleTerrainLayer = L.tileLayer('https://mt{s}.google.com/vt/lyrs=p&x={x}&y={y}&z={z}', {

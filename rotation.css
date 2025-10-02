@@ -75,9 +75,9 @@
 /* 在開啟地圖旋轉時，將所有標註點縮小（避開 Leaflet 內聯 transform） */
 /* 對於 img 型標記（默認圖示），直接縮放元素本身，但以左上角為基準避免位移 */
 .map-container.map-rotated .leaflet-marker-icon:not(.current-location-marker) {
-  transform: scale(var(--marker-combined-scale, 0.75));
+  scale: var(--marker-combined-scale, 0.75);
   transform-origin: 50% 50%;
-  transition: transform 120ms ease;
+  transition: scale 120ms ease;
 }
 
 /* 對於 divIcon 型標記，縮放其內部元素，避免覆蓋外層的 translate */
