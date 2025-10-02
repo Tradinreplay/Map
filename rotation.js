@@ -7,9 +7,9 @@ const MAP_ROTATION_OVERSCAN = (typeof window !== 'undefined' && typeof window.ro
   : 1.25;
 
 // 抖動抑制與平滑參數
-const HEADING_SMOOTHING_ALPHA = 0.85; // 越大越平滑（0.8~0.92 建議值）
-const HEADING_DEADZONE_DEG = 2;       // 小於此角度變化則忽略更新
-const MIN_ROTATION_INTERVAL_MS = 120; // 最小更新間隔，避免過於頻繁
+const HEADING_SMOOTHING_ALPHA = 0.9   // 越大越平滑（0.8~0.92 建議值）
+const HEADING_DEADZONE_DEG = 5        // 小於此角度變化則忽略更新
+const MIN_ROTATION_INTERVAL_MS = 150; // 最小更新間隔，避免過於頻繁
 
 let displayRotationDeg = 0;           // 平滑後實際套用的角度
 let lastRotationUpdateTs = 0;         // 最後一次更新時間戳
