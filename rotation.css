@@ -95,6 +95,13 @@
   transition: none; /* 避免縮放動畫導致定位點視覺漂移 */
 }
 
+/* 旋轉模式：定位點中心圓點同步縮放（不影響定位錨點） */
+.map-container.map-rotated .current-location-marker .location-dot {
+  transform: scale(var(--marker-combined-scale, 0.75));
+  transform-origin: 50% 50%;
+  transition: none;
+}
+
 /* 在旋轉模式下，避免外層 hover/active 導致位置漂移 */
 .map-container.map-rotated .leaflet-marker-icon:hover,
 .map-container.map-rotated .leaflet-marker-icon:active {
