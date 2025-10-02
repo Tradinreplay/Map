@@ -71,3 +71,14 @@
   height: 100svh;
   width: 100vw;
 }
+
+/* 在開啟地圖旋轉時，將所有標註點縮小 25% */
+.map-container.map-rotated .leaflet-marker-icon,
+.map-container.map-rotated .leaflet-div-icon,
+.map-container.map-rotated .custom-marker-icon,
+.map-container.map-rotated .current-location-marker,
+.map-container.map-rotated .current-location-marker .location-pulse {
+  transform: scale(0.75) translateZ(0);
+  transform-origin: 50% 50%;
+  transition: transform 120ms ease;
+}
