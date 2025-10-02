@@ -3517,7 +3517,7 @@ function updateMarkerPopup(marker) {
                     const firstImage = imagesArray[0];
                     imageDisplay = `<div style="margin-bottom: 8px; text-align: center;">
                         <img src="${firstImage}" 
-                             style="width: 80px; height: 80px; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); cursor: pointer; object-fit: cover;" 
+                             style="width: 68px; height: 68px; display: block; margin: 0 auto; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); cursor: pointer; object-fit: cover;" 
                              alt="標註點圖片"
                              onclick="openImageModal(${JSON.stringify(imagesArray).replace(/"/g, '&quot;')}, 0)">
                         <div style="font-size: 11px; color: #888; margin-top: 4px;">點擊圖片預覽</div>
@@ -3526,7 +3526,7 @@ function updateMarkerPopup(marker) {
                     // 多張圖片顯示縮略圖
                     const thumbnailsHtml = imagesArray.slice(0, 3).map((img, index) => 
                         `<img src="${img}" 
-                             style="width: 50px; height: 50px; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); cursor: pointer; object-fit: cover; margin: 2px;" 
+                             style="width: 42px; height: 42px; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); cursor: pointer; object-fit: cover; margin: 2px;" 
                              alt="圖片 ${index + 1}"
                              onclick="openImageModal(${JSON.stringify(imagesArray).replace(/"/g, '&quot;')}, ${index})">`
                     ).join('');
@@ -3554,7 +3554,7 @@ function updateMarkerPopup(marker) {
             if (typeof marker.imageData === 'string' && marker.imageData.startsWith('data:image/')) {
                 imageDisplay = `<div style="margin-bottom: 8px; text-align: center;">
                     <img src="${marker.imageData}" 
-                         style="width: 80px; height: 80px; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); cursor: pointer; object-fit: cover;" 
+                         style="width: 68px; height: 68px; display: block; margin: 0 auto; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); cursor: pointer; object-fit: cover;" 
                          alt="標註點圖片"
                          onclick="openImageModal(['${marker.imageData}'], 0)">
                     <div style="font-size: 11px; color: #888; margin-top: 4px;">點擊圖片預覽 (1/1)</div>
