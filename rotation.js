@@ -6,6 +6,26 @@ const MAP_ROTATION_OVERSCAN = (typeof window !== 'undefined' && typeof window.ro
   ? window.rotationOverscanScale
   : 1.25;
 
+// 抖動抑制與平滑參數
+const HEADING_SMOOTHING_ALPHA = 0.85; // 越大越平滑（0.8~0.92 建議值）
+const HEADING_DEADZONE_DEG = 2;       // 小於此角度變化則忽略更新
+const MIN_ROTATION_INTERVAL_MS = 120; // 最小更新間隔，避免過於頻繁
+
+let displayRotationDeg = 0;           // 平滑後實際套用的角度
+let lastRotationUpdateTs = 0;         // 最後一次更新時間戳
+
+function normalizeAngle(angle) {
+  let a = angle % 360;
+  if (a > 180) a -= 360;
+  if (a < -180) a += 360;
+  return a;
+}
+
+function shortestAngleDelta(from, to) {
+  const a = normalizeAngle(to) - normalizeAngle(from);
+  return normalizeAngle(a);
+}
+
 function toggleMapRotation() {
   const container = document.querySelector('.map-container');
   const mapEl = document.getElementById('map');
@@ -44,6 +64,23 @@ function updateMapRotation() {
   if (!isFinite(deg)) deg = 0;
   mapRotationDeg = deg;
 
+  // 抑制抖動：角度平滑 + 死區 + 節流
+  const now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+  if (now - lastRotationUpdateTs < MIN_ROTATION_INTERVAL_MS) {
+    return; // 節流：太快則略過本次更新
+  }
+
+  const delta = shortestAngleDelta(displayRotationDeg, deg);
+  if (Math.abs(delta) < HEADING_DEADZONE_DEG) {
+    // 死區：變化太小不更新，避免晃動
+    return;
+  }
+
+  // 指數平滑：向目標角度逼近，避免瞬間跳動
+  const smoothFactor = 1 - HEADING_SMOOTHING_ALPHA; // 例如 0.15
+  displayRotationDeg = normalizeAngle(displayRotationDeg + delta * smoothFactor);
+  lastRotationUpdateTs = now;
+
   const rad = (deg * Math.PI) / 180;
   const w = container.clientWidth || window.innerWidth;
   const h = container.clientHeight || window.innerHeight;
@@ -55,7 +92,7 @@ function updateMapRotation() {
   const scale = baseScale * MAP_ROTATION_OVERSCAN;
 
   // 設定地圖旋轉與縮放（覆蓋四角缺口），並提供反向縮放給內部控制項使用
-  container.style.setProperty('--map-rotation-deg', `${deg}deg`);
+  container.style.setProperty('--map-rotation-deg', `${displayRotationDeg}deg`);
   container.style.setProperty('--map-rotation-scale', `${scale}`);
   container.style.setProperty('--inverse-map-rotation-scale', `${1 / scale}`);
 }
