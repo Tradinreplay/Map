@@ -3,6 +3,28 @@
     padding: 0;
     box-sizing: border-box;
 }
+/* ===== 修正：地圖旋轉時滿版覆蓋與浮動提示固定 ===== */
+.map-container {
+    /* 動態視窗高度，確保在行動裝置與旋轉時滿版覆蓋 */
+    height: 100svh;
+    height: 100dvh;
+}
+
+.map-container.fullscreen {
+    /* 全螢幕狀態使用動態視窗高度 */
+    height: 100svh !important;
+    height: 100dvh !important;
+}
+
+/* 讓浮動提示與控制元件固定在視窗上，不跟著地圖旋轉 */
+.fullscreen-btn,
+.location-btn,
+.center-btn,
+.floating-controls,
+.floating-settings-btn,
+.floating-help-btn {
+    position: fixed !important;
+}
 
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif;
@@ -230,16 +252,6 @@ body {
     width: 100vw;
     height: 100vh;
     position: relative;
-}
-
-#mapRotateWrapper,
-.map-rotate-wrapper {
-    height: 100%;
-    width: 100%;
-    position: relative;
-    transform-origin: 50% 50%;
-    transition: transform 0.18s ease;
-    will-change: transform;
 }
 
 #map {
@@ -528,46 +540,6 @@ body {
     background: rgba(255, 193, 7, 0.2);
     border-color: rgba(255, 193, 7, 0.5);
     color: #e0a800;
-}
-
-/* 自動轉向按鈕 */
-.rotate-btn {
-    position: absolute;
-    top: 144px; /* 在自動居中按鈕下方 */
-    left: 12px;
-    width: 28px;
-    height: 28px;
-    background: rgba(255, 255, 255, 0.9);
-    border: 2px solid rgba(23, 162, 184, 0.3);
-    border-radius: 10px;
-    cursor: move;
-    font-size: 16px;
-    color: #17a2b8; /* 青色 */
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    z-index: 1002;
-    backdrop-filter: blur(10px);
-    user-select: none;
-}
-
-.rotate-btn:hover {
-    background: rgba(23, 162, 184, 0.1);
-    border-color: rgba(23, 162, 184, 0.3);
-    transform: translateY(-2px) scale(1.05);
-    box-shadow: 0 6px 25px rgba(23, 162, 184, 0.15);
-}
-
-.rotate-btn:active {
-    transform: translateY(-1px) scale(0.98);
-    box-shadow: 0 4px 15px rgba(23, 162, 184, 0.25);
-}
-
-.rotate-btn.active {
-    background: rgba(23, 162, 184, 0.2);
-    border-color: rgba(23, 162, 184, 0.5);
-    color: #117a8b;
 }
 
 /* 拖曳狀態樣式 */

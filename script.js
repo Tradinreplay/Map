@@ -94,9 +94,6 @@ let lastLocationUpdate = null; // 最後一次定位更新時間
 let locationUpdateTimer = null; // 定位更新定時器
 let lastPosition = null; // 上一次位置（用於計算方向）
 let currentBearing = 0; // 當前行進方向（角度）
-let autoRotateEnabled = false; // 地圖自動轉向開關
-let lastAppliedRotation = 0; // 上一次套用的旋轉角度
-let rotationOverscanScale = 1.25; // 旋轉時的視覺放大比例，用於覆蓋四角缺口與預載圖磚
 
 // 路徑顯示相關變數
 let routeLine = null; // 當前顯示的路徑線
@@ -639,7 +636,7 @@ function initMap() {
         // 性能優化
         updateWhenIdle: false,    // 地圖移動時持續更新圖層
         updateWhenZooming: true,  // 縮放時更新圖層
-        keepBuffer: 5,            // 加大額外圖層緩存以支援旋轉預載
+        keepBuffer: 2,            // 保持額外的圖層緩存
         updateInterval: 150       // 更新間隔（毫秒）
     });
     
@@ -652,7 +649,7 @@ function initMap() {
         // 性能優化
         updateWhenIdle: false,    // 地圖移動時持續更新圖層
         updateWhenZooming: true,  // 縮放時更新圖層
-        keepBuffer: 5,            // 加大額外圖層緩存以支援旋轉預載
+        keepBuffer: 2,            // 保持額外的圖層緩存
         updateInterval: 150       // 更新間隔（毫秒）
     });
     
@@ -665,7 +662,7 @@ function initMap() {
         // 性能優化
         updateWhenIdle: false,    // 地圖移動時持續更新圖層
         updateWhenZooming: true,  // 縮放時更新圖層
-        keepBuffer: 5,            // 加大額外圖層緩存以支援旋轉預載
+        keepBuffer: 2,            // 保持額外的圖層緩存
         updateInterval: 150       // 更新間隔（毫秒）
     }).addTo(map);
     
@@ -678,7 +675,7 @@ function initMap() {
         // 性能優化
         updateWhenIdle: false,    // 地圖移動時持續更新圖層
         updateWhenZooming: true,  // 縮放時更新圖層
-        keepBuffer: 5,            // 加大額外圖層緩存以支援旋轉預載
+        keepBuffer: 2,            // 保持額外的圖層緩存
         updateInterval: 150       // 更新間隔（毫秒）
     });
     
@@ -690,7 +687,7 @@ function initMap() {
         // 性能優化
         updateWhenIdle: false,    // 地圖移動時持續更新圖層
         updateWhenZooming: true,  // 縮放時更新圖層
-        keepBuffer: 5,            // 加大額外圖層緩存以支援旋轉預載
+        keepBuffer: 2,            // 保持額外的圖層緩存
         updateInterval: 150       // 更新間隔（毫秒）
     });
     
@@ -1751,31 +1748,55 @@ function handleCSSFullscreen() {
     mapContainer.style.top = '0';
     mapContainer.style.left = '0';
     mapContainer.style.width = '100vw';
+    // 先設定標準視窗高度
     mapContainer.style.height = '100vh';
+    // 若支援動態/安全視窗高度，優先使用以確保滿版覆蓋
+    try {
+        if (window.CSS && CSS.supports && CSS.supports('height', '100dvh')) {
+            mapContainer.style.height = '100dvh';
+        } else if (window.CSS && CSS.supports && CSS.supports('height', '100svh')) {
+            mapContainer.style.height = '100svh';
+        }
+    } catch (_) {
+        // 忽略 CSS.supports 例外，保留 100vh
+    }
     mapContainer.style.zIndex = '9999';
     mapContainer.style.backgroundColor = '#000';
     
     // 行動裝置特殊處理
     if (isIOS) {
-        // iOS Safari 特殊處理，隱藏地址欄
-        mapContainer.style.height = '100vh';
-        mapContainer.style.minHeight = '100vh';
-        
-        // 嘗試隱藏Safari的地址欄
+        // iOS Safari 特殊處理：使用 visualViewport 或 innerHeight 以確保滿版
+        const applyDynamicHeight = () => {
+            const viewportHeight = (window.visualViewport && window.visualViewport.height)
+                ? Math.ceil(window.visualViewport.height)
+                : Math.ceil(window.innerHeight);
+            mapContainer.style.height = viewportHeight + 'px';
+            mapContainer.style.minHeight = viewportHeight + 'px';
+        };
+
+        // 初始套用
         setTimeout(() => {
             window.scrollTo(0, 1);
-            mapContainer.style.height = window.innerHeight + 'px';
+            applyDynamicHeight();
+            if (map) map.invalidateSize();
         }, 100);
-        
-        // 監聽方向變化
+
+        // 監聽方向變化與視窗視覺變更
         window.addEventListener('orientationchange', () => {
             setTimeout(() => {
-                mapContainer.style.height = window.innerHeight + 'px';
+                applyDynamicHeight();
                 if (map) {
                     map.invalidateSize();
                 }
             }, 500);
         });
+
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener('resize', () => {
+                applyDynamicHeight();
+                if (map) map.invalidateSize();
+            });
+        }
     }
     
     // 隱藏頁面滾動條
@@ -1941,65 +1962,10 @@ function handleCenterClick() {
     saveSettingsOnly();
 }
 
-// 自動轉向切換
-function handleRotateClick() {
-    console.log('Rotate button clicked');
-    autoRotateEnabled = !autoRotateEnabled;
-    updateRotateButtonState();
-    if (autoRotateEnabled) {
-        // 啟用時立即套用一次目前方向
-        applyMapRotation(currentBearing);
-        showNotification('地圖自動轉向已開啟', 'success');
-    } else {
-        // 關閉時恢復北向
-        applyMapRotation(0);
-        showNotification('地圖自動轉向已關閉', 'info');
-    }
-}
-
-function updateRotateButtonState() {
-    const rotateBtn = document.getElementById('rotateBtn');
-    const rotateIcon = document.getElementById('rotateIcon');
-    if (!rotateBtn || !rotateIcon) return;
-    if (autoRotateEnabled) {
-        rotateBtn.classList.add('active');
-        rotateIcon.textContent = '🧭';
-    } else {
-        rotateBtn.classList.remove('active');
-        rotateIcon.textContent = '🧭';
-    }
-}
-
-// 將地圖旋轉到指定角度（使行進方向朝上）
-function applyMapRotation(headingDeg) {
-    const wrapper = document.getElementById('mapRotateWrapper');
-    if (!wrapper) return;
-    // Leaflet 沒有原生旋轉，使用外層容器 CSS 旋轉
-    const normalized = ((headingDeg % 360) + 360) % 360; // 0~360
-    const targetRotation = -normalized; // 行進方向朝上需反向旋轉地圖
-    const scale = autoRotateEnabled ? rotationOverscanScale : 1;
-    wrapper.style.transform = `rotate(${targetRotation}deg) scale(${scale})`;
-    lastAppliedRotation = targetRotation;
-}
-
-// 計算兩點之間的方位角（0~360，相對正北順時針）
-function calculateBearing(lat1, lng1, lat2, lng2) {
-    const toRad = d => d * Math.PI / 180;
-    const toDeg = r => r * 180 / Math.PI;
-    const φ1 = toRad(lat1);
-    const φ2 = toRad(lat2);
-    const Δλ = toRad(lng2 - lng1);
-    const y = Math.sin(Δλ) * Math.cos(φ2);
-    const x = Math.cos(φ1) * Math.sin(φ2) - Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ);
-    let θ = toDeg(Math.atan2(y, x));
-    return ((θ % 360) + 360) % 360;
-}
-
 // 將函數暴露到全局作用域，讓HTML的onclick可以訪問
 window.handleFullscreenClick = handleFullscreenClick;
 window.handleLocationClick = handleLocationClick;
 window.handleCenterClick = handleCenterClick;
-window.handleRotateClick = handleRotateClick;
 window.toggleAddMarkerMode = toggleAddMarkerMode;
 window.toggleTracking = toggleTracking;
 window.toggleNotifications = toggleNotifications;
@@ -2027,9 +1993,6 @@ function initControlButtons() {
     
     // 初始化按鈕提示文字
     updateCenterButtonTooltip();
-
-    // 初始化自動轉向按鈕狀態
-    updateRotateButtonState();
     
     // 為行動裝置添加特殊提示
     if (isMobileDevice()) {
@@ -3917,28 +3880,6 @@ function startTracking() {
                     timestamp: now,
                     speed: speed
                 };
-                // 計算行進方向並套用旋轉
-                let heading = null;
-                if (position.coords.heading !== null && !isNaN(position.coords.heading)) {
-                    heading = position.coords.heading;
-                } else if (lastPosition) {
-                    const moveDist = calculateDistance(
-                        lastPosition.lat, lastPosition.lng,
-                        currentPosition.lat, currentPosition.lng
-                    );
-                    if (moveDist > 2) { // 移動距離足夠時才計算方位角
-                        heading = calculateBearing(
-                            lastPosition.lat, lastPosition.lng,
-                            currentPosition.lat, currentPosition.lng
-                        );
-                    }
-                }
-                if (heading !== null) {
-                    currentBearing = heading;
-                    if (autoRotateEnabled) {
-                        applyMapRotation(heading);
-                    }
-                }
                 
                 updateLocationDisplay();
                             updateCurrentLocationMarker();
@@ -4035,28 +3976,6 @@ function startTracking() {
                                 timestamp: now,
                                 speed: speed
                             };
-                            // 計算行進方向並套用旋轉（定期更新回呼）
-                            let heading = null;
-                            if (position.coords.heading !== null && !isNaN(position.coords.heading)) {
-                                heading = position.coords.heading;
-                            } else if (lastPosition) {
-                                const moveDist = calculateDistance(
-                                    lastPosition.lat, lastPosition.lng,
-                                    currentPosition.lat, currentPosition.lng
-                                );
-                                if (moveDist > 2) {
-                                    heading = calculateBearing(
-                                        lastPosition.lat, lastPosition.lng,
-                                        currentPosition.lat, currentPosition.lng
-                                    );
-                                }
-                            }
-                            if (heading !== null) {
-                                currentBearing = heading;
-                                if (autoRotateEnabled) {
-                                    applyMapRotation(heading);
-                                }
-                            }
                             
                             updateLocationDisplay();
                             updateCurrentLocationMarker();
