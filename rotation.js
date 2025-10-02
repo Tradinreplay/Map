@@ -4,7 +4,7 @@ let mapRotationDeg = 0; // fallback if currentBearing is unavailable
 // 超採樣縮放比例，用於旋轉時覆蓋四角缺口與提升可視範圍
 const MAP_ROTATION_OVERSCAN = (typeof window !== 'undefined' && typeof window.rotationOverscanScale === 'number' && isFinite(window.rotationOverscanScale))
   ? window.rotationOverscanScale
-  : 1.6;
+  : 1.25;
 // 旋轉時的常數縮放，避免角度變化導致縮放忽大忽小
 let rotationScaleConstant = 1;
 
