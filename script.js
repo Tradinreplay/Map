@@ -96,6 +96,7 @@ let lastPosition = null; // 上一次位置（用於計算方向）
 let currentBearing = 0; // 當前行進方向（角度）
 let autoRotateEnabled = false; // 地圖自動轉向開關
 let lastAppliedRotation = 0; // 上一次套用的旋轉角度
+let rotationOverscanScale = 1.25; // 旋轉時的視覺放大比例，用於覆蓋四角缺口與預載圖磚
 
 // 路徑顯示相關變數
 let routeLine = null; // 當前顯示的路徑線
@@ -638,7 +639,7 @@ function initMap() {
         // 性能優化
         updateWhenIdle: false,    // 地圖移動時持續更新圖層
         updateWhenZooming: true,  // 縮放時更新圖層
-        keepBuffer: 2,            // 保持額外的圖層緩存
+        keepBuffer: 5,            // 加大額外圖層緩存以支援旋轉預載
         updateInterval: 150       // 更新間隔（毫秒）
     });
     
@@ -651,7 +652,7 @@ function initMap() {
         // 性能優化
         updateWhenIdle: false,    // 地圖移動時持續更新圖層
         updateWhenZooming: true,  // 縮放時更新圖層
-        keepBuffer: 2,            // 保持額外的圖層緩存
+        keepBuffer: 5,            // 加大額外圖層緩存以支援旋轉預載
         updateInterval: 150       // 更新間隔（毫秒）
     });
     
@@ -664,7 +665,7 @@ function initMap() {
         // 性能優化
         updateWhenIdle: false,    // 地圖移動時持續更新圖層
         updateWhenZooming: true,  // 縮放時更新圖層
-        keepBuffer: 2,            // 保持額外的圖層緩存
+        keepBuffer: 5,            // 加大額外圖層緩存以支援旋轉預載
         updateInterval: 150       // 更新間隔（毫秒）
     }).addTo(map);
     
@@ -677,7 +678,7 @@ function initMap() {
         // 性能優化
         updateWhenIdle: false,    // 地圖移動時持續更新圖層
         updateWhenZooming: true,  // 縮放時更新圖層
-        keepBuffer: 2,            // 保持額外的圖層緩存
+        keepBuffer: 5,            // 加大額外圖層緩存以支援旋轉預載
         updateInterval: 150       // 更新間隔（毫秒）
     });
     
@@ -689,7 +690,7 @@ function initMap() {
         // 性能優化
         updateWhenIdle: false,    // 地圖移動時持續更新圖層
         updateWhenZooming: true,  // 縮放時更新圖層
-        keepBuffer: 2,            // 保持額外的圖層緩存
+        keepBuffer: 5,            // 加大額外圖層緩存以支援旋轉預載
         updateInterval: 150       // 更新間隔（毫秒）
     });
     
@@ -1976,7 +1977,8 @@ function applyMapRotation(headingDeg) {
     // Leaflet 沒有原生旋轉，使用外層容器 CSS 旋轉
     const normalized = ((headingDeg % 360) + 360) % 360; // 0~360
     const targetRotation = -normalized; // 行進方向朝上需反向旋轉地圖
-    wrapper.style.transform = `rotate(${targetRotation}deg)`;
+    const scale = autoRotateEnabled ? rotationOverscanScale : 1;
+    wrapper.style.transform = `rotate(${targetRotation}deg) scale(${scale})`;
     lastAppliedRotation = targetRotation;
 }
 
