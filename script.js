@@ -139,6 +139,7 @@ function startManualRouteDrawing() {
     const div = L.DomUtil.create('div', 'route-info-control');
     div.style.padding = '6px 8px';
     div.style.fontSize = '12px';
+    div.style.color = '#ffffff';
     div.innerHTML = '✍️ 手繪中：按住拖曳描畫；放開可斷筆；再次按按鈕完成';
     return div;
   };
@@ -149,13 +150,19 @@ function startManualRouteDrawing() {
     const wrap = L.DomUtil.create('div', 'route-info-control');
     wrap.style.padding = '4px 6px';
     wrap.style.fontSize = '12px';
+    try {
+      L.DomEvent.disableClickPropagation(wrap);
+      L.DomEvent.disableScrollPropagation(wrap);
+    } catch (e) {}
     const btnClear = document.createElement('button');
     btnClear.textContent = '🗑 清除暫時路線';
+    btnClear.type = 'button';
     btnClear.style.padding = '4px 6px';
     btnClear.style.fontSize = '12px';
     btnClear.style.marginTop = '4px';
     btnClear.addEventListener('click', (e) => {
       e.preventDefault();
+      e.stopPropagation();
       clearTemporaryDrawnRoute();
     });
     wrap.appendChild(btnClear);
@@ -2635,6 +2642,21 @@ function initDragFunctionality() {
     if (notificationBtn) addMobileTouchSupport(notificationBtn, 'toggleNotifications');
     if (centerMapBtn) addMobileTouchSupport(centerMapBtn, 'centerMapToCurrentLocation');
     if (floatingHelpBtn) addMobileTouchSupport(floatingHelpBtn, 'showHelpModal');
+
+    // 額外保險：直接在旋轉按鈕上綁定觸控與點擊（避免部分瀏覽器事件相容性問題）
+    if (rotateBtn) {
+        rotateBtn.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            if (!rotateBtn.hasDragged && typeof window.toggleMapRotation === 'function') {
+                window.toggleMapRotation();
+            }
+        }, { passive: false });
+        rotateBtn.addEventListener('click', (e) => {
+            if (!rotateBtn.hasDragged && typeof window.toggleMapRotation === 'function') {
+                window.toggleMapRotation();
+            }
+        });
+    }
 }
 
 // 為手機添加觸控事件支持
