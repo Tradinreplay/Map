@@ -1427,7 +1427,11 @@ function initEventListeners() {
     
     // 控制按鈕
     document.getElementById('addMarkerBtn').addEventListener('click', toggleAddMarkerMode);
-    document.getElementById('trackingBtn').addEventListener('click', toggleTracking);
+    // 追蹤按鈕可能被移除（自動追蹤啟用且不顯示圖示），綁定事件需判斷存在
+    const trackingBtnEl = document.getElementById('trackingBtn');
+    if (trackingBtnEl) {
+        trackingBtnEl.addEventListener('click', toggleTracking);
+    }
     document.getElementById('notificationBtn').addEventListener('click', toggleNotifications);
     document.getElementById('centerMapBtn').addEventListener('click', centerMapToCurrentLocation);
 
@@ -1455,13 +1459,15 @@ function initEventListeners() {
         enableNotificationsEl.addEventListener('change', function(e) {
             const newState = e.target.checked;
             
-            // 同步更新地圖按鈕狀態
-            const trackingBtn = document.getElementById('trackingBtn');
+            // 同步更新右上角通知按鈕狀態（icon-only）
+            const notificationBtnEl = document.getElementById('notificationBtn');
             markerNotificationsEnabled = newState;
             
             if (newState) {
-                trackingBtn.classList.add('active');
-                trackingBtn.innerHTML = '<span>🔔</span>關閉通知';
+                if (notificationBtnEl) {
+                    notificationBtnEl.classList.add('active');
+                    notificationBtnEl.innerHTML = '<span>🔔</span>';
+                }
                 
                 // 請求通知權限
                 requestNotificationPermission();
@@ -1473,8 +1479,10 @@ function initEventListeners() {
                 
                 showNotification('🔔 標註點通知已開啟', 'info');
             } else {
-                trackingBtn.classList.remove('active');
-                trackingBtn.innerHTML = '<span>🔕</span>開啟通知';
+                if (notificationBtnEl) {
+                    notificationBtnEl.classList.remove('active');
+                    notificationBtnEl.innerHTML = '<span>🔕</span>';
+                }
                 
                 // 停止所有提醒定時器
                 alertTimers.forEach((timer, markerId) => {
@@ -3548,11 +3556,11 @@ function toggleAddMarkerMode() {
     
     if (isAddingMarker) {
         btn.classList.add('active');
-        btn.innerHTML = '<span>📍</span>點擊地圖標註';
+        btn.innerHTML = '<span>+</span>';
         map.getContainer().style.cursor = 'crosshair';
     } else {
         btn.classList.remove('active');
-        btn.innerHTML = '<span>📍</span>標註模式';
+        btn.innerHTML = '<span>+</span>';
         map.getContainer().style.cursor = '';
     }
 }
@@ -3827,7 +3835,7 @@ function saveMarker(e) {
     isAddingMarker = false;
     const btn = document.getElementById('addMarkerBtn');
     btn.classList.remove('active');
-    btn.innerHTML = '<span>📍</span>標註模式';
+    btn.innerHTML = '<span>+</span>';
     map.getContainer().style.cursor = '';
     
     // 顯示提示並自動關閉
@@ -4442,10 +4450,10 @@ function updateNotificationButtonState() {
     if (notificationBtn) {
         if (markerNotificationsEnabled) {
             notificationBtn.classList.add('active');
-            notificationBtn.innerHTML = '<span>🔔</span>關閉通知';
+            notificationBtn.innerHTML = '<span>🔔</span>';
         } else {
             notificationBtn.classList.remove('active');
-            notificationBtn.innerHTML = '<span>🔕</span>開啟通知';
+            notificationBtn.innerHTML = '<span>🔕</span>';
         }
     }
 }

@@ -69,21 +69,15 @@
             
             <!-- 浮動控制面板 -->
             <div class="floating-controls">
-                <button id="addMarkerBtn" class="control-btn">
-                    <span>📍</span>
-                    標註模式
+                <button id="addMarkerBtn" class="control-btn icon-only" title="標註模式">
+                    <span>+</span>
                 </button>
-                <button id="trackingBtn" class="control-btn">
-                    <span>📍</span>
-                    開始追蹤
-                </button>
-                <button id="notificationBtn" class="control-btn">
+                <!-- 自動追蹤已自動啟動，移除螢幕上的提示按鈕 -->
+                <button id="notificationBtn" class="control-btn icon-only" title="開啟/關閉通知">
                     <span>🔕</span>
-                    開啟通知
                 </button>
-                <button id="drawRouteBtn" class="control-btn" title="手動繪製路線">
+                <button id="drawRouteBtn" class="control-btn icon-only" title="手動繪製路線">
                     <span>🧭</span>
-                    手動路線
                 </button>
             </div>
             
