@@ -311,6 +311,7 @@ body {
     position: relative !important;
     transform: scale(0.75) !important;
     transform-origin: top left !important;
+    pointer-events: auto !important;
 }
 
 .route-info-control > div {
@@ -325,6 +326,17 @@ body {
     -webkit-user-select: none !important;
     -moz-user-select: none !important;
     -ms-user-select: none !important;
+    pointer-events: auto !important;
+}
+
+/* 確保控制項內的按鈕可點擊 */
+.route-info-control button {
+    pointer-events: auto !important;
+    cursor: pointer !important;
+    display: block !important;
+    width: auto !important;
+    text-align: left !important;
+    margin: 4px 0 !important;
 }
 
 .route-info-control > div:hover {

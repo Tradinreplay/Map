@@ -114,6 +114,8 @@ let drawnRouteLine = null;
 let drawRouteTipControl = null;
 let drawRouteActionsControl = null;
 let isPointerDownForDraw = false;
+let drawnRouteStrokeBreaks = [];
+let currentStrokeStartIdx = 0;
 
 function initManualRouteDrawingUI() {
   const btn = document.getElementById('drawRouteBtn');
@@ -133,6 +135,8 @@ function startManualRouteDrawing() {
   if (!map) return;
   isDrawingRoute = true;
   drawnRoutePoints = [];
+  drawnRouteStrokeBreaks = [];
+  currentStrokeStartIdx = 0;
   // 提示控制項
   drawRouteTipControl = L.control({ position: 'topleft' });
   drawRouteTipControl.onAdd = function () {
@@ -154,17 +158,68 @@ function startManualRouteDrawing() {
       L.DomEvent.disableClickPropagation(wrap);
       L.DomEvent.disableScrollPropagation(wrap);
     } catch (e) {}
+
+    // 撤銷最後點
+    const btnUndoPoint = document.createElement('button');
+    btnUndoPoint.textContent = '↩️ 撤銷最後點';
+    btnUndoPoint.type = 'button';
+    btnUndoPoint.style.padding = '4px 6px';
+    btnUndoPoint.style.fontSize = '12px';
+    btnUndoPoint.style.marginTop = '4px';
+    btnUndoPoint.style.cursor = 'pointer';
+    btnUndoPoint.style.pointerEvents = 'auto';
+    const handleUndoPoint = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      undoLastPoint();
+    };
+    btnUndoPoint.addEventListener('click', handleUndoPoint);
+    btnUndoPoint.addEventListener('touchend', handleUndoPoint, { passive: false });
+    btnUndoPoint.addEventListener('pointerup', handleUndoPoint);
+
+    // 撤銷上一段
+    const btnUndoStroke = document.createElement('button');
+    btnUndoStroke.textContent = '⤺ 撤銷上一段';
+    btnUndoStroke.type = 'button';
+    btnUndoStroke.style.padding = '4px 6px';
+    btnUndoStroke.style.fontSize = '12px';
+    btnUndoStroke.style.marginTop = '4px';
+    btnUndoStroke.style.cursor = 'pointer';
+    btnUndoStroke.style.pointerEvents = 'auto';
+    const handleUndoStroke = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      undoLastStroke();
+    };
+    btnUndoStroke.addEventListener('click', handleUndoStroke);
+    btnUndoStroke.addEventListener('touchend', handleUndoStroke, { passive: false });
+    btnUndoStroke.addEventListener('pointerup', handleUndoStroke);
+
     const btnClear = document.createElement('button');
     btnClear.textContent = '🗑 清除暫時路線';
     btnClear.type = 'button';
     btnClear.style.padding = '4px 6px';
     btnClear.style.fontSize = '12px';
     btnClear.style.marginTop = '4px';
+    btnClear.style.cursor = 'pointer';
+    btnClear.style.pointerEvents = 'auto';
     btnClear.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
       clearTemporaryDrawnRoute();
     });
+    btnClear.addEventListener('touchend', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      clearTemporaryDrawnRoute();
+    }, { passive: false });
+    btnClear.addEventListener('pointerup', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      clearTemporaryDrawnRoute();
+    });
+    wrap.appendChild(btnUndoPoint);
+    wrap.appendChild(btnUndoStroke);
     wrap.appendChild(btnClear);
     return wrap;
   };
@@ -198,6 +253,7 @@ function startManualRouteDrawing() {
 
 function onDrawMouseDown(e) {
   isPointerDownForDraw = true;
+  currentStrokeStartIdx = drawnRoutePoints.length;
   addPointFromEvent(e);
 }
 
@@ -208,10 +264,15 @@ function onDrawMouseMove(e) {
 
 function onDrawMouseUp() {
   isPointerDownForDraw = false;
+  const end = drawnRoutePoints.length;
+  if (end > currentStrokeStartIdx) {
+    drawnRouteStrokeBreaks.push({ start: currentStrokeStartIdx, end });
+  }
 }
 
 function onDrawTouchStart(e) {
   isPointerDownForDraw = true;
+  currentStrokeStartIdx = drawnRoutePoints.length;
   addPointFromEvent(e);
   e.preventDefault();
 }
@@ -224,11 +285,16 @@ function onDrawTouchMove(e) {
 
 function onDrawTouchEnd() {
   isPointerDownForDraw = false;
+  const end = drawnRoutePoints.length;
+  if (end > currentStrokeStartIdx) {
+    drawnRouteStrokeBreaks.push({ start: currentStrokeStartIdx, end });
+  }
 }
 
 // 直接用容器座標推算經緯度，提升手機觸控相容性
 function handleContainerTouchStart(e) {
   isPointerDownForDraw = true;
+  currentStrokeStartIdx = drawnRoutePoints.length;
   const ll = getLatLngFromTouch(e);
   if (ll) addPointFromLatLng(ll);
   e.preventDefault();
@@ -243,6 +309,10 @@ function handleContainerTouchMove(e) {
 
 function handleContainerTouchEnd(e) {
   isPointerDownForDraw = false;
+  const end = drawnRoutePoints.length;
+  if (end > currentStrokeStartIdx) {
+    drawnRouteStrokeBreaks.push({ start: currentStrokeStartIdx, end });
+  }
   e.preventDefault();
 }
 
@@ -344,11 +414,59 @@ function cleanupDrawnRouteLine() {
     drawnRouteLine = null;
   }
   drawnRoutePoints = [];
+  drawnRouteStrokeBreaks = [];
 }
 
 function clearTemporaryDrawnRoute() {
   cleanupDrawnRouteLine();
   showNotification('暫時路線已清除', 'info');
+}
+
+function updateDrawnPolylineAfterEdit() {
+  if (!map) return;
+  if (drawnRoutePoints.length === 0) {
+    cleanupDrawnRouteLine();
+    return;
+  }
+  if (!drawnRouteLine) {
+    drawnRouteLine = L.polyline(drawnRoutePoints, {
+      color: '#1E90FF',
+      weight: 4,
+      opacity: 0.9,
+      lineCap: 'round',
+      lineJoin: 'round'
+    }).addTo(map);
+  } else {
+    drawnRouteLine.setLatLngs(drawnRoutePoints);
+  }
+}
+
+function undoLastPoint() {
+  if (!drawnRoutePoints || drawnRoutePoints.length === 0) {
+    showNotification('沒有可撤銷的點', 'warning');
+    return;
+  }
+  drawnRoutePoints.pop();
+  // 如果最後一段被完全移除，同步移除段落紀錄
+  const lastBreak = drawnRouteStrokeBreaks[drawnRouteStrokeBreaks.length - 1];
+  if (lastBreak && drawnRoutePoints.length <= lastBreak.start) {
+    drawnRouteStrokeBreaks.pop();
+  }
+  updateDrawnPolylineAfterEdit();
+}
+
+function undoLastStroke() {
+  if (!drawnRouteStrokeBreaks || drawnRouteStrokeBreaks.length === 0) {
+    // 若尚無段落紀錄，退回最後點
+    undoLastPoint();
+    return;
+  }
+  const last = drawnRouteStrokeBreaks.pop();
+  if (last && last.start >= 0) {
+    drawnRoutePoints.splice(last.start, drawnRoutePoints.length - last.start);
+  }
+  updateDrawnPolylineAfterEdit();
+  showNotification('已撤銷上一段', 'info');
 }
 
 function promptSelectStartEndMarkers(points) {
