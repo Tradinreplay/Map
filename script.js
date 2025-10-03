@@ -191,6 +191,9 @@ function startManualRouteDrawing() {
       } catch (err) {}
     };
     btnPause.addEventListener('click', togglePause);
+    // 桌面可靠度提升：按下即切換（避免僅在放開時觸發）
+    btnPause.addEventListener('mousedown', togglePause);
+    btnPause.addEventListener('pointerdown', togglePause);
     btnPause.addEventListener('touchstart', togglePause, { passive: false });
     btnPause.addEventListener('touchend', togglePause, { passive: false });
     btnPause.addEventListener('pointerup', togglePause);
