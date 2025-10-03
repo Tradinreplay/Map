@@ -288,6 +288,7 @@ function startManualRouteDrawing() {
 }
 
 function onDrawMouseDown(e) {
+  if (isDrawingPaused) return;
   isPointerDownForDraw = true;
   currentStrokeStartIdx = drawnRoutePoints.length;
   addPointFromEvent(e);
@@ -307,6 +308,7 @@ function onDrawMouseUp() {
 }
 
 function onDrawTouchStart(e) {
+  if (isDrawingPaused) { e.preventDefault(); return; }
   isPointerDownForDraw = true;
   currentStrokeStartIdx = drawnRoutePoints.length;
   addPointFromEvent(e);
@@ -329,6 +331,7 @@ function onDrawTouchEnd() {
 
 // 直接用容器座標推算經緯度，提升手機觸控相容性
 function handleContainerTouchStart(e) {
+  if (isDrawingPaused) { e.preventDefault(); return; }
   isPointerDownForDraw = true;
   currentStrokeStartIdx = drawnRoutePoints.length;
   const ll = getLatLngFromTouch(e);
