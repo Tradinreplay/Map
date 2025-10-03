@@ -713,6 +713,17 @@ function saveManualRouteWithStartEnd(startMarker, endMarker, points) {
     L.popup().setLatLng(latlng).setContent(popupContent).openOn(map);
   });
   displayedRoutes.set(routeRecord.id, polyline);
+  // 同步到通用顯示集合，讓「隱藏路線」可立即作用
+  try {
+    const routeIndex = startMarker.routeRecords.length - 1;
+    if (!window.displayedRouteLines) window.displayedRouteLines = {};
+    const displayedKey = `${startMarker.id}_${routeIndex}`;
+    window.displayedRouteLines[displayedKey] = polyline;
+  } catch (e) {
+    console.warn('同步顯示路線至 displayedRouteLines 失敗：', e);
+  }
+  // 立即更新標註點彈窗內容，顯示最新路線管理按鈕
+  try { if (typeof updateMarkerPopup === 'function') updateMarkerPopup(startMarker); } catch (e) {}
   showNotification(`✅ 手繪路線已保存：起點「${startMarker.name}」 → 終點「${endMarker.name}」`, 'success');
   cleanupDrawnRouteLine();
   try { if (typeof saveData === 'function') saveData(); } catch (e) { console.warn('保存資料時發生例外：', e); }
@@ -731,6 +742,14 @@ function deleteSavedManualRoute(routeId) {
       if (Array.isArray(m.routeRecords)) {
         const idx = m.routeRecords.findIndex(r => r.id === routeId);
         if (idx !== -1) {
+          // 同步從通用顯示集合移除，使隱藏狀態一致
+          try {
+            const key = `${m.id}_${idx}`;
+            if (window.displayedRouteLines && window.displayedRouteLines[key]) {
+              try { map.removeLayer(window.displayedRouteLines[key]); } catch (e2) {}
+              delete window.displayedRouteLines[key];
+            }
+          } catch (e) { /* 忽略同步錯誤 */ }
           m.routeRecords.splice(idx, 1);
           showNotification('🗑 路線已刪除', 'success');
           try { if (typeof saveData === 'function') saveData(); } catch (e) {}
