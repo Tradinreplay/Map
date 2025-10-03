@@ -191,6 +191,7 @@ function startManualRouteDrawing() {
       } catch (err) {}
     };
     btnPause.addEventListener('click', togglePause);
+    btnPause.addEventListener('touchstart', togglePause, { passive: false });
     btnPause.addEventListener('touchend', togglePause, { passive: false });
     btnPause.addEventListener('pointerup', togglePause);
 
@@ -371,6 +372,7 @@ function getLatLngFromTouch(e) {
 }
 
 function addPointFromLatLng(ll) {
+  if (isDrawingPaused) return;
   const { lat, lng } = ll;
   const last = drawnRoutePoints[drawnRoutePoints.length - 1];
   if (last) {
@@ -392,6 +394,7 @@ function addPointFromLatLng(ll) {
 }
 
 function addPointFromEvent(e) {
+  if (isDrawingPaused) return;
   if (!e || !e.latlng) return;
   const { lat, lng } = e.latlng;
   const last = drawnRoutePoints[drawnRoutePoints.length - 1];
