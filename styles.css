@@ -440,8 +440,8 @@ body {
     position: absolute;
     top: 12px;
     left: 12px;
-    width: 36px;
-    height: 36px;
+    width: 30.6px; /* 36px * 0.85 */
+    height: 30.6px; /* 36px * 0.85 */
     background: rgba(255, 255, 255, 0.9);
     border: 2px solid rgba(0, 123, 255, 0.3);
     border-radius: 10px;
@@ -474,13 +474,13 @@ body {
     position: absolute;
     top: 60px; /* 在全螢幕按鈕下方 */
     left: 12px;
-    width: 36px;
-    height: 36px;
+    width: 30.6px; /* 36 * 0.85 */
+    height: 30.6px; /* 36 * 0.85 */
     background: rgba(255, 255, 255, 0.9);
     border: 2px solid rgba(40, 167, 69, 0.3);
     border-radius: 10px;
     cursor: move;
-    font-size: 16px;
+    font-size: 13.6px; /* 16 * 0.85 */
     color: #28a745;
     display: flex;
     align-items: center;
@@ -519,13 +519,13 @@ body {
     position: absolute;
     top: 108px; /* 在定位按鈕下方 */
     left: 12px;
-    width: 28px;
-    height: 28px;
+    width: 23.8px; /* 28 * 0.85 */
+    height: 23.8px; /* 28 * 0.85 */
     background: rgba(255, 255, 255, 0.9);
     border: 2px solid rgba(255, 193, 7, 0.3);
     border-radius: 10px;
     cursor: move;
-    font-size: 16px;
+    font-size: 13.6px; /* 16 * 0.85 */
     color: #ffc107;
     display: flex;
     align-items: center;
@@ -647,17 +647,17 @@ body {
 .map-container.fullscreen .location-btn {
     left: 20px;
     top: 68px;
-    width: 40px;
-    height: 40px;
-    font-size: 18px;
+    width: 34px; /* 40 * 0.85 */
+    height: 34px;
+    font-size: 15.3px; /* 18 * 0.85 */
 }
 
 .map-container.fullscreen .center-btn {
     left: 20px;
     top: 116px;
-    width: 40px;
-    height: 40px;
-    font-size: 18px;
+    width: 34px;
+    height: 34px;
+    font-size: 15.3px;
 }
 
 /* 浮動控制面板 */
@@ -692,14 +692,14 @@ body {
 
 /* 圖示按鈕（icon-only）樣式：改為固定方形大小，僅顯示圖示 */
 .control-btn.icon-only {
-    width: 40px;
-    height: 40px;
+    width: 34px; /* 40 * 0.85 */
+    height: 34px;
     min-width: 0;
     padding: 0;
     justify-content: center;
 }
 .control-btn.icon-only span {
-    font-size: 18px;
+    font-size: 15.3px; /* 18 * 0.85 */
 }
 
 .control-btn:hover {
@@ -1071,12 +1071,12 @@ form input:focus, form textarea:focus, form select:focus {
         gap: 4px;
     }
     .control-btn.icon-only {
-        width: 36px;
-        height: 36px;
+        width: 30.6px; /* 36 * 0.85 */
+        height: 30.6px;
         min-width: 0;
         padding: 0;
     }
-    .control-btn.icon-only span { font-size: 16px; }
+    .control-btn.icon-only span { font-size: 13.6px; /* 16 * 0.85 */ }
     
     .control-btn span {
         font-size: 12px;
@@ -2503,8 +2503,8 @@ input:checked + .slider:before {
         min-width: 120px;
     }
     .control-btn.icon-only {
-        width: 40px;
-        height: 40px;
+        width: 34px;
+        height: 34px;
         min-width: 0;
         padding: 0;
     }
@@ -3759,13 +3759,13 @@ input:checked + .slider:before {
     position: fixed;
     top: 20px;
     left: 20px;
-    width: 20px;
-    height: 20px;
+    width: 17px; /* 20 * 0.85 */
+    height: 17px; /* 20 * 0.85 */
     border: none;
     border-radius: 50%;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
-    font-size: 20px;
+    font-size: 17px; /* 20 * 0.85 */
     cursor: pointer;
     box-shadow: 
         0 4px 20px rgba(102, 126, 234, 0.4),
@@ -3784,8 +3784,8 @@ input:checked + .slider:before {
     -moz-user-select: none;
     -ms-user-select: none;
     /* 確保在手機上有足夠的觸摸區域 */
-    min-width: 44px;
-    min-height: 44px;
+    min-width: 37.4px; /* 44 * 0.85 */
+    min-height: 37.4px; /* 44 * 0.85 */
 }
 
 .floating-settings-btn:hover {
@@ -4056,13 +4056,13 @@ input:checked + .slider:before {
     }
     
     .floating-settings-btn {
-        width: 45px;
-        height: 45px;
-        font-size: 18px;
+        width: 38.25px; /* 45 * 0.85 */
+        height: 38.25px; /* 45 * 0.85 */
+        font-size: 15.3px; /* 18 * 0.85 */
         top: 15px;
         left: 15px;
     }
-    
+
 
 }
 
@@ -4689,9 +4689,9 @@ input:checked + .slider:before {
 
 @media (max-width: 480px) {
     .floating-help-btn {
-        width: 32px;
-        height: 32px;
-        font-size: 12px;
+        width: 27.2px; /* 32 * 0.85 */
+        height: 27.2px; /* 32 * 0.85 */
+        font-size: 10.2px; /* 12 * 0.85 */
         bottom: 14px;
         right: 56px;
     }

@@ -4458,6 +4458,53 @@ function updateNotificationButtonState() {
     }
 }
 
+// 幫助說明內容彈窗（新增手繪路線功能說明）
+function showHelpModal() {
+    const modalId = 'helpModal';
+    let modal = document.getElementById(modalId);
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = modalId;
+        modal.className = 'help-modal';
+        modal.innerHTML = `
+            <div class="help-modal-content">
+                <div class="help-modal-header">
+                    <h2>功能說明</h2>
+                    <button class="close-help-btn" onclick="document.getElementById('${modalId}').remove()">×</button>
+                </div>
+                <div class="help-modal-body">
+                    <div class="help-section">
+                        <h3>手繪路線</h3>
+                        <div class="help-item">
+                            <div class="help-icon">✍️</div>
+                            <div class="help-text">
+                                使用右上角「手繪路線」圖示開始，在地圖上拖曳即可繪製路線；放開即可完成一段。完成後可選擇起點與終點標註，並保存於路線記錄中。
+                            </div>
+                        </div>
+                        <div class="help-item">
+                            <div class="help-icon">↩️</div>
+                            <div class="help-text">
+                                操作提示：可使用「撤銷最後點」與「撤銷最後筆劃」來修正繪製內容。
+                            </div>
+                        </div>
+                    </div>
+                    <div class="help-section">
+                        <h3>標註與通知</h3>
+                        <div class="help-item">
+                            <div class="help-icon">+</div>
+                            <div class="help-text">點擊「+」進入標註模式，於地圖點選位置新增標記；再次按下可取消。</div>
+                        </div>
+                        <div class="help-item">
+                            <div class="help-icon">🔔/🔕</div>
+                            <div class="help-text">通知按鈕僅以圖示顯示開關，開啟後系統會在接近設定距離時提醒。</div>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+        document.body.appendChild(modal);
+    }
+}
+
 function startTracking() {
     console.log('=== 開始位置追蹤 ===');
     
