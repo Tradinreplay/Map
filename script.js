@@ -190,13 +190,13 @@ function startManualRouteDrawing() {
         }
       } catch (err) {}
     };
-    btnPause.addEventListener('click', togglePause);
-    // 桌面可靠度提升：按下即切換（避免僅在放開時觸發）
-    btnPause.addEventListener('mousedown', togglePause);
-    btnPause.addEventListener('pointerdown', togglePause);
-    btnPause.addEventListener('touchstart', togglePause, { passive: false });
-    btnPause.addEventListener('touchend', togglePause, { passive: false });
+    // 統一事件處理：優先使用 Pointer Events，避免手機與桌面重複觸發造成狀態來回切換
     btnPause.addEventListener('pointerup', togglePause);
+    if (!window.PointerEvent) {
+      // 舊版瀏覽器備援：沒有 PointerEvent 才綁 touchend/click
+      btnPause.addEventListener('touchend', togglePause, { passive: false });
+      btnPause.addEventListener('click', togglePause);
+    }
 
     // 撤銷最後點
     const btnUndoPoint = document.createElement('button');
