@@ -116,6 +116,7 @@ let drawRouteActionsControl = null;
 let isPointerDownForDraw = false;
 let drawnRouteStrokeBreaks = [];
 let currentStrokeStartIdx = 0;
+let isDrawingPaused = false; // 新增：暫停狀態，允許移動畫面
 
 function initManualRouteDrawingUI() {
   const btn = document.getElementById('drawRouteBtn');
@@ -144,7 +145,7 @@ function startManualRouteDrawing() {
     div.style.padding = '6px 8px';
     div.style.fontSize = '12px';
     div.style.color = '#ffffff';
-    div.innerHTML = '✍️ 手繪中：按住拖曳描畫；放開可斷筆；再次按按鈕完成';
+    div.innerHTML = '✍️ 手繪中：按住拖曳描畫；放開可斷筆；可暫停以移動畫面；再次按按鈕完成';
     return div;
   };
   drawRouteTipControl.addTo(map);
@@ -158,6 +159,40 @@ function startManualRouteDrawing() {
       L.DomEvent.disableClickPropagation(wrap);
       L.DomEvent.disableScrollPropagation(wrap);
     } catch (e) {}
+
+    // 暫停/繼續
+    const btnPause = document.createElement('button');
+    btnPause.textContent = '⏸️ 暫停繪製';
+    btnPause.type = 'button';
+    btnPause.style.padding = '4px 6px';
+    btnPause.style.fontSize = '12px';
+    btnPause.style.marginTop = '4px';
+    btnPause.style.cursor = 'pointer';
+    btnPause.style.pointerEvents = 'auto';
+    const togglePause = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      isDrawingPaused = !isDrawingPaused;
+      try {
+        if (isDrawingPaused) {
+          map.dragging.enable();
+          btnPause.textContent = '▶️ 繼續繪製';
+          isPointerDownForDraw = false; // 停止當前描畫
+          if (drawRouteTipControl && drawRouteTipControl._container) {
+            drawRouteTipControl._container.innerHTML = '⏸️ 已暫停：可拖動地圖；點「▶️ 繼續繪製」恢復';
+          }
+        } else {
+          map.dragging.disable();
+          btnPause.textContent = '⏸️ 暫停繪製';
+          if (drawRouteTipControl && drawRouteTipControl._container) {
+            drawRouteTipControl._container.innerHTML = '✍️ 手繪中：按住拖曳描畫；放開可斷筆；可暫停以移動畫面；再次按按鈕完成';
+          }
+        }
+      } catch (err) {}
+    };
+    btnPause.addEventListener('click', togglePause);
+    btnPause.addEventListener('touchend', togglePause, { passive: false });
+    btnPause.addEventListener('pointerup', togglePause);
 
     // 撤銷最後點
     const btnUndoPoint = document.createElement('button');
@@ -218,6 +253,7 @@ function startManualRouteDrawing() {
       e.stopPropagation();
       clearTemporaryDrawnRoute();
     });
+    wrap.appendChild(btnPause);
     wrap.appendChild(btnUndoPoint);
     wrap.appendChild(btnUndoStroke);
     wrap.appendChild(btnClear);
@@ -258,7 +294,7 @@ function onDrawMouseDown(e) {
 }
 
 function onDrawMouseMove(e) {
-  if (!isPointerDownForDraw) return;
+  if (!isPointerDownForDraw || isDrawingPaused) return;
   addPointFromEvent(e);
 }
 
@@ -278,7 +314,7 @@ function onDrawTouchStart(e) {
 }
 
 function onDrawTouchMove(e) {
-  if (!isPointerDownForDraw) return;
+  if (!isPointerDownForDraw || isDrawingPaused) return;
   addPointFromEvent(e);
   e.preventDefault();
 }
@@ -301,7 +337,7 @@ function handleContainerTouchStart(e) {
 }
 
 function handleContainerTouchMove(e) {
-  if (!isPointerDownForDraw) return;
+  if (!isPointerDownForDraw || isDrawingPaused) return;
   const ll = getLatLngFromTouch(e);
   if (ll) addPointFromLatLng(ll);
   e.preventDefault();
@@ -378,6 +414,7 @@ function addPointFromEvent(e) {
 function finishManualRouteDrawing() {
   if (!isDrawingRoute) return;
   isDrawingRoute = false;
+  isDrawingPaused = false;
   map.off('mousedown', onDrawMouseDown);
   map.off('mousemove', onDrawMouseMove);
   map.off('mouseup', onDrawMouseUp);
