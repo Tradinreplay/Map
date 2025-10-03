@@ -2396,7 +2396,7 @@ input:checked + .slider:before {
 .color-option, .icon-option {
     width: 22px;
     height: 22px;
-    border-radius: 50%;
+    border-radius: 8px; /* 改為圓角方形 */
     border: 2px solid transparent;
     cursor: pointer;
     display: flex;

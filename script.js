@@ -107,6 +107,394 @@ let routeRecordingStartTime = null; // 路線記錄開始時間
 let displayedRoutes = new Map(); // 當前顯示在地圖上的路線 (routeId -> leaflet polyline)
 let routeRecordingInterval = null; // 路線記錄定時器
 
+// ==================== 手動繪製路線 ====================
+let isDrawingRoute = false;
+let drawnRoutePoints = [];
+let drawnRouteLine = null;
+let drawRouteTipControl = null;
+let drawRouteActionsControl = null;
+let isPointerDownForDraw = false;
+
+function initManualRouteDrawingUI() {
+  const btn = document.getElementById('drawRouteBtn');
+  if (!btn) return;
+  btn.addEventListener('click', () => {
+    if (!isDrawingRoute) {
+      startManualRouteDrawing();
+    } else {
+      finishManualRouteDrawing();
+    }
+  });
+}
+
+document.addEventListener('DOMContentLoaded', initManualRouteDrawingUI);
+
+function startManualRouteDrawing() {
+  if (!map) return;
+  isDrawingRoute = true;
+  drawnRoutePoints = [];
+  // 提示控制項
+  drawRouteTipControl = L.control({ position: 'topleft' });
+  drawRouteTipControl.onAdd = function () {
+    const div = L.DomUtil.create('div', 'route-info-control');
+    div.style.padding = '6px 8px';
+    div.style.fontSize = '12px';
+    div.innerHTML = '✍️ 手繪中：按住拖曳描畫；放開可斷筆；再次按按鈕完成';
+    return div;
+  };
+  drawRouteTipControl.addTo(map);
+  // 額外控制項：提供清除暫時路線
+  drawRouteActionsControl = L.control({ position: 'topleft' });
+  drawRouteActionsControl.onAdd = function () {
+    const wrap = L.DomUtil.create('div', 'route-info-control');
+    wrap.style.padding = '4px 6px';
+    wrap.style.fontSize = '12px';
+    const btnClear = document.createElement('button');
+    btnClear.textContent = '🗑 清除暫時路線';
+    btnClear.style.padding = '4px 6px';
+    btnClear.style.fontSize = '12px';
+    btnClear.style.marginTop = '4px';
+    btnClear.addEventListener('click', (e) => {
+      e.preventDefault();
+      clearTemporaryDrawnRoute();
+    });
+    wrap.appendChild(btnClear);
+    return wrap;
+  };
+  drawRouteActionsControl.addTo(map);
+
+  // 在手繪期間，暫時關閉地圖拖曳，避免干擾描畫
+  try { map.dragging.disable(); } catch (e) {}
+
+  // 滑動描畫事件（滑鼠）
+  map.on('mousedown', onDrawMouseDown);
+  map.on('mousemove', onDrawMouseMove);
+  map.on('mouseup', onDrawMouseUp);
+  // 觸控描畫事件（手機）
+  map.on('touchstart', onDrawTouchStart, { passive: false });
+  map.on('touchmove', onDrawTouchMove, { passive: false });
+  map.on('touchend', onDrawTouchEnd);
+}
+
+function onDrawMouseDown(e) {
+  isPointerDownForDraw = true;
+  addPointFromEvent(e);
+}
+
+function onDrawMouseMove(e) {
+  if (!isPointerDownForDraw) return;
+  addPointFromEvent(e);
+}
+
+function onDrawMouseUp() {
+  isPointerDownForDraw = false;
+}
+
+function onDrawTouchStart(e) {
+  isPointerDownForDraw = true;
+  addPointFromEvent(e);
+  e.preventDefault();
+}
+
+function onDrawTouchMove(e) {
+  if (!isPointerDownForDraw) return;
+  addPointFromEvent(e);
+  e.preventDefault();
+}
+
+function onDrawTouchEnd() {
+  isPointerDownForDraw = false;
+}
+
+function addPointFromEvent(e) {
+  if (!e || !e.latlng) return;
+  const { lat, lng } = e.latlng;
+  const last = drawnRoutePoints[drawnRoutePoints.length - 1];
+  // 降噪：兩點距離過近則忽略，避免建立過多點
+  if (last) {
+    const d = calculateDistance(last[0], last[1], lat, lng);
+    if (d < 0.5) return; // 小於 0.5 公尺忽略
+  }
+  drawnRoutePoints.push([lat, lng]);
+  if (!drawnRouteLine) {
+    drawnRouteLine = L.polyline(drawnRoutePoints, {
+      color: '#1E90FF',
+      weight: 4,
+      opacity: 0.9,
+      lineCap: 'round',
+      lineJoin: 'round'
+    }).addTo(map);
+  } else {
+    drawnRouteLine.setLatLngs(drawnRoutePoints);
+  }
+}
+
+function finishManualRouteDrawing() {
+  if (!isDrawingRoute) return;
+  isDrawingRoute = false;
+  map.off('mousedown', onDrawMouseDown);
+  map.off('mousemove', onDrawMouseMove);
+  map.off('mouseup', onDrawMouseUp);
+  map.off('touchstart', onDrawTouchStart);
+  map.off('touchmove', onDrawTouchMove);
+  map.off('touchend', onDrawTouchEnd);
+  if (drawRouteTipControl) {
+    drawRouteTipControl.remove();
+    drawRouteTipControl = null;
+  }
+  if (drawRouteActionsControl) {
+    drawRouteActionsControl.remove();
+    drawRouteActionsControl = null;
+  }
+  try { map.dragging.enable(); } catch (e) {}
+  if (!drawnRoutePoints || drawnRoutePoints.length < 2) {
+    showNotification('至少需要兩個點才能保存路線', 'warning');
+    cleanupDrawnRouteLine();
+    return;
+  }
+  // 完成後詢問起點與終點（依距離列出最近）
+  promptSelectStartEndMarkers(drawnRoutePoints);
+}
+
+function cleanupDrawnRouteLine() {
+  if (drawnRouteLine) {
+    map.removeLayer(drawnRouteLine);
+    drawnRouteLine = null;
+  }
+  drawnRoutePoints = [];
+}
+
+function clearTemporaryDrawnRoute() {
+  cleanupDrawnRouteLine();
+  showNotification('暫時路線已清除', 'info');
+}
+
+function promptSelectStartEndMarkers(points) {
+  const first = points[0];
+  const last = points[points.length - 1];
+  const startCandidates = getNearestMarkers(first[0], first[1], 10);
+  const endCandidates = getNearestMarkers(last[0], last[1], 10);
+
+  const modal = document.createElement('div');
+  modal.style.position = 'fixed';
+  modal.style.left = '50%';
+  modal.style.top = '50%';
+  modal.style.transform = 'translate(-50%, -50%)';
+  modal.style.background = '#fff';
+  modal.style.border = '1px solid #ddd';
+  modal.style.borderRadius = '10px';
+  modal.style.boxShadow = '0 10px 30px rgba(0,0,0,0.15)';
+  modal.style.zIndex = '9999';
+  modal.style.minWidth = '320px';
+  modal.style.maxWidth = '92vw';
+  modal.style.maxHeight = '72vh';
+  modal.style.overflow = 'auto';
+
+  const header = document.createElement('div');
+  header.style.padding = '10px 12px';
+  header.style.borderBottom = '1px solid #eee';
+  header.style.fontSize = '13px';
+  header.style.fontWeight = '600';
+  header.textContent = '選擇起點與終點（依距離排序）';
+
+  const body = document.createElement('div');
+  body.style.display = 'grid';
+  body.style.gridTemplateColumns = '1fr 1fr';
+  body.style.gap = '8px';
+  body.style.padding = '8px 12px';
+
+  const startCol = document.createElement('div');
+  const startTitle = document.createElement('div');
+  startTitle.textContent = '起點（靠近第一個筆劃）';
+  startTitle.style.fontSize = '12px';
+  startTitle.style.fontWeight = '600';
+  startTitle.style.marginBottom = '6px';
+  startCol.appendChild(startTitle);
+  const startList = document.createElement('div');
+  startCandidates.forEach(m => {
+    const item = document.createElement('div');
+    item.style.padding = '6px 8px';
+    item.style.cursor = 'pointer';
+    item.style.border = '1px solid #f2f2f2';
+    item.style.borderRadius = '6px';
+    item.style.marginBottom = '6px';
+    const dist = calculateDistance(first[0], first[1], m.lat, m.lng).toFixed(1);
+    item.innerHTML = `${m.icon || '📍'} ${m.name} <small>(${dist}m)</small>`;
+    item.addEventListener('click', () => {
+      startList.querySelectorAll('.selected').forEach(el => el.classList.remove('selected'));
+      item.classList.add('selected');
+      item.style.borderColor = '#3b82f6';
+      item.dataset.selectedId = m.id;
+      startList.dataset.selectedId = m.id;
+    });
+    startList.appendChild(item);
+  });
+  startCol.appendChild(startList);
+
+  const endCol = document.createElement('div');
+  const endTitle = document.createElement('div');
+  endTitle.textContent = '終點（靠近最後一個筆劃）';
+  endTitle.style.fontSize = '12px';
+  endTitle.style.fontWeight = '600';
+  endTitle.style.marginBottom = '6px';
+  endCol.appendChild(endTitle);
+  const endList = document.createElement('div');
+  endCandidates.forEach(m => {
+    const item = document.createElement('div');
+    item.style.padding = '6px 8px';
+    item.style.cursor = 'pointer';
+    item.style.border = '1px solid #f2f2f2';
+    item.style.borderRadius = '6px';
+    item.style.marginBottom = '6px';
+    const dist = calculateDistance(last[0], last[1], m.lat, m.lng).toFixed(1);
+    item.innerHTML = `${m.icon || '📍'} ${m.name} <small>(${dist}m)</small>`;
+    item.addEventListener('click', () => {
+      endList.querySelectorAll('.selected').forEach(el => el.classList.remove('selected'));
+      item.classList.add('selected');
+      item.style.borderColor = '#3b82f6';
+      endList.dataset.selectedId = m.id;
+    });
+    endList.appendChild(item);
+  });
+  endCol.appendChild(endList);
+
+  body.appendChild(startCol);
+  body.appendChild(endCol);
+
+  const actions = document.createElement('div');
+  actions.style.display = 'flex';
+  actions.style.gap = '8px';
+  actions.style.padding = '8px 12px';
+  actions.style.justifyContent = 'flex-end';
+  const cancelBtn = document.createElement('button');
+  cancelBtn.textContent = '取消';
+  cancelBtn.style.padding = '6px 10px';
+  cancelBtn.style.fontSize = '12px';
+  cancelBtn.addEventListener('click', () => {
+    document.body.removeChild(modal);
+    cleanupDrawnRouteLine();
+  });
+  const confirmBtn = document.createElement('button');
+  confirmBtn.textContent = '保存';
+  confirmBtn.style.padding = '6px 10px';
+  confirmBtn.style.fontSize = '12px';
+  confirmBtn.addEventListener('click', () => {
+    const startId = startList.dataset.selectedId;
+    const endId = endList.dataset.selectedId;
+    if (!startId || !endId) {
+      showNotification('請選擇起點與終點', 'warning');
+      return;
+    }
+    const startMarker = markers.find(m => m.id === startId);
+    const endMarker = markers.find(m => m.id === endId);
+    if (!startMarker || !endMarker) {
+      showNotification('選擇標註點無效', 'error');
+      return;
+    }
+    saveManualRouteWithStartEnd(startMarker, endMarker, points);
+    document.body.removeChild(modal);
+  });
+  actions.appendChild(cancelBtn);
+  actions.appendChild(confirmBtn);
+
+  modal.appendChild(header);
+  modal.appendChild(body);
+  modal.appendChild(actions);
+  document.body.appendChild(modal);
+}
+
+function getNearestMarkers(lat, lng, limit = 10) {
+  if (!Array.isArray(markers)) return [];
+  const list = markers.map(m => ({
+    id: m.id,
+    name: m.name,
+    icon: m.icon,
+    lat: m.lat,
+    lng: m.lng,
+    dist: calculateDistance(lat, lng, m.lat, m.lng)
+  }));
+  list.sort((a, b) => a.dist - b.dist);
+  return list.slice(0, limit);
+}
+
+function saveManualRouteWithStartEnd(startMarker, endMarker, points) {
+  const selectedColor = (typeof getSavedPathColor === 'function' && getSavedPathColor() && getSavedPathColor() !== 'random')
+    ? getSavedPathColor() : generateRandomColor();
+  // 計算總距離
+  let totalDistance = 0;
+  for (let i = 1; i < points.length; i++) {
+    const [lat1, lng1] = points[i - 1];
+    const [lat2, lng2] = points[i];
+    totalDistance += calculateDistance(lat1, lng1, lat2, lng2);
+  }
+  const routeRecord = {
+    id: `${startMarker.id}_manual_${Date.now()}`,
+    name: `手繪路線 ${new Date().toLocaleString()}`,
+    coordinates: points.map(p => ({ lat: p[0], lng: p[1], timestamp: Date.now() })),
+    distance: totalDistance,
+    duration: 0,
+    color: selectedColor,
+    createdAt: new Date().toISOString(),
+    startMarkerId: startMarker.id,
+    startMarkerName: startMarker.name,
+    targetMarkerId: endMarker.id,
+    targetMarkerName: endMarker.name
+  };
+  if (!startMarker.routeRecords) startMarker.routeRecords = [];
+  if (startMarker.routeRecords.length >= 10) startMarker.routeRecords.shift();
+  startMarker.routeRecords.push(routeRecord);
+  const polyline = L.polyline(points, {
+    color: selectedColor,
+    weight: 4,
+    opacity: 0.9,
+    lineCap: 'round',
+    lineJoin: 'round'
+  }).addTo(map);
+  // 附加刪除事件（點擊線後可刪除）
+  polyline.routeRecordId = routeRecord.id;
+  polyline.on('click', (evt) => {
+    const latlng = evt.latlng;
+    const popupContent = document.createElement('div');
+    const delBtn = document.createElement('button');
+    delBtn.textContent = '刪除此路線';
+    delBtn.style.padding = '4px 6px';
+    delBtn.style.fontSize = '12px';
+    delBtn.addEventListener('click', () => {
+      deleteSavedManualRoute(routeRecord.id);
+      map.closePopup();
+    });
+    popupContent.appendChild(delBtn);
+    L.popup().setLatLng(latlng).setContent(popupContent).openOn(map);
+  });
+  displayedRoutes.set(routeRecord.id, polyline);
+  showNotification(`✅ 手繪路線已保存：起點「${startMarker.name}」 → 終點「${endMarker.name}」`, 'success');
+  cleanupDrawnRouteLine();
+  try { if (typeof saveData === 'function') saveData(); } catch (e) { console.warn('保存資料時發生例外：', e); }
+}
+
+function deleteSavedManualRoute(routeId) {
+  // 從地圖移除
+  const polyline = displayedRoutes.get(routeId);
+  if (polyline) {
+    try { map.removeLayer(polyline); } catch (e) {}
+    displayedRoutes.delete(routeId);
+  }
+  // 從標註紀錄中移除
+  if (Array.isArray(markers)) {
+    for (const m of markers) {
+      if (Array.isArray(m.routeRecords)) {
+        const idx = m.routeRecords.findIndex(r => r.id === routeId);
+        if (idx !== -1) {
+          m.routeRecords.splice(idx, 1);
+          showNotification('🗑 路線已刪除', 'success');
+          try { if (typeof saveData === 'function') saveData(); } catch (e) {}
+          break;
+        }
+      }
+    }
+  }
+}
+
 // 螢幕恆亮相關變數
 let wakeLock = null; // 螢幕恆亮鎖定物件
 let isWakeLockEnabled = false; // 螢幕恆亮是否啟用
@@ -2143,6 +2531,7 @@ function initDragFunctionality() {
     const fullscreenBtn = document.getElementById('fullscreenBtn');
     const locationBtn = document.getElementById('locationBtn');
     const centerBtn = document.getElementById('centerBtn');
+    const rotateBtn = document.getElementById('rotateBtn');
     
     // 載入保存的按鈕位置
     loadButtonPositions();
@@ -2151,11 +2540,13 @@ function initDragFunctionality() {
     makeDraggable(fullscreenBtn);
     makeDraggable(locationBtn);
     makeDraggable(centerBtn);
+    makeDraggable(rotateBtn);
     
     // 為手機添加額外的觸控事件處理
     addMobileTouchSupport(fullscreenBtn, 'handleFullscreenClick');
     addMobileTouchSupport(locationBtn, 'handleLocationClick');
     addMobileTouchSupport(centerBtn, 'handleCenterClick');
+    addMobileTouchSupport(rotateBtn, 'toggleMapRotation');
     
     // 為其他重要按鈕添加手機觸控支援
     const addMarkerBtn = document.getElementById('addMarkerBtn');
@@ -2230,6 +2621,8 @@ function addMobileTouchSupport(element, functionName) {
                 window.centerMapToCurrentLocation();
             } else if (functionName === 'showHelpModal' && typeof window.showHelpModal === 'function') {
                 window.showHelpModal();
+            } else if (functionName === 'toggleMapRotation' && typeof window.toggleMapRotation === 'function') {
+                window.toggleMapRotation();
             }
         }
         
@@ -8459,10 +8852,9 @@ function generateRandomColor() {
     } else {
         // 隨機顏色
         const colors = [
-            '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7',
-            '#DDA0DD', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9',
-            '#F8C471', '#82E0AA', '#F1948A', '#85C1E9', '#D7BDE2',
-            '#A3E4D7', '#F9E79F', '#D5A6BD', '#AED6F1', '#A9DFBF'
+            '#FF1744', '#00C853', '#2962FF', '#7B1FA2', '#FF6D00',
+            '#00B8D4', '#D500F9', '#C51162', '#AA00FF', '#00E5FF',
+            '#1DE9B6', '#76FF03', '#FFC400', '#FF3D00', '#64DD17'
         ];
         return colors[Math.floor(Math.random() * colors.length)];
     }
