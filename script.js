@@ -171,9 +171,22 @@ function startManualRouteDrawing() {
   map.on('mousemove', onDrawMouseMove);
   map.on('mouseup', onDrawMouseUp);
   // 觸控描畫事件（手機）
-  map.on('touchstart', onDrawTouchStart, { passive: false });
-  map.on('touchmove', onDrawTouchMove, { passive: false });
+  map.on('touchstart', onDrawTouchStart);
+  map.on('touchmove', onDrawTouchMove);
   map.on('touchend', onDrawTouchEnd);
+
+  // 觸控事件的底層備援：直接綁定到地圖容器，確保部分瀏覽器能取得非被動事件
+  const container = map.getContainer();
+  if (container) {
+    // 禁止點擊/滾動傳播以免干擾
+    try {
+      L.DomEvent.disableClickPropagation(container);
+      L.DomEvent.disableScrollPropagation(container);
+    } catch (e) {}
+    container.addEventListener('touchstart', handleContainerTouchStart, { passive: false });
+    container.addEventListener('touchmove', handleContainerTouchMove, { passive: false });
+    container.addEventListener('touchend', handleContainerTouchEnd, { passive: false });
+  }
 }
 
 function onDrawMouseDown(e) {
@@ -204,6 +217,62 @@ function onDrawTouchMove(e) {
 
 function onDrawTouchEnd() {
   isPointerDownForDraw = false;
+}
+
+// 直接用容器座標推算經緯度，提升手機觸控相容性
+function handleContainerTouchStart(e) {
+  isPointerDownForDraw = true;
+  const ll = getLatLngFromTouch(e);
+  if (ll) addPointFromLatLng(ll);
+  e.preventDefault();
+}
+
+function handleContainerTouchMove(e) {
+  if (!isPointerDownForDraw) return;
+  const ll = getLatLngFromTouch(e);
+  if (ll) addPointFromLatLng(ll);
+  e.preventDefault();
+}
+
+function handleContainerTouchEnd(e) {
+  isPointerDownForDraw = false;
+  e.preventDefault();
+}
+
+function getLatLngFromTouch(e) {
+  try {
+    const container = map.getContainer();
+    const rect = container.getBoundingClientRect();
+    const touch = e.touches && e.touches[0] ? e.touches[0] : (e.changedTouches && e.changedTouches[0]);
+    if (!touch) return null;
+    const x = touch.clientX - rect.left;
+    const y = touch.clientY - rect.top;
+    const latlng = map.containerPointToLatLng([x, y]);
+    return latlng ? { lat: latlng.lat, lng: latlng.lng } : null;
+  } catch (err) {
+    return null;
+  }
+}
+
+function addPointFromLatLng(ll) {
+  const { lat, lng } = ll;
+  const last = drawnRoutePoints[drawnRoutePoints.length - 1];
+  if (last) {
+    const d = calculateDistance(last[0], last[1], lat, lng);
+    if (d < 0.5) return;
+  }
+  drawnRoutePoints.push([lat, lng]);
+  if (!drawnRouteLine) {
+    drawnRouteLine = L.polyline(drawnRoutePoints, {
+      color: '#1E90FF',
+      weight: 4,
+      opacity: 0.9,
+      lineCap: 'round',
+      lineJoin: 'round'
+    }).addTo(map);
+  } else {
+    drawnRouteLine.setLatLngs(drawnRoutePoints);
+  }
 }
 
 function addPointFromEvent(e) {
@@ -238,6 +307,12 @@ function finishManualRouteDrawing() {
   map.off('touchstart', onDrawTouchStart);
   map.off('touchmove', onDrawTouchMove);
   map.off('touchend', onDrawTouchEnd);
+  const container = map && map.getContainer ? map.getContainer() : null;
+  if (container) {
+    container.removeEventListener('touchstart', handleContainerTouchStart);
+    container.removeEventListener('touchmove', handleContainerTouchMove);
+    container.removeEventListener('touchend', handleContainerTouchEnd);
+  }
   if (drawRouteTipControl) {
     drawRouteTipControl.remove();
     drawRouteTipControl = null;
