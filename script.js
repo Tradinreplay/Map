@@ -1318,8 +1318,8 @@ function initMap() {
         // 性能優化
         updateWhenIdle: false,    // 地圖移動時持續更新圖層
         updateWhenZooming: true,  // 縮放時更新圖層
-        keepBuffer: 2,            // 保持額外的圖層緩存
-        updateInterval: 150       // 更新間隔（毫秒）
+        keepBuffer: 5,            // 保持額外的圖層緩存
+        updateInterval: 100       // 更新間隔（毫秒）
     }).addTo(map);
     
     // Google地形圖
