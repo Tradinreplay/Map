@@ -1318,7 +1318,7 @@ function initMap() {
         // 性能優化
         updateWhenIdle: false,    // 地圖移動時持續更新圖層
         updateWhenZooming: true,  // 縮放時更新圖層
-        keepBuffer: 5,            // 保持額外的圖層緩存
+        keepBuffer: 6,            // 保持額外的圖層緩存
         updateInterval: 100       // 更新間隔（毫秒）
     }).addTo(map);
     
