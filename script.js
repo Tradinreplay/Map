@@ -1292,8 +1292,8 @@ function initMap() {
         // 性能優化
         updateWhenIdle: false,    // 地圖移動時持續更新圖層
         updateWhenZooming: true,  // 縮放時更新圖層
-        keepBuffer: 2,            // 保持額外的圖層緩存
-        updateInterval: 150       // 更新間隔（毫秒）
+        keepBuffer: 8,            // 保持額外的圖層緩存
+        updateInterval: 100       // 更新間隔（毫秒）
     });
     
     // Google衛星圖
@@ -1305,8 +1305,8 @@ function initMap() {
         // 性能優化
         updateWhenIdle: false,    // 地圖移動時持續更新圖層
         updateWhenZooming: true,  // 縮放時更新圖層
-        keepBuffer: 2,            // 保持額外的圖層緩存
-        updateInterval: 150       // 更新間隔（毫秒）
+        keepBuffer: 8,            // 保持額外的圖層緩存
+        updateInterval: 100       // 更新間隔（毫秒）
     });
     
     // Google混合圖 (衛星+標籤) - 設為預設圖層
@@ -1318,7 +1318,7 @@ function initMap() {
         // 性能優化
         updateWhenIdle: false,    // 地圖移動時持續更新圖層
         updateWhenZooming: true,  // 縮放時更新圖層
-        keepBuffer: 6,            // 保持額外的圖層緩存
+        keepBuffer: 8,            // 保持額外的圖層緩存
         updateInterval: 100       // 更新間隔（毫秒）
     }).addTo(map);
     
@@ -1331,8 +1331,8 @@ function initMap() {
         // 性能優化
         updateWhenIdle: false,    // 地圖移動時持續更新圖層
         updateWhenZooming: true,  // 縮放時更新圖層
-        keepBuffer: 2,            // 保持額外的圖層緩存
-        updateInterval: 150       // 更新間隔（毫秒）
+        keepBuffer: 8,            // 保持額外的圖層緩存
+        updateInterval: 100       // 更新間隔（毫秒）
     });
     
     // 備用圖層 - OpenStreetMap
@@ -1343,8 +1343,8 @@ function initMap() {
         // 性能優化
         updateWhenIdle: false,    // 地圖移動時持續更新圖層
         updateWhenZooming: true,  // 縮放時更新圖層
-        keepBuffer: 2,            // 保持額外的圖層緩存
-        updateInterval: 150       // 更新間隔（毫秒）
+        keepBuffer: 8,            // 保持額外的圖層緩存
+        updateInterval: 100       // 更新間隔（毫秒）
     });
     
     // 地圖圖層控制
