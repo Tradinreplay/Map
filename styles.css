@@ -2622,7 +2622,8 @@ input:checked + .slider:before {
 
 /* 圖片預覽模態框樣式 */
 .image-modal {
-    z-index: 2000;
+    /* 提高層級，確保不被其他浮層遮蔽（特別是 iOS Safari） */
+    z-index: 12000;
 }
 
 .image-modal-content {
