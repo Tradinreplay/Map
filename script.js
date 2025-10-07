@@ -3568,6 +3568,10 @@ function selectGroup(groupId, subgroupId = null) {
     document.querySelectorAll('.group-item').forEach(item => {
         item.classList.remove('active');
     });
+    // 確保子群組也只保留唯一 active
+    document.querySelectorAll('.subgroup-item').forEach(item => {
+        item.classList.remove('active');
+    });
     
     if (groupId === null) {
         // 顯示所有標註點時，激活第一個選項
@@ -5636,6 +5640,22 @@ function updateGroupsList() {
                 <button onclick="showGroupDetailsModal('${group.id}')" title="查看組別詳情">詳情</button>
             </div>
         `;
+
+        // 若目前選擇的是此群組，標記 active
+        if (currentGroup && !currentSubgroup && currentGroup.id === group.id) {
+            groupDiv.classList.add('active');
+        }
+        // 讓整個群組項目也能被點擊選取（避免覆寫子群組點擊）
+        groupDiv.addEventListener('click', (e) => {
+            // 避免點擊操作按鈕或子群組時觸發群組選取
+            const isActionBtn = e.target.closest('.group-actions button');
+            const isSubgroup = e.target.closest('.subgroup-item');
+            if (isActionBtn || isSubgroup) return;
+            // 僅在點擊群組名稱或群組卡片空白處時選取
+            const isGroupName = e.target.closest('.group-name');
+            if (!isGroupName && e.target !== groupDiv) return;
+            selectGroup(group.id);
+        });
         
         // 添加子群組
         group.subgroups.forEach(subgroup => {
@@ -5651,6 +5671,18 @@ function updateGroupsList() {
                     <button onclick="showGroupDetailsModal('${group.id}', '${subgroup.id}')" title="查看群組詳情">詳情</button>
                 </div>
             `;
+
+            // 若目前選擇的是此子群組，標記 active
+            if (currentGroup && currentSubgroup && currentGroup.id === group.id && currentSubgroup.id === subgroup.id) {
+                subgroupDiv.classList.add('active');
+            }
+            // 讓整個子群組項目也能被點擊選取，並阻止冒泡
+            subgroupDiv.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const isActionBtn = e.target.closest('.subgroup-actions button');
+                if (isActionBtn) return;
+                selectGroup(group.id, subgroup.id);
+            });
             
             groupDiv.appendChild(subgroupDiv);
         });
@@ -5666,18 +5698,8 @@ function updateMarkersList() {
     const markersList = document.getElementById('markersList');
     markersList.innerHTML = '';
     
-    let displayMarkers = [];
-    
-    if (currentGroup && currentSubgroup) {
-        // 顯示選中子群組的標記
-        displayMarkers = markers.filter(m => m.groupId === currentGroup.id && m.subgroupId === currentSubgroup.id);
-    } else if (currentGroup) {
-        // 顯示選中群組的所有標記（包括子群組的標記）
-        displayMarkers = markers.filter(m => m.groupId === currentGroup.id);
-    } else {
-        // 顯示所有標記
-        displayMarkers = markers;
-    }
+    // 與全域過濾狀態一致，確保即時顯示
+    let displayMarkers = getFilteredMarkers();
     
     displayMarkers.forEach(marker => {
         const markerDiv = document.createElement('div');
