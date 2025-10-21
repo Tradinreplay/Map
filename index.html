@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>地圖標註系統 - mobile-image-preview-fixed-20240927</title>
+    <title>地圖標註系統</title>
     
     <!-- PWA Support -->
     <link rel="manifest" href="./manifest.json">
@@ -403,6 +403,11 @@
                             <span>定位</span>
                         </button>
 
+                        <button id="shareLocationBtn" class="quick-action-btn" title="分享目前位置">
+                            <span>🔗</span>
+                            <span>分享位置</span>
+                        </button>
+
                         <button id="showAllMarkersBtn" class="quick-action-btn" title="顯示所有標記">
                             <span>👁️</span>
                             <span>顯示全部</span>
@@ -700,6 +705,29 @@
                         <span class="help-icon">🔄</span>
                         <div class="help-text">
                             <strong>自動儲存：</strong>所有操作都會自動儲存到本地儲存空間
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 新增：分享功能說明 -->
+                <div class="help-section">
+                    <h3>🔗 分享</h3>
+                    <div class="help-item">
+                        <span class="help-icon">📤</span>
+                        <div class="help-text">
+                            <strong>分享標註：</strong>支援以網址或完整檔案分享標註點，方便在聊天應用傳送。
+                        </div>
+                    </div>
+                    <div class="help-item">
+                        <span class="help-icon">🧭</span>
+                        <div class="help-text">
+                            <strong>含路線記錄的網址分享：</strong>若標註點包含路線記錄，網址分享僅能透過 Telegram 進行（避免連結過長）。
+                        </div>
+                    </div>
+                    <div class="help-item">
+                        <span class="help-icon">🧾</span>
+                        <div class="help-text">
+                            <strong>完整檔案分享：</strong>適用於所有標註（含或不含路線）。若系統不支援檔案直接分享，將先下載檔案，下載完成後自動呼叫分享視窗，讓您直接選擇聊天應用分享。
                         </div>
                     </div>
                 </div>
