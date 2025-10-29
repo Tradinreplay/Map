@@ -933,10 +933,19 @@ function getSettingsElement(elementId) {
 
 
 // 初始化應用程式
-function initializeApp() {
+async function initializeApp() {
     console.log('=== 應用程式初始化開始 - 版本 2024.01.20 ===');
     initMap();
-    loadData();
+    // 嘗試申請持久化儲存，降低 iOS/Safari 清空機率
+    try {
+        if (navigator.storage && typeof navigator.storage.persist === 'function') {
+            const persisted = await navigator.storage.persist();
+            console.log('Storage persist 狀態:', persisted);
+        }
+    } catch (e) {
+        console.warn('Storage persist 申請失敗或不支援:', e);
+    }
+    await loadData();
     updateGroupsList();
     updateMarkersList();
     
@@ -7119,6 +7128,59 @@ window.clearSpecificGroupHighlight = clearSpecificGroupHighlight;
 
 
 
+// IndexedDB 簡易備援儲存（避免 iOS 背景被滑掉後清空 localStorage）
+const IDB_DB_NAME = 'MapAppDB';
+const IDB_STORE_NAME = 'kv';
+const IDB_VERSION = 1;
+
+function openIdb() {
+    return new Promise((resolve, reject) => {
+        try {
+            const request = indexedDB.open(IDB_DB_NAME, IDB_VERSION);
+            request.onerror = () => reject(request.error);
+            request.onupgradeneeded = () => {
+                const db = request.result;
+                if (!db.objectStoreNames.contains(IDB_STORE_NAME)) {
+                    db.createObjectStore(IDB_STORE_NAME, { keyPath: 'key' });
+                }
+            };
+            request.onsuccess = () => resolve(request.result);
+        } catch (e) {
+            reject(e);
+        }
+    });
+}
+
+async function idbSet(key, value) {
+    const db = await openIdb();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(IDB_STORE_NAME, 'readwrite');
+        const store = tx.objectStore(IDB_STORE_NAME);
+        const req = store.put({ key, value, timestamp: Date.now() });
+        req.onsuccess = () => resolve(true);
+        req.onerror = () => reject(req.error);
+        tx.oncomplete = () => db.close();
+        tx.onerror = () => {
+            console.warn('IndexedDB 交易錯誤:', tx.error);
+        };
+    });
+}
+
+async function idbGet(key) {
+    const db = await openIdb();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(IDB_STORE_NAME, 'readonly');
+        const store = tx.objectStore(IDB_STORE_NAME);
+        const req = store.get(key);
+        req.onsuccess = () => resolve(req.result || null);
+        req.onerror = () => reject(req.error);
+        tx.oncomplete = () => db.close();
+        tx.onerror = () => {
+            console.warn('IndexedDB 交易錯誤:', tx.error);
+        };
+    });
+}
+
 // 資料持久化
 function saveData() {
     try {
@@ -7168,6 +7230,14 @@ function saveData() {
         };
         
         localStorage.setItem('mapAnnotationData', JSON.stringify(data));
+        try {
+            // 備份到 IndexedDB（避免 iOS 背景滑掉導致 localStorage 被清空）
+            idbSet('mapAnnotationData', data).catch(err => {
+                console.warn('IndexedDB 備份失敗:', err);
+            });
+        } catch (e) {
+            console.warn('IndexedDB 備份例外:', e);
+        }
         console.log('資料儲存成功');
         
         // 顯示儲存成功通知
@@ -7189,13 +7259,37 @@ function saveData() {
     }
 }
 
-function loadData() {
-    const savedData = localStorage.getItem('mapAnnotationData');
-    
-    if (savedData) {
+async function loadData() {
+    const savedDataStr = localStorage.getItem('mapAnnotationData');
+    let data = null;
+    if (savedDataStr) {
         try {
-            const data = JSON.parse(savedData);
-            
+            data = JSON.parse(savedDataStr);
+        } catch (error) {
+            console.warn('localStorage 資料解析失敗，嘗試使用 IndexedDB 備份:', error);
+            data = null;
+        }
+    }
+
+    // 若 localStorage 缺失或資料為空，嘗試從 IndexedDB 恢復
+    if (!data || !data.markers || data.markers.length === 0) {
+        try {
+            const backup = await idbGet('mapAnnotationData');
+            if (backup && backup.value) {
+                data = backup.value;
+                // 回寫 localStorage 以便後續正常運作
+                try { localStorage.setItem('mapAnnotationData', JSON.stringify(data)); } catch (e) {}
+                try {
+                    showNotification('🗂️ 已從備份恢復資料（IndexedDB）', 'info');
+                } catch (e) {}
+            }
+        } catch (e) {
+            console.warn('讀取 IndexedDB 備份失敗:', e);
+        }
+    }
+    
+    if (data) {
+        try {
             // 重建組別
             groups = data.groups.map(groupData => {
                 const group = new Group(groupData.id, groupData.name);
@@ -7281,12 +7375,6 @@ function loadData() {
             
             // 同步地圖按鈕狀態
             updateNotificationButtonState();
-            
-            // 更新即時定位設定UI（這些元素在主界面中不存在，只在浮動設定窗口中存在）
-            // document.getElementById('enableHighAccuracy').checked = enableHighAccuracy;
-            // document.getElementById('autoStartTracking').checked = autoStartTracking;
-            // document.getElementById('locationUpdateFrequency').value = locationUpdateFrequency; // 已經是毫秒
-            // document.getElementById('locationTimeout').value = locationTimeout / 1000; // 轉換為秒
             
             // 更新UI
             updateGroupsList();
@@ -9645,6 +9733,13 @@ window.addEventListener('beforeunload', function() {
     }
 });
 
+// iOS 修正：頁面隱藏或被系統終止時立即保存資料
+window.addEventListener('pagehide', function() {
+    try { if (typeof saveData === 'function') saveData(); } catch (e) {
+        console.warn('pagehide 儲存資料失敗:', e);
+    }
+});
+
 // 處理來自 Service Worker 的消息
 if (navigator.serviceWorker) {
     navigator.serviceWorker.addEventListener('message', function(event) {
@@ -9666,7 +9761,7 @@ if (navigator.serviceWorker) {
 }
 
 // 初始化 - 在所有函數定義之後
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
     console.log('DOMContentLoaded event fired');
     
     // 檢查移動設備兼容性
@@ -9676,7 +9771,7 @@ document.addEventListener('DOMContentLoaded', function() {
     setupRouteLineMonitoring();
     
     initEventListeners();
-    initializeApp();
+    await initializeApp();
     
     // 初始化背景服務
     initBackgroundService();
