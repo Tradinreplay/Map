@@ -1441,6 +1441,33 @@ function getMapDisplayCoord(lat, lng) {
     return { lat, lng };
 }
 
+// 取得用於資料儲存的實際座標（將地圖顯示座標轉回 WGS84）
+function getMapActualCoord(lat, lng) {
+    if (applyChinaOffset && isInMainlandChina(lat, lng)) {
+        return gcj02ToWgs84(lat, lng);
+    }
+    return { lat, lng };
+}
+
+// GCJ-02 → WGS84（反向轉換，用於拖曳後正確儲存）
+function gcj02ToWgs84(lat, lng) {
+    if (!isInMainlandChina(lat, lng)) return { lat, lng };
+    const a = 6378245.0;
+    const ee = 0.00669342162296594323;
+    let dLat = transformLat(lng - 105.0, lat - 35.0);
+    let dLng = transformLon(lng - 105.0, lat - 35.0);
+    const radLat = lat / 180.0 * Math.PI;
+    let magic = Math.sin(radLat);
+    magic = 1 - ee * magic * magic;
+    const sqrtMagic = Math.sqrt(magic);
+    dLat = (dLat * 180.0) / ((a * (1 - ee)) / (magic * sqrtMagic) * Math.PI);
+    dLng = (dLng * 180.0) / (a / sqrtMagic * Math.cos(radLat) * Math.PI);
+    const mgLat = lat + dLat;
+    const mgLng = lng + dLng;
+    // 反推回原始 WGS84 座標
+    return { lat: lat * 2 - mgLat, lng: lng * 2 - mgLng };
+}
+
 // 創建當前位置圖示
 function createCurrentLocationIcon() {
     return L.divIcon({
@@ -5049,6 +5076,228 @@ function addMarkerToMap(marker) {
     
     // 使用統一的popup更新函數
     updateMarkerPopup(marker);
+
+    // 綁定長按動作：顯示移動/刪除選單
+    attachLongPressHandlers(marker);
+}
+
+// 綁定標註點圖示的長按事件（滑鼠/觸控）
+function attachLongPressHandlers(marker) {
+    const leafletMarker = marker.leafletMarker;
+    if (!leafletMarker || !leafletMarker._icon) return;
+    const iconEl = leafletMarker._icon;
+    const LONG_PRESS_MS = 600;
+    let timer = null;
+    let startX = 0, startY = 0;
+    let longPressTriggered = false;
+
+    const start = (ev) => {
+        const e = ev.touches ? ev.touches[0] : ev;
+        startX = e.clientX;
+        startY = e.clientY;
+        longPressTriggered = false;
+        iconEl.dataset.longPressTriggered = '0';
+        timer = setTimeout(() => {
+            longPressTriggered = true;
+            iconEl.dataset.longPressTriggered = '1';
+            // 觸覺反饋
+            if ('vibrate' in navigator) {
+                navigator.vibrate(30);
+            }
+            showMarkerActionMenu(marker, iconEl);
+        }, LONG_PRESS_MS);
+    };
+
+    const move = (ev) => {
+        if (!timer) return;
+        const e = ev.touches ? ev.touches[0] : ev;
+        const dx = Math.abs(e.clientX - startX);
+        const dy = Math.abs(e.clientY - startY);
+        // 若移動超過閾值，視為拖曳地圖，不觸發長按
+        if (dx + dy > 10) {
+            clearTimeout(timer);
+            timer = null;
+        }
+    };
+
+    const cancel = () => {
+        if (timer) {
+            clearTimeout(timer);
+            timer = null;
+        }
+        // 重置避免阻擋點擊
+        setTimeout(() => { iconEl.dataset.longPressTriggered = '0'; }, 0);
+    };
+
+    // 阻擋長按後的點擊開啟彈窗（避免雙重行為）
+    const clickBlocker = (e) => {
+        if (iconEl.dataset.longPressTriggered === '1' || longPressTriggered) {
+            e.preventDefault();
+            e.stopPropagation();
+            longPressTriggered = false;
+            iconEl.dataset.longPressTriggered = '0';
+        }
+    };
+
+    iconEl.addEventListener('mousedown', start);
+    iconEl.addEventListener('touchstart', start, { passive: false });
+    iconEl.addEventListener('mousemove', move);
+    iconEl.addEventListener('touchmove', move, { passive: false });
+    iconEl.addEventListener('mouseup', cancel);
+    iconEl.addEventListener('mouseleave', cancel);
+    iconEl.addEventListener('touchend', cancel);
+    iconEl.addEventListener('click', clickBlocker, true);
+}
+
+// 顯示標註點的操作選單（移動 / 刪除）
+function showMarkerActionMenu(marker, iconEl) {
+    const rect = iconEl.getBoundingClientRect();
+    const menu = document.createElement('div');
+    menu.className = 'marker-action-menu';
+    menu.style.cssText = `
+        position: fixed;
+        top: ${Math.max(8, rect.top - 6)}px;
+        left: ${Math.min(window.innerWidth - 160, rect.left + rect.width + 8)}px;
+        z-index: 10000;
+        background: #fff;
+        border: 1px solid #ddd;
+        box-shadow: 0 8px 18px rgba(0,0,0,0.18);
+        border-radius: 10px;
+        padding: 8px;
+        display: flex;
+        gap: 8px;
+    `;
+
+    const moveBtn = document.createElement('button');
+    moveBtn.textContent = '移動';
+    moveBtn.style.cssText = `
+        padding: 6px 10px;
+        border: none;
+        border-radius: 8px;
+        background: #4CAF50;
+        color: #fff;
+        font-size: 12px;
+        cursor: pointer;
+    `;
+    moveBtn.onclick = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (menu.parentNode) menu.parentNode.removeChild(menu);
+        startMarkerDrag(marker);
+    };
+
+    const deleteBtn = document.createElement('button');
+    deleteBtn.textContent = '刪除';
+    deleteBtn.style.cssText = `
+        padding: 6px 10px;
+        border: none;
+        border-radius: 8px;
+        background: #f44336;
+        color: #fff;
+        font-size: 12px;
+        cursor: pointer;
+    `;
+    deleteBtn.onclick = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (menu.parentNode) menu.parentNode.removeChild(menu);
+        confirmDeleteMarker(marker.id);
+    };
+
+    menu.appendChild(moveBtn);
+    menu.appendChild(deleteBtn);
+    document.body.appendChild(menu);
+
+    // 點擊外部關閉
+    const onOutsideClick = (ev) => {
+        if (!menu.contains(ev.target)) {
+            if (menu.parentNode) menu.parentNode.removeChild(menu);
+            window.removeEventListener('click', onOutsideClick, true);
+        }
+    };
+    setTimeout(() => window.addEventListener('click', onOutsideClick, true), 0);
+}
+
+function startMarkerDrag(marker) {
+    if (!marker.leafletMarker) return;
+    const mk = marker.leafletMarker;
+    try { mk.dragging.enable(); } catch (e) {}
+    showNotification('🖐️ 拖動標註到新位置，放開後自動儲存', 'info');
+    mk.once('dragend', () => {
+        const pos = mk.getLatLng();
+        const actual = getMapActualCoord(pos.lat, pos.lng);
+        marker.lat = actual.lat;
+        marker.lng = actual.lng;
+        // 儲存與刷新
+        saveData();
+        updateMarkersList();
+        updateGroupsList();
+        updateMarkerPopup(marker);
+        try { mk.dragging.disable(); } catch (e) {}
+        showNotification('✅ 標註點已移動', 'success');
+    });
+}
+
+function confirmDeleteMarker(markerId) {
+    // 簡單確認提示（未使用瀏覽器 confirm 以維持一致 UI）
+    const overlay = document.createElement('div');
+    overlay.style.cssText = `
+        position: fixed; inset: 0; z-index: 10001;
+        background: rgba(0,0,0,0.15);
+        display: flex; align-items: center; justify-content: center;
+    `;
+    const box = document.createElement('div');
+    box.style.cssText = `
+        background: #fff; border-radius: 12px; padding: 12px; min-width: 220px;
+        box-shadow: 0 10px 24px rgba(0,0,0,0.2);
+    `;
+    box.innerHTML = `
+        <div style="font-size:14px; margin-bottom:10px; color:#2d3748;">
+            🗑️ 確定要刪除這個標註點嗎？
+        </div>
+        <div style="display:flex; gap:8px; justify-content:flex-end;">
+            <button id="confirmDelYes" style="padding:6px 10px; border:none; border-radius:8px; background:#f44336; color:#fff; font-size:12px; cursor:pointer;">刪除</button>
+            <button id="confirmDelNo" style="padding:6px 10px; border:none; border-radius:8px; background:#e2e8f0; color:#4a5568; font-size:12px; cursor:pointer;">取消</button>
+        </div>
+    `;
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+
+    const cleanup = () => { if (overlay.parentNode) overlay.parentNode.removeChild(overlay); };
+    box.querySelector('#confirmDelYes').onclick = (e) => { e.preventDefault(); e.stopPropagation(); cleanup(); deleteMarkerById(markerId); };
+    box.querySelector('#confirmDelNo').onclick = (e) => { e.preventDefault(); e.stopPropagation(); cleanup(); };
+}
+
+function deleteMarkerById(markerId) {
+    const marker = markers.find(m => m.id === markerId);
+    if (!marker) return;
+
+    // 從地圖移除並清理引用
+    if (marker.leafletMarker) {
+        map.removeLayer(marker.leafletMarker);
+        marker.leafletMarker = null;
+    }
+
+    // 從組別/群組移除
+    const group = groups.find(g => g.id === marker.groupId);
+    if (group) {
+        group.removeMarker(markerId);
+        if (marker.subgroupId) {
+            const subgroup = group.subgroups.find(sg => sg.id === marker.subgroupId);
+            if (subgroup) {
+                subgroup.removeMarker(markerId);
+            }
+        }
+    }
+
+    // 從全域陣列移除
+    markers = markers.filter(m => m.id !== markerId);
+
+    updateMarkersList();
+    updateGroupsList();
+    updateMapMarkers();
+    saveData();
+    showNotification('🗑️ 標註點已刪除', 'success');
 }
 
 function editMarker(markerId) {
