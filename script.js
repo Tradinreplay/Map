@@ -945,6 +945,8 @@ async function initializeApp() {
     } catch (e) {
         console.warn('Storage persist 申請失敗或不支援:', e);
     }
+    // 將現有 localStorage 資料遷移到 IndexedDB（主存）
+    try { await migrateLocalStorageToIndexedDB(); } catch (e) { console.warn('資料遷移失敗:', e); }
     await loadData();
     updateGroupsList();
     updateMarkersList();
@@ -959,15 +961,15 @@ async function initializeApp() {
     initWakeLock();
     
     // 自動定位功能 - 在頁面載入時自動獲取當前位置（無論是否完成初始設定）
-    setTimeout(() => {
+    setTimeout(async () => {
         autoGetCurrentLocation();
     }, 500);
 
     // 啟動裝置指南針監聽（DeviceOrientation）
     initCompassOrientation();
     
-    // 檢查是否是第一次使用
-    const hasSeenSetup = localStorage.getItem('hasSeenSetup');
+    // 檢查是否是第一次使用（優先 IndexedDB）
+    const hasSeenSetup = await appStorageGet('hasSeenSetup');
     if (!hasSeenSetup) {
         showInitialSetup();
     } else {
@@ -1609,11 +1611,11 @@ function initEventListeners() {
             const modal = this.closest('.modal');
             
             // 如果是初始設定彈窗，關閉時也要標記為已看過
-            if (modal.id === 'initialSetupModal') {
-                localStorage.setItem('hasSeenSetup', 'true');
-                requestLocationPermission();
-                requestNotificationPermission();
-            }
+                if (modal.id === 'initialSetupModal') {
+                    try { appStorageSet('hasSeenSetup', true); } catch (e) {}
+                    requestLocationPermission();
+                    requestNotificationPermission();
+                }
             
             // 如果modal在全螢幕容器中，將其移回body
             const fullscreenContainer = document.querySelector('.map-container.fullscreen');
@@ -1629,7 +1631,7 @@ function initEventListeners() {
             if (e.target === this) {
                 // 如果是初始設定彈窗，關閉時也要標記為已看過
                 if (this.id === 'initialSetupModal') {
-                    localStorage.setItem('hasSeenSetup', 'true');
+                    try { appStorageSet('hasSeenSetup', true); } catch (e) {}
                     requestLocationPermission();
                     requestNotificationPermission();
                 }
@@ -3280,7 +3282,7 @@ function closeImageModal() {
 
 // 添加重置功能（用於測試）
 window.resetSetup = function() {
-    localStorage.removeItem('hasSeenSetup');
+    try { appStorageRemove('hasSeenSetup'); } catch (e) { try { localStorage.removeItem('hasSeenSetup'); } catch (_) {} }
     location.reload();
 };
 
@@ -3857,14 +3859,14 @@ function getCurrentLocation() {
 }
 
 // 拖曳功能實現
-function initDragFunctionality() {
+async function initDragFunctionality() {
     const fullscreenBtn = document.getElementById('fullscreenBtn');
     const locationBtn = document.getElementById('locationBtn');
     const centerBtn = document.getElementById('centerBtn');
     const rotateBtn = document.getElementById('rotateBtn');
     
-    // 載入保存的按鈕位置
-    loadButtonPositions();
+    // 載入保存的按鈕位置（IndexedDB 非同步）
+    try { await loadButtonPositions(); } catch (_) { loadButtonPositions(); }
     
     // 為每個按鈕添加拖曳功能
     makeDraggable(fullscreenBtn);
@@ -4124,25 +4126,49 @@ function makeDraggable(element) {
     }, false);
 }
 
-function saveButtonPosition(buttonId, x, y) {
-    const positions = JSON.parse(localStorage.getItem('buttonPositions') || '{}');
-    positions[buttonId] = { x, y };
-    localStorage.setItem('buttonPositions', JSON.stringify(positions));
+async function saveButtonPosition(buttonId, x, y) {
+    try {
+        const existing = await appStorageGet('buttonPositions');
+        const positions = existing && typeof existing === 'object' ? existing : {};
+        positions[buttonId] = { x, y };
+        await appStorageSet('buttonPositions', positions);
+    } catch (e) {
+        console.warn('保存按鈕位置失敗，使用快取回退:', e);
+        try {
+            const positions = JSON.parse(localStorage.getItem('buttonPositions') || '{}');
+            positions[buttonId] = { x, y };
+            localStorage.setItem('buttonPositions', JSON.stringify(positions));
+        } catch (_) {}
+    }
 }
 
-function loadButtonPositions() {
-    const positions = JSON.parse(localStorage.getItem('buttonPositions') || '{}');
-    
-    Object.keys(positions).forEach(buttonId => {
-        const element = document.getElementById(buttonId);
-        if (element) {
-            const { x, y } = positions[buttonId];
-            element.style.left = x + 'px';
-            element.style.top = y + 'px';
-            element.style.right = 'auto';
-            element.style.bottom = 'auto';
-        }
-    });
+async function loadButtonPositions() {
+    try {
+        const positions = await appStorageGet('buttonPositions') || {};
+        Object.keys(positions).forEach(buttonId => {
+            const element = document.getElementById(buttonId);
+            if (element) {
+                const { x, y } = positions[buttonId];
+                element.style.left = x + 'px';
+                element.style.top = y + 'px';
+                element.style.right = 'auto';
+                element.style.bottom = 'auto';
+            }
+        });
+    } catch (e) {
+        console.warn('載入按鈕位置失敗，使用快取回退:', e);
+        const positions = JSON.parse(localStorage.getItem('buttonPositions') || '{}');
+        Object.keys(positions).forEach(buttonId => {
+            const element = document.getElementById(buttonId);
+            if (element) {
+                const { x, y } = positions[buttonId];
+                element.style.left = x + 'px';
+                element.style.top = y + 'px';
+                element.style.right = 'auto';
+                element.style.bottom = 'auto';
+            }
+        });
+    }
 }
 
 // 請求位置權限
@@ -4410,7 +4436,7 @@ function handleInitialSetup() {
     }
     
     // 標記已經看過設定
-    localStorage.setItem('hasSeenSetup', 'true');
+    try { appStorageSet('hasSeenSetup', true); } catch (e) {}
     
     // 關閉彈窗
     document.getElementById('initialSetupModal').style.display = 'none';
@@ -4439,7 +4465,7 @@ function handleInitialSetup() {
 
 // 跳過初始設定
 function skipInitialSetup() {
-    localStorage.setItem('hasSeenSetup', 'true');
+    try { appStorageSet('hasSeenSetup', true); } catch (e) {}
     document.getElementById('initialSetupModal').style.display = 'none';
     requestLocationPermission();
     requestNotificationPermission();
@@ -7181,8 +7207,100 @@ async function idbGet(key) {
     });
 }
 
+async function idbDelete(key) {
+    const db = await openIdb();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(IDB_STORE_NAME, 'readwrite');
+        const store = tx.objectStore(IDB_STORE_NAME);
+        const req = store.delete(key);
+        req.onsuccess = () => resolve(true);
+        req.onerror = () => reject(req.error);
+        tx.oncomplete = () => db.close();
+    });
+}
+
+// 統一儲存層：優先 IndexedDB，localStorage 作為快取
+async function appStorageSet(key, value) {
+    try {
+        // localStorage 快取（字串或 JSON）
+        const lsVal = (typeof value === 'string') ? value : JSON.stringify(value);
+        try { localStorage.setItem(key, lsVal); } catch (e) {}
+        // IndexedDB 主存
+        await idbSet(key, value);
+    } catch (error) {
+        console.warn(`appStorageSet(${key}) 失敗:`, error);
+        try { localStorage.setItem(key, (typeof value === 'string') ? value : JSON.stringify(value)); } catch (e) {}
+    }
+}
+
+async function appStorageGet(key) {
+    try {
+        const record = await idbGet(key);
+        if (record && typeof record.value !== 'undefined') {
+            return record.value;
+        }
+    } catch (error) {
+        console.warn(`appStorageGet(${key}) 讀取 IndexedDB 失敗，改用快取:`, error);
+    }
+    // fallback: localStorage
+    try {
+        const lsVal = localStorage.getItem(key);
+        if (lsVal === null || lsVal === undefined) return null;
+        if (lsVal.startsWith('{') || lsVal.startsWith('[')) {
+            try { return JSON.parse(lsVal); } catch (_) { return lsVal; }
+        }
+        return lsVal;
+    } catch (e) {
+        return null;
+    }
+}
+
+async function appStorageRemove(key) {
+    try { await idbDelete(key); } catch (e) { console.warn(`刪除 IndexedDB ${key} 失敗`, e); }
+    try { localStorage.removeItem(key); } catch (e) {}
+}
+
+// 將現有 localStorage 關鍵資料遷移到 IndexedDB
+async function migrateLocalStorageToIndexedDB() {
+    const keys = [
+        'mapAnnotationData',
+        'userSettings',
+        'hasSeenSetup',
+        'buttonPositions',
+        'floatingSettingsButtonPosition',
+        'pathColorSelection',
+        'notificationSoundEnabled',
+        'notificationSoundVolume'
+    ];
+    for (const key of keys) {
+        try {
+            const existing = await idbGet(key);
+            if (existing) continue; // 已存在，不覆蓋
+            const lsVal = localStorage.getItem(key);
+            if (lsVal !== null && lsVal !== undefined) {
+                let value = lsVal;
+                if (lsVal.startsWith('{') || lsVal.startsWith('[')) {
+                    try { value = JSON.parse(lsVal); } catch (_) {}
+                } else if (key === 'notificationSoundVolume') {
+                    // 數值轉型
+                    const num = parseFloat(lsVal);
+                    if (!isNaN(num)) value = num;
+                } else if (key === 'notificationSoundEnabled') {
+                    value = (lsVal === 'true');
+                } else if (key === 'hasSeenSetup') {
+                    value = (lsVal === 'true');
+                }
+                await idbSet(key, value);
+                console.log(`已將 ${key} 從 localStorage 遷移至 IndexedDB`);
+            }
+        } catch (e) {
+            console.warn(`遷移鍵 ${key} 失敗:`, e);
+        }
+    }
+}
+
 // 資料持久化
-function saveData() {
+async function saveData() {
     try {
         // 創建不包含 leafletMarker 的標記副本
         const markersToSave = markers.map(marker => ({
@@ -7229,15 +7347,7 @@ function saveData() {
             markerNotificationsEnabled: markerNotificationsEnabled
         };
         
-        localStorage.setItem('mapAnnotationData', JSON.stringify(data));
-        try {
-            // 備份到 IndexedDB（避免 iOS 背景滑掉導致 localStorage 被清空）
-            idbSet('mapAnnotationData', data).catch(err => {
-                console.warn('IndexedDB 備份失敗:', err);
-            });
-        } catch (e) {
-            console.warn('IndexedDB 備份例外:', e);
-        }
+        await appStorageSet('mapAnnotationData', data);
         console.log('資料儲存成功');
         
         // 顯示儲存成功通知
@@ -7260,32 +7370,13 @@ function saveData() {
 }
 
 async function loadData() {
-    const savedDataStr = localStorage.getItem('mapAnnotationData');
-    let data = null;
-    if (savedDataStr) {
+    let data = await appStorageGet('mapAnnotationData');
+    if (!data) {
+        // 舊版本回退：嘗試從 localStorage 字串解析
         try {
-            data = JSON.parse(savedDataStr);
-        } catch (error) {
-            console.warn('localStorage 資料解析失敗，嘗試使用 IndexedDB 備份:', error);
-            data = null;
-        }
-    }
-
-    // 若 localStorage 缺失或資料為空，嘗試從 IndexedDB 恢復
-    if (!data || !data.markers || data.markers.length === 0) {
-        try {
-            const backup = await idbGet('mapAnnotationData');
-            if (backup && backup.value) {
-                data = backup.value;
-                // 回寫 localStorage 以便後續正常運作
-                try { localStorage.setItem('mapAnnotationData', JSON.stringify(data)); } catch (e) {}
-                try {
-                    showNotification('🗂️ 已從備份恢復資料（IndexedDB）', 'info');
-                } catch (e) {}
-            }
-        } catch (e) {
-            console.warn('讀取 IndexedDB 備份失敗:', e);
-        }
+            const savedDataStr = localStorage.getItem('mapAnnotationData');
+            if (savedDataStr) data = JSON.parse(savedDataStr);
+        } catch (e) {}
     }
     
     if (data) {
@@ -7418,7 +7509,7 @@ window.showOnlyThisMarker = showOnlyThisMarker;
 window.editGroupName = editGroupName;
 window.editSubgroupName = editSubgroupName;
 
-function saveCurrentSettings() {
+async function saveCurrentSettings() {
     try {
         // 獲取當前設定值，加入安全檢查
         const enableNotificationsEl = getSettingsElement('enableNotifications');
@@ -7495,8 +7586,8 @@ function saveCurrentSettings() {
             savedAt: new Date().toISOString()
         };
         
-        // 保存到localStorage
-        localStorage.setItem('userSettings', JSON.stringify(settings));
+        // 保存到 IndexedDB（localStorage 作為快取由 appStorageSet 處理）
+        await appStorageSet('userSettings', settings);
         
         // 更新全域變數
         alertDistance = currentAlertDistance;
@@ -7517,10 +7608,10 @@ function saveCurrentSettings() {
 }
 
 // 只保存設定，不保存標註點資料
-function saveSettingsOnly() {
+async function saveSettingsOnly() {
     try {
-        // 從localStorage讀取現有設定
-        const existingSettings = JSON.parse(localStorage.getItem('userSettings') || '{}');
+        // 從儲存層讀取現有設定
+        const existingSettings = (await appStorageGet('userSettings')) || {};
         
         // 只更新地圖相關設定，保留其他資料
         const updatedSettings = {
@@ -7529,8 +7620,8 @@ function saveSettingsOnly() {
             savedAt: new Date().toISOString()
         };
         
-        // 保存到localStorage
-        localStorage.setItem('userSettings', JSON.stringify(updatedSettings));
+        // 保存到儲存層
+        await appStorageSet('userSettings', updatedSettings);
         
         console.log('Settings only saved:', { keepMapCentered });
         return true;
@@ -7540,15 +7631,15 @@ function saveSettingsOnly() {
     }
 }
 
-function loadSavedSettings() {
+async function loadSavedSettings() {
     try {
-        const savedSettings = localStorage.getItem('userSettings');
+        const savedSettings = await appStorageGet('userSettings');
         if (!savedSettings) {
             showNotification('沒有找到已儲存的設定', 'info');
             return false;
         }
         
-        const settings = JSON.parse(savedSettings);
+        const settings = (typeof savedSettings === 'string') ? JSON.parse(savedSettings) : savedSettings;
         
         // 應用位置提醒設定到UI
         if (settings.enableNotifications !== undefined) {
@@ -7747,8 +7838,8 @@ function resetToDefaultSettings() {
         updateMarkersList();
         updateMapMarkers();
         
-        // 清除儲存的設定
-        localStorage.removeItem('mapAnnotationData');
+        // 清除儲存的資料（IndexedDB 主存 + localStorage 快取）
+        try { appStorageRemove('mapAnnotationData'); } catch (e) { try { localStorage.removeItem('mapAnnotationData'); } catch (_) {} }
         
         showNotification('已重置為預設設定，所有標註點和群組已清除', 'success');
         console.log('Settings and data reset to defaults');
@@ -8198,32 +8289,33 @@ function initSettingsButtons() {
 }
 
 // 在應用初始化時載入已儲存的設定
-function loadSettingsOnInit() {
+async function loadSettingsOnInit() {
     try {
-        const savedSettings = localStorage.getItem('userSettings');
-        if (savedSettings) {
-            const settings = JSON.parse(savedSettings);
+        const settings = await appStorageGet('userSettings');
+        if (settings) {
+            // 若從 localStorage 取得字串，嘗試解析
+            const parsed = (typeof settings === 'string') ? JSON.parse(settings) : settings;
             
             // 應用設定到UI
             const enableNotificationsEl = getSettingsElement('enableNotifications');
             if (enableNotificationsEl) {
-                enableNotificationsEl.checked = settings.enableNotifications;
+                enableNotificationsEl.checked = parsed.enableNotifications;
             }
             const alertDistanceEl = document.getElementById('alertDistance');
             const alertIntervalEl = document.getElementById('alertInterval');
             
             if (alertDistanceEl) {
-                alertDistanceEl.value = settings.alertDistance;
+                alertDistanceEl.value = parsed.alertDistance;
             }
             if (alertIntervalEl) {
-                alertIntervalEl.value = settings.alertInterval;
+                alertIntervalEl.value = parsed.alertInterval;
             }
             
             // 更新全域變數
-            alertDistance = settings.alertDistance;
-            alertInterval = settings.alertInterval;
+            alertDistance = parsed.alertDistance;
+            alertInterval = parsed.alertInterval;
             
-            console.log('Settings loaded on init:', settings);
+            console.log('Settings loaded on init:', parsed);
         }
     } catch (error) {
         console.error('Error loading settings on init:', error);
@@ -9286,7 +9378,7 @@ function initFloatingSettingsEventListeners() {
     
     const floatingKeepMapCentered = document.getElementById('floatingKeepMapCentered');
     if (floatingKeepMapCentered) {
-        floatingKeepMapCentered.addEventListener('change', function() {
+        floatingKeepMapCentered.addEventListener('change', async function() {
             keepMapCentered = this.checked;
             
             // 同步更新主設定面板中的核取方塊
@@ -9299,7 +9391,7 @@ function initFloatingSettingsEventListeners() {
             updateCenterButtonTooltip();
             
             // 儲存設定
-            saveSettingsOnly();
+            await saveSettingsOnly();
             
             // 顯示通知
             showNotification(keepMapCentered ? '已啟用地圖居中功能' : '已停用地圖居中功能', 'info');
@@ -9461,15 +9553,15 @@ function initFloatingSettingsEventListeners() {
     // 按鈕事件監聽器
     const floatingSaveBtn = document.getElementById('floatingSaveSettingsBtn');
     if (floatingSaveBtn) {
-        floatingSaveBtn.addEventListener('click', function() {
-            saveCurrentSettings();
+        floatingSaveBtn.addEventListener('click', async function() {
+            await saveCurrentSettings();
         });
     }
     
     const floatingLoadBtn = document.getElementById('floatingLoadSettingsBtn');
     if (floatingLoadBtn) {
-        floatingLoadBtn.addEventListener('click', function() {
-            loadSavedSettings();
+        floatingLoadBtn.addEventListener('click', async function() {
+            await loadSavedSettings();
         });
     }
     
@@ -9538,15 +9630,16 @@ function initFloatingSettingsEventListeners() {
     }
 }
 
-function saveFloatingButtonPosition(x, y) {
-    localStorage.setItem('floatingSettingsButtonPosition', JSON.stringify({ x, y }));
+async function saveFloatingButtonPosition(x, y) {
+    try { await appStorageSet('floatingSettingsButtonPosition', { x, y }); }
+    catch (e) { try { localStorage.setItem('floatingSettingsButtonPosition', JSON.stringify({ x, y })); } catch (_) {} }
 }
 
-function loadFloatingButtonPosition() {
-    const saved = localStorage.getItem('floatingSettingsButtonPosition');
-    if (saved) {
-        try {
-            const { x, y } = JSON.parse(saved);
+async function loadFloatingButtonPosition() {
+    try {
+        const saved = await appStorageGet('floatingSettingsButtonPosition');
+        if (saved && typeof saved === 'object') {
+            const { x, y } = saved;
             const btn = document.getElementById('floatingSettingsBtn');
             if (btn) {
                 btn.style.left = x + 'px';
@@ -9554,8 +9647,21 @@ function loadFloatingButtonPosition() {
                 btn.style.right = 'auto';
                 btn.style.bottom = 'auto';
             }
-        } catch (error) {
-            console.error('載入浮動按鈕位置失敗:', error);
+        }
+    } catch (error) {
+        console.error('載入浮動按鈕位置失敗，改用快取:', error);
+        const savedStr = localStorage.getItem('floatingSettingsButtonPosition');
+        if (savedStr) {
+            try {
+                const { x, y } = JSON.parse(savedStr);
+                const btn = document.getElementById('floatingSettingsBtn');
+                if (btn) {
+                    btn.style.left = x + 'px';
+                    btn.style.top = y + 'px';
+                    btn.style.right = 'auto';
+                    btn.style.bottom = 'auto';
+                }
+            } catch (_) {}
         }
     }
 }
@@ -9699,6 +9805,10 @@ function handleAppBackground() {
         console.log('應用進入背景，維持背景追蹤');
         // 背景服務會繼續運行，不需要額外操作
     }
+    // 進入背景時保存資料（避免系統回收導致遺失）
+    try { if (typeof saveData === 'function') saveData(); } catch (e) {
+        console.warn('背景保存資料失敗:', e);
+    }
 }
 
 // 處理應用回到前台時的邏輯
@@ -9779,7 +9889,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     // 初始化拖曳功能
     console.log('Initializing drag functionality...');
     try {
-        initDragFunctionality();
+        await initDragFunctionality();
         console.log('Drag functionality initialized');
     } catch (error) {
         console.error('Error initializing drag functionality:', error);
@@ -9797,12 +9907,12 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     
     // 延遲執行其他初始化函數
-    setTimeout(() => {
+    setTimeout(async () => {
         // 載入設定
         try {
             console.log('Calling loadSettingsOnInit...');
             if (typeof loadSettingsOnInit === 'function') {
-                loadSettingsOnInit();
+                await loadSettingsOnInit();
             } else {
                 console.warn('loadSettingsOnInit function not found');
             }
@@ -10057,6 +10167,9 @@ function initHelpButton() {
     
     // 拖拽功能 - 觸控事件
     helpBtn.addEventListener('touchstart', startDragTouch, { passive: false });
+
+    // 載入幫助按鈕位置（IndexedDB 優先）
+    try { loadFloatingHelpButtonPosition(); } catch (_) {}
 }
 
 function startDrag(e) {
@@ -10105,6 +10218,14 @@ function endDrag() {
         document.removeEventListener('mousemove', drag);
         document.removeEventListener('mouseup', endDrag);
         
+        // 保存位置
+        try {
+            const cs = window.getComputedStyle(helpBtn);
+            const x = parseInt(cs.left) || 0;
+            const y = parseInt(cs.top) || 0;
+            saveFloatingHelpButtonPosition(x, y);
+        } catch (_) {}
+
         // 延遲重置拖拽狀態，避免立即觸發點擊事件
         setTimeout(() => {
             isDragging = false;
@@ -10158,6 +10279,15 @@ function endDragTouch() {
         document.removeEventListener('touchmove', dragTouch);
         document.removeEventListener('touchend', endDragTouch);
         
+        // 保存位置
+        try {
+            const helpBtn = document.getElementById('floatingHelpBtn');
+            const cs = window.getComputedStyle(helpBtn);
+            const x = parseInt(cs.left) || 0;
+            const y = parseInt(cs.top) || 0;
+            saveFloatingHelpButtonPosition(x, y);
+        } catch (_) {}
+
         // 延遲重置拖拽狀態，避免立即觸發點擊事件
         setTimeout(() => {
             isDragging = false;
@@ -10188,6 +10318,42 @@ document.addEventListener('DOMContentLoaded', function() {
     initHelpButton();
 });
 
+// 幫助按鈕位置儲存（IndexedDB 優先）
+async function saveFloatingHelpButtonPosition(x, y) {
+    try { await appStorageSet('floatingHelpButtonPosition', { x, y }); } catch (e) {}
+    try { localStorage.setItem('floatingHelpButtonPosition', JSON.stringify({ x, y })); } catch (_) {}
+}
+
+async function loadFloatingHelpButtonPosition() {
+    try {
+        const saved = await appStorageGet('floatingHelpButtonPosition');
+        if (saved && typeof saved === 'object') {
+            const { x, y } = saved;
+            const btn = document.getElementById('floatingHelpBtn');
+            if (btn) {
+                btn.style.left = x + 'px';
+                btn.style.top = y + 'px';
+                btn.style.right = 'auto';
+                btn.style.bottom = 'auto';
+            }
+        }
+    } catch (error) {
+        const savedStr = localStorage.getItem('floatingHelpButtonPosition');
+        if (savedStr) {
+            try {
+                const { x, y } = JSON.parse(savedStr);
+                const btn = document.getElementById('floatingHelpBtn');
+                if (btn) {
+                    btn.style.left = x + 'px';
+                    btn.style.top = y + 'px';
+                    btn.style.right = 'auto';
+                    btn.style.bottom = 'auto';
+                }
+            } catch (_) {}
+        }
+    }
+}
+
 // 路徑顏色持久化：儲存/讀取/初始化
 function getSavedPathColor() {
     try {
@@ -10197,10 +10363,11 @@ function getSavedPathColor() {
     }
 }
 
-function saveSelectedPathColor(value) {
+async function saveSelectedPathColor(value) {
     try {
-        localStorage.setItem('pathColorSelection', value);
-    } catch (e) {}
+        await appStorageSet('pathColorSelection', value);
+    } catch (e) { /* IndexedDB 失敗時忽略，改用 localStorage*/ }
+    try { localStorage.setItem('pathColorSelection', value); } catch (_) {}
 }
 
 function initPathColorPersistence() {

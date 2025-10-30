@@ -127,26 +127,38 @@ class NotificationSound {
     // 設定音效開關
     setEnabled(enabled) {
         this.isEnabled = enabled;
-        localStorage.setItem('notificationSoundEnabled', enabled.toString());
+        try { if (typeof appStorageSet === 'function') appStorageSet('notificationSoundEnabled', enabled); } catch (e) {}
+        try { localStorage.setItem('notificationSoundEnabled', enabled.toString()); } catch (_) {}
     }
 
     // 設定音量
     setVolume(volume) {
         this.volume = Math.max(0, Math.min(1, volume));
-        localStorage.setItem('notificationSoundVolume', this.volume.toString());
+        try { if (typeof appStorageSet === 'function') appStorageSet('notificationSoundVolume', this.volume); } catch (e) {}
+        try { localStorage.setItem('notificationSoundVolume', this.volume.toString()); } catch (_) {}
     }
 
     // 從本地存儲載入設定
-    loadSettings() {
-        const savedEnabled = localStorage.getItem('notificationSoundEnabled');
-        if (savedEnabled !== null) {
-            this.isEnabled = savedEnabled === 'true';
-        }
+    async loadSettings() {
+        // 先嘗試同步快取，確保初始行為
+        try {
+            const savedEnabled = localStorage.getItem('notificationSoundEnabled');
+            if (savedEnabled !== null) this.isEnabled = savedEnabled === 'true';
+            const savedVolume = localStorage.getItem('notificationSoundVolume');
+            if (savedVolume !== null) this.volume = parseFloat(savedVolume);
+        } catch (_) {}
 
-        const savedVolume = localStorage.getItem('notificationSoundVolume');
-        if (savedVolume !== null) {
-            this.volume = parseFloat(savedVolume);
-        }
+        // 再非同步讀取主存（IndexedDB）
+        try {
+            if (typeof appStorageGet === 'function') {
+                const [enabled, volume] = await Promise.all([
+                    appStorageGet('notificationSoundEnabled'),
+                    appStorageGet('notificationSoundVolume')
+                ]);
+                if (typeof enabled === 'boolean') this.isEnabled = enabled;
+                if (typeof volume === 'number' && !isNaN(volume)) this.volume = Math.max(0, Math.min(1, volume));
+            }
+        } catch (e) { /* 忽略，保留快取結果 */ }
     }
 
     // 測試音效
