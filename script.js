@@ -4255,7 +4255,11 @@ function requestLocationPermission() {
         }
         
         // 檢查是否為HTTPS或localhost
-        const isSecure = location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+        const isSecure = location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1' || location.hostname === '::1';
+        if (location.protocol === 'file:') {
+            console.warn('目前以本機檔案方式開啟，瀏覽器可能拒絕定位');
+            showNotification('提示：請以「localhost」或 HTTPS 啟動本地伺服器以使用定位功能', 'warning');
+        }
         if (!isSecure) {
             console.warn('警告：非安全連線可能影響定位功能');
             showNotification('提示：建議使用HTTPS以獲得更好的定位體驗', 'warning');
@@ -4285,7 +4289,52 @@ function requestLocationPermission() {
                 resolve(position);
             },
             function(error) {
-                handleLocationError(error, reject);
+                console.warn('getCurrentPosition 失敗，嘗試 watchPosition 回退');
+                try {
+                    let watchId = null;
+                    const stopWatch = () => {
+                        if (watchId !== null) {
+                            navigator.geolocation.clearWatch(watchId);
+                            watchId = null;
+                        }
+                    };
+                    let timeoutTimer = setTimeout(() => {
+                        stopWatch();
+                        handleLocationError(error, reject);
+                    }, 15000);
+                    watchId = navigator.geolocation.watchPosition(
+                        function(pos) {
+                            clearTimeout(timeoutTimer);
+                            stopWatch();
+                            console.log('watchPosition 成功', pos);
+                            currentPosition = {
+                                lat: pos.coords.latitude,
+                                lng: pos.coords.longitude,
+                                accuracy: pos.coords.accuracy
+                            };
+                            updateLocationDisplay();
+                            updateCurrentLocationMarker();
+                            map.setView([currentPosition.lat, currentPosition.lng], 18);
+                            if (pos.coords.accuracy) {
+                                showNotification(`🎯 定位成功！精度: ±${Math.round(pos.coords.accuracy)}公尺`, 'success');
+                            } else {
+                                showNotification('🎯 定位成功！', 'success');
+                            }
+                            resolve(pos);
+                        },
+                        function(err) {
+                            clearTimeout(timeoutTimer);
+                            stopWatch();
+                            handleLocationError(err, reject);
+                        },
+                        {
+                            enableHighAccuracy: true,
+                            maximumAge: 0
+                        }
+                    );
+                } catch (e) {
+                    handleLocationError(error, reject);
+                }
             },
             {
                 enableHighAccuracy: true,
@@ -5147,6 +5196,7 @@ function attachLongPressHandlers(marker) {
     iconEl.addEventListener('mouseleave', cancel);
     iconEl.addEventListener('touchend', cancel);
     iconEl.addEventListener('click', clickBlocker, true);
+    iconEl.addEventListener('contextmenu', (e) => { e.preventDefault(); e.stopPropagation(); }, true);
 }
 
 // 顯示標註點的操作選單（移動 / 刪除）
@@ -5209,13 +5259,13 @@ function showMarkerActionMenu(marker, iconEl) {
     document.body.appendChild(menu);
 
     // 點擊外部關閉
-    const onOutsideClick = (ev) => {
-        if (!menu.contains(ev.target)) {
+    const onOutsidePointer = (ev) => {
+        if (!menu.contains(ev.target) && ev.target !== iconEl) {
             if (menu.parentNode) menu.parentNode.removeChild(menu);
-            window.removeEventListener('click', onOutsideClick, true);
+            window.removeEventListener('pointerdown', onOutsidePointer, true);
         }
     };
-    setTimeout(() => window.addEventListener('click', onOutsideClick, true), 0);
+    setTimeout(() => window.addEventListener('pointerdown', onOutsidePointer, true), 150);
 }
 
 function startMarkerDrag(marker) {
