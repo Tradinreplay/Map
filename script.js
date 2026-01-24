@@ -47,6 +47,8 @@ let alertTimers = new Map(); // 記錄每個標註點的定時器
 let markersInRange = new Set(); // 記錄當前在範圍內的標註點
 let trackingTarget = null; // 當前追蹤的目標標註點
 let currentFilter = null; // 當前過濾設定 { type: 'marker'|'group'|'subgroup', id: string }
+let realtimeUploadInterval = null; // 即時位置上傳定時器
+let realtimeFetchInterval = null; // 即時位置獲取定時器
 
 // 調試：監控 displayedRouteLines 的變化
 let originalDisplayedRouteLines = null;
@@ -766,9 +768,10 @@ let isWakeLockEnabled = false; // 螢幕恆亮是否啟用
 
 // 資料結構
 class Group {
-    constructor(id, name) {
+    constructor(id, name, description = '') {
         this.id = id;
         this.name = name;
+        this.description = description;
         this.subgroups = [];
         this.markers = [];
     }
@@ -947,7 +950,11 @@ async function initializeApp() {
     }
     // 將現有 localStorage 資料遷移到 IndexedDB（主存）
     try { await migrateLocalStorageToIndexedDB(); } catch (e) { console.warn('資料遷移失敗:', e); }
-    await loadData();
+    // await loadData(); // 暫停自動載入本地資料，改由登入後觸發
+    
+    // 從雲端同步資料
+    // await syncFromCloud(); // 暫停自動同步，改由登入後觸發
+
     updateGroupsList();
     updateMarkersList();
     
@@ -1483,7 +1490,7 @@ function createCurrentLocationIcon() {
 }
 
 // 創建自定義標示點圖示
-function createCustomMarkerIcon(color, icon) {
+function createCustomMarkerIcon(color, icon, extraClass = '') {
     const colorMap = {
         red: '#ef4444',
         blue: '#3b82f6',
@@ -1496,7 +1503,7 @@ function createCustomMarkerIcon(color, icon) {
     const bgColor = colorMap[color] || colorMap.red;
     
     return L.divIcon({
-        html: `<div style="
+        html: `<div class="${extraClass}" style="
             background-color: ${bgColor}; 
             width: 24px; 
             height: 24px; 
@@ -1511,6 +1518,185 @@ function createCustomMarkerIcon(color, icon) {
         iconSize: [24, 24],
         iconAnchor: [12, 12],
         className: 'custom-marker-icon',
+    });
+}
+
+
+// 初始化登入邏輯
+function initLoginLogic() {
+    const loginForm = document.getElementById('loginForm');
+    const loginModal = document.getElementById('loginModal');
+    const loginError = document.getElementById('loginError');
+    const loginAccountInput = document.getElementById('loginAccount');
+    const loginPasswordInput = document.getElementById('loginPassword');
+    const loginBtn = loginForm.querySelector('button[type="submit"]');
+    
+    // 強制顯示登入視窗
+    if (loginModal) {
+        loginModal.style.display = 'flex';
+    }
+
+    let loginAttempts = 0;
+
+    if (!loginForm) return;
+
+    loginForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        // 如果已經被鎖定，不再處理
+        if (loginAttempts >= 3) return;
+
+        const account = loginAccountInput.value;
+        const password = loginPasswordInput.value;
+        let group = null;
+
+        // 硬編碼的帳密驗證
+        // 第一組: 1 / w5131 -> Group 1
+        // 第二組: 2 / w5132 -> Group 2
+        // 第三組: 3 / w5133 -> Group 3
+        // 管理者: 179747 / 122232 -> admin
+        if (account === '1' && password === 'w5131') {
+            group = '1';
+        } else if (account === '2' && password === 'w5132') {
+            group = '2';
+        } else if (account === '3' && password === 'w5133') {
+            group = '3';
+        } else if (account === '179747' && password === '122232') {
+            group = 'admin';
+        }
+
+        if (group) {
+            // 登入成功
+            loginModal.style.display = 'none';
+            loginError.style.display = 'none';
+            
+            // 重置嘗試次數
+            loginAttempts = 0;
+            
+            if (typeof supabaseService !== 'undefined') {
+                // 清除之前的即時監控定時器
+                if (realtimeUploadInterval) {
+                    clearInterval(realtimeUploadInterval);
+                    realtimeUploadInterval = null;
+                }
+                if (realtimeFetchInterval) {
+                    clearInterval(realtimeFetchInterval);
+                    realtimeFetchInterval = null;
+                }
+
+                if (group === 'admin') {
+                    // 管理者可以看到所有資料，包含 realtime_tracking
+                    supabaseService.setDatasetGroup(null); 
+                } else {
+                    supabaseService.setDatasetGroup(group);
+                }
+                
+                // 清除現有資料以確保隔離
+                markers = [];
+                groups = [];
+                // 立即儲存清空狀態，避免重新整理後載入舊資料
+                saveData();
+
+                // 清除地圖上的標記
+                if (map) {
+                    const layersToRemove = [];
+                    map.eachLayer((layer) => {
+                        // 保留當前位置標記，移除其他標記
+                        if (layer instanceof L.Marker && layer !== currentLocationMarker) {
+                            layersToRemove.push(layer);
+                        }
+                    });
+                    layersToRemove.forEach(layer => map.removeLayer(layer));
+                }
+                
+                // 顯示通知並載入資料
+                showNotification(`登入成功 (組別 ${group})，正在載入資料...`, 'success');
+                
+                // 從雲端同步對應組別的資料
+                if (group !== 'admin') {
+                    await syncFromCloud();
+                }
+                
+                updateGroupsList();
+                updateMarkersList();
+
+                // 啟動即時位置功能
+                if (group === 'admin') {
+                    // 管理者：只更新即時標註點
+                    // 立即執行一次
+                    if (typeof updateRealtimeMarkers === 'function') {
+                        await updateRealtimeMarkers();
+                    }
+
+                    // 管理者：每5秒更新一次即時標註點
+                    console.log('Starting admin realtime fetch interval');
+                    realtimeFetchInterval = setInterval(async () => {
+                        // 更新即時追蹤標記（處理過期刪除）
+                        if (typeof updateRealtimeMarkers === 'function') {
+                            await updateRealtimeMarkers();
+                        }
+                    }, 5000);
+                    showNotification('管理者模式：已啟動即時位置監控', 'info');
+                } else {
+                    // 一般組別：每5秒上傳一次位置
+                    console.log(`Starting realtime upload for group ${group}`);
+                    
+                    // 立即上傳一次
+                    if (currentPosition) {
+                        supabaseService.uploadRealtimeLocation(group, currentPosition.lat, currentPosition.lng);
+                    }
+
+                    realtimeUploadInterval = setInterval(() => {
+                        if (currentPosition) {
+                            supabaseService.uploadRealtimeLocation(group, currentPosition.lat, currentPosition.lng);
+                        } else {
+                             // 嘗試獲取位置
+                             if (window.lastPosition) {
+                                 supabaseService.uploadRealtimeLocation(group, window.lastPosition.lat, window.lastPosition.lng);
+                             }
+                        }
+                    }, 5000);
+                }
+            } else {
+                console.error('Supabase service not available');
+                showNotification('系統錯誤：無法連接資料庫服務', 'error');
+            }
+        } else {
+            // 登入失敗
+            loginAttempts++;
+            
+            // 觸發震動動畫
+            const modalContent = loginModal.querySelector('.modal-content');
+            modalContent.classList.add('shake');
+            
+            // 移除動畫 class 以便下次觸發
+            setTimeout(() => {
+                modalContent.classList.remove('shake');
+            }, 500);
+
+            if (loginAttempts >= 3) {
+                // 錯誤3次，鎖定介面
+                loginError.textContent = '請確認帳密後再使用';
+                loginError.style.display = 'block';
+                
+                // 反灰並禁用輸入框
+                loginAccountInput.disabled = true;
+                loginAccountInput.classList.add('input-disabled');
+                
+                loginPasswordInput.disabled = true;
+                loginPasswordInput.classList.add('input-disabled');
+                
+                loginBtn.disabled = true;
+                loginBtn.classList.add('btn-disabled');
+                
+                showNotification('登入失敗次數過多，已鎖定', 'error');
+            } else {
+                // 一般錯誤提示
+                loginError.textContent = '帳號或密碼錯誤';
+                loginError.style.display = 'block';
+                showNotification(`帳號或密碼錯誤 (剩餘嘗試次數: ${3 - loginAttempts})`, 'error');
+            }
+        }
     });
 }
 
@@ -1655,6 +1841,9 @@ function initEventListeners() {
     
     document.querySelectorAll('.modal').forEach(modal => {
         modal.addEventListener('click', function(e) {
+            // 如果是登入視窗，點擊背景不關閉
+            if (this.id === 'loginModal') return;
+
             if (e.target === this) {
                 // 如果是初始設定彈窗，關閉時也要標記為已看過
                 if (this.id === 'initialSetupModal') {
@@ -4561,7 +4750,7 @@ function handleCreateGroup(event) {
     
     if (!name) return;
     
-    const newGroup = new Group(name, description);
+    const newGroup = new Group(Date.now().toString(), name, description);
     groups.push(newGroup);
     
     // 更新預設組別選擇器
@@ -4575,6 +4764,11 @@ function handleCreateGroup(event) {
     document.getElementById('createGroupModal').style.display = 'none';
     
     saveData();
+
+    // 同步到 Supabase
+    if (typeof supabaseService !== 'undefined' && supabaseService.isInitialized) {
+        supabaseService.uploadGroup(newGroup);
+    }
 }
 
 // 更新當前位置標記
@@ -4635,6 +4829,11 @@ function addGroup() {
     
     updateGroupsList();
     saveData();
+
+    if (typeof supabaseService !== 'undefined' && supabaseService.isInitialized) {
+        supabaseService.uploadGroup(group);
+    }
+
     showNotification(`組別 "${groupName}" 已建立`);
 }
 
@@ -4665,6 +4864,11 @@ function deleteGroup(groupId) {
         updateGroupsList();
         updateMarkersList();
         saveData();
+
+        if (typeof supabaseService !== 'undefined' && supabaseService.isInitialized) {
+            supabaseService.deleteGroup(groupId);
+        }
+
         showNotification('組別已刪除');
     }
 }
@@ -4680,6 +4884,11 @@ function addSubgroup(groupId) {
         
         updateGroupsList();
         saveData();
+
+        if (typeof supabaseService !== 'undefined' && supabaseService.isInitialized) {
+            supabaseService.uploadSubgroup(subgroup);
+        }
+
         showNotification(`群組 "${subgroupName}" 已建立`);
     }
 }
@@ -4705,6 +4914,11 @@ function deleteSubgroup(groupId, subgroupId) {
         updateGroupsList();
         updateMarkersList();
         saveData();
+
+        if (typeof supabaseService !== 'undefined' && supabaseService.isInitialized) {
+            supabaseService.deleteSubgroup(subgroupId);
+        }
+
         showNotification('群組已刪除');
     }
 }
@@ -4760,6 +4974,11 @@ function editGroupName(groupId) {
         updateGroupsList();
         updateMarkersList();
         saveData();
+
+        if (typeof supabaseService !== 'undefined' && supabaseService.isInitialized) {
+            supabaseService.uploadGroup(group);
+        }
+
         showNotification('組別名稱已更新', 'success');
     }
 }
@@ -4778,6 +4997,11 @@ function editSubgroupName(groupId, subgroupId) {
         updateGroupsList();
         updateMarkersList();
         saveData();
+
+        if (typeof supabaseService !== 'undefined' && supabaseService.isInitialized) {
+            supabaseService.uploadSubgroup(subgroup);
+        }
+
         showNotification('群組名稱已更新', 'success');
     }
 }
@@ -5017,6 +5241,20 @@ function saveMarker(e) {
                 // 重新添加標記到地圖
                 addMarkerToMap(marker);
             }
+
+            // Upload to Supabase
+            if (typeof supabaseService !== 'undefined' && supabaseService.isInitialized) {
+                supabaseService.uploadMarker(marker).then((data) => {
+                    if (data && data[0] && data[0].image_data) {
+                        marker.imageData = data[0].image_data;
+                        saveData();
+                    }
+                    showNotification('標記更新已同步到雲端', 'success');
+                }).catch(err => {
+                    console.error('雲端同步失敗', err);
+                    showNotification('雲端同步失敗', 'error');
+                });
+            }
         }
     } else {
         // 新增標記
@@ -5048,6 +5286,20 @@ function saveMarker(e) {
         
         // 在地圖上添加標記
         addMarkerToMap(marker);
+
+        // Upload to Supabase
+        if (typeof supabaseService !== 'undefined' && supabaseService.isInitialized) {
+            supabaseService.uploadMarker(marker).then((data) => {
+                if (data && data[0] && data[0].image_data) {
+                    marker.imageData = data[0].image_data;
+                    saveData();
+                }
+                showNotification('標記已同步到雲端', 'success');
+            }).catch(err => {
+                console.error('雲端同步失敗', err);
+                showNotification('雲端同步失敗', 'error');
+            });
+        }
     }
     
     updateMarkersList();
@@ -5090,7 +5342,27 @@ function addMarkerToMap(marker) {
     }
     
     // 創建自定義圖標
-    const customIcon = createCustomMarkerIcon(marker.color || 'red', marker.icon || '📍');
+    let iconContent = marker.icon || '📍';
+    
+    // 如果是即時追蹤標記，且圖標是數字，則套用特殊樣式
+    let extraClass = '';
+    if (marker.id && marker.id.startsWith('realtime_')) {
+        // 使用白色粗體顯示組別數字
+        iconContent = `<span style="color: white; font-weight: bold; font-family: Arial, sans-serif;">${iconContent}</span>`;
+        
+        // 添加呼吸效果類別
+        const color = marker.color || 'red';
+        extraClass = `realtime-breathing-${color}`;
+    }
+    
+    const customIcon = createCustomMarkerIcon(marker.color || 'red', iconContent, extraClass);
+    
+    
+    // 如果是即時追蹤標記，添加閃爍效果 (已移除)
+    // if (marker.id && marker.id.startsWith('realtime_')) {
+    //     // ...
+    // }
+
     const disp = getMapDisplayCoord(marker.lat, marker.lng);
     const leafletMarker = L.marker([disp.lat, disp.lng], { icon: customIcon }).addTo(map);
     
@@ -5347,6 +5619,17 @@ function deleteMarkerById(markerId) {
     updateGroupsList();
     updateMapMarkers();
     saveData();
+
+    // Delete from Supabase
+    if (typeof supabaseService !== 'undefined' && supabaseService.isInitialized) {
+        supabaseService.deleteMarker(markerId).then(() => {
+            console.log('雲端標註點刪除成功');
+        }).catch(err => {
+            console.error('雲端標註點刪除失敗', err);
+            showNotification('雲端標註點刪除失敗', 'error');
+        });
+    }
+
     showNotification('🗑️ 標註點已刪除', 'success');
 }
 
@@ -5790,35 +6073,8 @@ function deleteCurrentMarker() {
     const markerId = form.dataset.markerId;
     
     if (markerId) {
-        const marker = markers.find(m => m.id === markerId);
-        
-        if (marker) {
-            // 從地圖移除並清理引用
-            if (marker.leafletMarker) {
-                map.removeLayer(marker.leafletMarker);
-                marker.leafletMarker = null; // 清理引用
-            }
-            
-            // 從組別/群組移除
-            const group = groups.find(g => g.id === marker.groupId);
-            if (group) {
-                group.removeMarker(markerId);
-                if (marker.subgroupId) {
-                    const subgroup = group.subgroups.find(sg => sg.id === marker.subgroupId);
-                    if (subgroup) {
-                        subgroup.removeMarker(markerId);
-                    }
-                }
-            }
-            
-            // 從全域陣列移除
-            markers = markers.filter(m => m.id !== markerId);
-        }
-        
-        updateMarkersList();
-        updateGroupsList();
-        updateMapMarkers(); // 這會重新渲染地圖上的標記
-        saveData();
+        // 使用集中式刪除函數，這會同時處理本地資料、地圖顯示和雲端同步
+        deleteMarkerById(markerId);
         
         // 關閉浮動視窗 - 確保在全螢幕模式下也能正確關閉
         const modal = document.getElementById('markerModal');
@@ -5829,16 +6085,6 @@ function deleteCurrentMarker() {
             document.body.appendChild(modal);
         }
         modal.style.display = 'none';
-        
-        // 顯示提示並自動關閉
-        const notification = document.createElement('div');
-        notification.className = 'notification success';
-        notification.textContent = '標記已刪除';
-        document.body.appendChild(notification);
-        
-        setTimeout(() => {
-            notification.remove();
-        }, 2000); // 2秒後自動關閉
     }
 }
 
@@ -7599,6 +7845,194 @@ async function migrateLocalStorageToIndexedDB() {
 }
 
 // 資料持久化
+async function syncFromCloud() {
+    if (typeof supabaseService === 'undefined' || !supabaseService.isInitialized) {
+        console.log('Supabase service not available, skipping sync');
+        return;
+    }
+
+    // 只有在真的有連線時才顯示通知，避免每次重新整理都跳通知
+    console.log('正在檢查雲端資料...');
+    showNotification('☁️ 正在從雲端同步資料...', 'info', 2000);
+    
+    try {
+        // 同步組別
+        const cloudGroups = await supabaseService.fetchGroups();
+        let groupUpdateCount = 0;
+        if (cloudGroups && cloudGroups.length > 0) {
+            cloudGroups.forEach(cg => {
+                let localGroup = groups.find(g => g.id === cg.id);
+                if (!localGroup) {
+                    localGroup = new Group(cg.id, cg.name, cg.description || '');
+                    groups.push(localGroup);
+                    groupUpdateCount++;
+                } else {
+                    if (localGroup.name !== cg.name || (localGroup.description || '') !== (cg.description || '')) {
+                         localGroup.name = cg.name;
+                         localGroup.description = cg.description || '';
+                         groupUpdateCount++;
+                    }
+                }
+            });
+        }
+
+        // 同步子群組
+        const cloudSubgroups = await supabaseService.fetchSubgroups();
+        let subgroupUpdateCount = 0;
+        if (cloudSubgroups && cloudSubgroups.length > 0) {
+            cloudSubgroups.forEach(csg => {
+                const parentGroup = groups.find(g => g.id === csg.group_id);
+                if (parentGroup) {
+                    let localSubgroup = parentGroup.subgroups.find(sg => sg.id === csg.id);
+                    if (!localSubgroup) {
+                        localSubgroup = new Subgroup(csg.id, csg.name, csg.group_id);
+                        parentGroup.addSubgroup(localSubgroup);
+                        subgroupUpdateCount++;
+                    } else {
+                         if (localSubgroup.name !== csg.name) {
+                             localSubgroup.name = csg.name;
+                             subgroupUpdateCount++;
+                         }
+                    }
+                }
+            });
+        }
+        
+        if (groupUpdateCount > 0 || subgroupUpdateCount > 0) {
+            console.log(`Synced ${groupUpdateCount} groups and ${subgroupUpdateCount} subgroups from cloud`);
+            updateGroupsList();
+        }
+
+        const cloudMarkers = await supabaseService.fetchMarkers();
+        
+        if (!cloudMarkers) {
+            console.log('Failed to fetch markers from cloud');
+            return;
+        }
+
+        if (cloudMarkers.length === 0) {
+            console.log('No markers found in cloud');
+            return;
+        }
+
+        console.log(`Fetched ${cloudMarkers.length} markers from cloud`);
+        let updateCount = 0;
+        let newCount = 0;
+
+        cloudMarkers.forEach(cloudMarker => {
+            // 轉換雲端數據格式為本地 Marker 對象格式
+            // 注意：Supabase 使用下劃線命名 (group_id)，本地使用駝峰命名 (groupId)
+            
+            const localMarkerIndex = markers.findIndex(m => m.id === cloudMarker.id);
+            
+            // 準備數據
+            const markerData = {
+                id: cloudMarker.id,
+                name: cloudMarker.name,
+                description: cloudMarker.description,
+                lat: cloudMarker.lat,
+                lng: cloudMarker.lng,
+                groupId: cloudMarker.group_id,
+                subgroupId: cloudMarker.subgroup_id,
+                color: cloudMarker.color || 'red',
+                icon: cloudMarker.icon || '📍',
+                imageData: cloudMarker.image_data || null,
+                routeRecords: cloudMarker.route_records || []
+            };
+
+            if (localMarkerIndex !== -1) {
+                // 更新現有標記
+                const existingMarker = markers[localMarkerIndex];
+                
+                // 保護本地待上傳的圖片（Base64格式）
+                // 如果本地有 Base64 圖片，說明有未同步的變更，暫不從雲端覆蓋圖片
+                let hasLocalPendingImage = false;
+                if (existingMarker.imageData) {
+                     const imgs = Array.isArray(existingMarker.imageData) ? existingMarker.imageData : [existingMarker.imageData];
+                     hasLocalPendingImage = imgs.some(img => typeof img === 'string' && img.startsWith('data:image/'));
+                }
+
+                if (hasLocalPendingImage) {
+                    markerData.imageData = existingMarker.imageData; // 保留本地圖片
+                    console.log(`保留標記 ${existingMarker.name} 的本地待上傳圖片`);
+                }
+
+                // 保留 leafletMarker 引用
+                const leafletMarker = existingMarker.leafletMarker;
+                
+                Object.assign(existingMarker, markerData);
+                existingMarker.leafletMarker = leafletMarker;
+                
+                // 更新地圖上的標記顯示（位置、圖標、Popup內容）
+                addMarkerToMap(existingMarker);
+                
+                updateCount++;
+            } else {
+                // 創建新標記
+                const newMarker = new Marker(
+                    markerData.id,
+                    markerData.name,
+                    markerData.description,
+                    markerData.lat,
+                    markerData.lng,
+                    markerData.groupId,
+                    markerData.subgroupId,
+                    markerData.color,
+                    markerData.icon,
+                    markerData.imageData
+                );
+                
+                if (markerData.routeRecords) {
+                    newMarker.routeRecords = markerData.routeRecords;
+                }
+                
+                markers.push(newMarker);
+                
+                // 添加到地圖
+                addMarkerToMap(newMarker);
+                
+                newCount++;
+            }
+        });
+
+        // 如果有更新，儲存並更新 UI
+        if (updateCount > 0 || newCount > 0) {
+            // 重新建立所有關聯
+            groups.forEach(g => {
+                g.markers = [];
+                g.subgroups.forEach(sg => sg.markers = []);
+            });
+            
+            markers.forEach(marker => {
+                const group = groups.find(g => g.id === marker.groupId);
+                if (group) {
+                    group.addMarker(marker);
+                    if (marker.subgroupId) {
+                        const subgroup = group.subgroups.find(sg => sg.id === marker.subgroupId);
+                        if (subgroup) {
+                            subgroup.addMarker(marker);
+                        }
+                    }
+                }
+            });
+
+            // 儲存到本地
+            await saveData();
+            
+            // 更新 UI 列表
+            updateMarkersList();
+            
+            showNotification(`☁️ 已從雲端同步：新增 ${newCount} 個，更新 ${updateCount} 個標記`, 'success');
+        } else {
+            console.log('Local data is already consistent with cloud');
+        }
+        
+    } catch (error) {
+        console.error('Cloud sync failed:', error);
+        // 不顯示錯誤通知以免打擾用戶，除非是調試模式
+    }
+}
+
 async function saveData() {
     try {
         // 創建不包含 leafletMarker 的標記副本
@@ -9888,6 +10322,30 @@ function initFloatingSettingsEventListeners() {
         });
     }
     
+    // Supabase sync button
+    const syncBtn = document.getElementById('floatingSyncSupabaseBtn');
+    if (syncBtn) {
+        syncBtn.addEventListener('click', async function() {
+            if (typeof supabaseService === 'undefined' || !supabaseService.isInitialized) {
+                showNotification('Supabase 未設定或初始化失敗', 'error');
+                return;
+            }
+            
+            showNotification('正在同步到雲端...', 'info');
+            try {
+                // 先同步組別和子群組
+                const groupResult = await supabaseService.syncAllGroups(groups);
+                // 再同步標註點
+                const markerResult = await supabaseService.syncAllMarkers(markers);
+                
+                showNotification(`同步完成: 組別 ${groupResult.success}, 標記 ${markerResult.success}`, 'success');
+            } catch (error) {
+                console.error('同步失敗:', error);
+                showNotification('同步失敗: ' + error.message, 'error');
+            }
+        });
+    }
+    
     // 檔案輸入事件監聽器
     const floatingFileInput = document.getElementById('floatingImportFileInput');
     if (floatingFileInput) {
@@ -10180,6 +10638,15 @@ document.addEventListener('DOMContentLoaded', async function() {
     setupRouteLineMonitoring();
     
     initEventListeners();
+    
+    // 初始化登入邏輯
+    initLoginLogic();
+    
+    // 初始化 Supabase
+    if (typeof supabaseService !== 'undefined') {
+        supabaseService.init();
+    }
+
     await initializeApp();
     
     // 初始化背景服務
@@ -11596,5 +12063,113 @@ async function toggleWakeLock() {
         } catch (error) {
             showNotification('❌ 無法啟用螢幕恆亮', 'error');
         }
+    }
+}
+async function updateRealtimeMarkers() {
+    if (typeof supabaseService === 'undefined' || !supabaseService.isInitialized) return;
+
+    try {
+        const realtimeData = await supabaseService.fetchRealtimeLocations();
+        
+        if (!realtimeData) return;
+
+        const now = Date.now();
+        const STALE_THRESHOLD = 30000; // 30 seconds
+
+        // 1. Update or Add markers from fetched data
+        realtimeData.forEach(data => {
+            const updatedAt = new Date(data.updated_at).getTime();
+            const isStale = (now - updatedAt) > STALE_THRESHOLD;
+            const existingIndex = markers.findIndex(m => m.id === data.id);
+
+            if (isStale) {
+                // If stale, remove if exists
+                console.log(`Removing stale realtime marker: ${data.id}`);
+                
+                // Remove from local list
+                if (existingIndex !== -1) {
+                    const marker = markers[existingIndex];
+                    if (marker.leafletMarker) {
+                        map.removeLayer(marker.leafletMarker);
+                    }
+                    markers.splice(existingIndex, 1);
+                    
+                    // Remove from groups if present
+                    const group = groups.find(g => g.id === marker.groupId);
+                    if (group) {
+                         const gIndex = group.markers.findIndex(m => m.id === marker.id);
+                         if (gIndex !== -1) group.markers.splice(gIndex, 1);
+                    }
+                }
+
+                // Remove from Supabase
+                supabaseService.deleteMarker(data.id).then(success => {
+                    if (success) {
+                        console.log(`Successfully deleted stale marker ${data.id} from Supabase`);
+                    } else {
+                        console.warn(`Failed to delete stale marker ${data.id} from Supabase`);
+                    }
+                });
+            } else {
+                // Not stale, update or add
+                const markerData = {
+                    id: data.id,
+                    name: data.name,
+                    description: `最後更新: ${new Date(data.updated_at).toLocaleTimeString()}`,
+                    lat: data.lat,
+                    lng: data.lng,
+                    groupId: data.group_id,
+                    subgroupId: 'tracking',
+                    color: data.color,
+                    icon: data.icon,
+                    updatedAt: data.updated_at
+                };
+
+                if (existingIndex !== -1) {
+                    // Update
+                    const existingMarker = markers[existingIndex];
+                    // Only update if changed
+                    if (existingMarker.lat !== markerData.lat || existingMarker.lng !== markerData.lng || existingMarker.updatedAt !== markerData.updatedAt) {
+                         Object.assign(existingMarker, markerData);
+                         addMarkerToMap(existingMarker);
+                    }
+                } else {
+                    // Add new
+                    const newMarker = new Marker(
+                        markerData.id,
+                        markerData.name,
+                        markerData.description,
+                        markerData.lat,
+                        markerData.lng,
+                        markerData.groupId,
+                        markerData.subgroupId,
+                        markerData.color,
+                        markerData.icon
+                    );
+                    newMarker.updatedAt = markerData.updatedAt;
+                    markers.push(newMarker);
+                    addMarkerToMap(newMarker);
+                }
+            }
+        });
+        
+        // 2. Cleanup markers that are in 'markers' but NOT in fetched data
+        const fetchedIds = new Set(realtimeData.map(d => d.id));
+        for (let i = markers.length - 1; i >= 0; i--) {
+            const m = markers[i];
+            if (m.id && m.id.startsWith('realtime_') && !fetchedIds.has(m.id)) {
+                 console.log(`Removing orphaned realtime marker: ${m.id}`);
+                 if (m.leafletMarker) map.removeLayer(m.leafletMarker);
+                 markers.splice(i, 1);
+                 const group = groups.find(g => g.id === m.groupId);
+                 if (group) {
+                      const gIndex = group.markers.findIndex(x => x.id === m.id);
+                      if (gIndex !== -1) group.markers.splice(gIndex, 1);
+                 }
+            }
+        }
+        
+    } catch (e) {
+        console.error('Error updating realtime markers:', e);
     }
 }

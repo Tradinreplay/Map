@@ -3,6 +3,165 @@
     padding: 0;
     box-sizing: border-box;
 }
+
+/* =========================================
+   Login Modal Styles (Glassmorphism & Square)
+   ========================================= */
+#loginModal {
+    background-color: rgba(0, 0, 0, 0.6); /* Slightly lighter backdrop to show blur better */
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 99999; /* Ensure it's on top */
+}
+
+#loginModal .modal-content {
+    /* Glassmorphism Base */
+    background: rgba(30, 30, 30, 0.65);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+    
+    /* Shape & Size */
+    width: 340px !important;
+    min-height: 340px;
+    height: auto !important;
+    border-radius: 16px;
+    margin: 0;
+    padding: 1.5rem;
+    
+    /* Layout */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    color: #e0e0e0;
+    
+    /* Animation */
+    animation: modalPopIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes modalPopIn {
+    0% { transform: scale(0.9); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+#loginModal h2 {
+    color: #fff;
+    margin: 0 0 1rem 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+    text-align: center;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+    border-bottom: 2px solid rgba(76, 175, 80, 0.8);
+    padding-bottom: 10px;
+    width: 100%;
+}
+
+#loginModal form {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+#loginModal .form-group {
+    margin-bottom: 0;
+    width: 100%;
+}
+
+#loginModal label {
+    color: #ccc;
+    font-size: 0.9rem;
+    margin-bottom: 6px;
+    font-weight: 500;
+    display: block;
+}
+
+/* Input Fields - Glass Style */
+#loginModal input {
+    width: 100%;
+    padding: 12px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 8px;
+    color: #fff;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    box-sizing: border-box;
+}
+
+#loginModal input:focus {
+    background: rgba(0, 0, 0, 0.5);
+    border-color: #4CAF50;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.25);
+}
+
+/* Button - Glass/Gradient Style */
+#loginModal button[type="submit"] {
+    margin-top: 10px;
+    background: linear-gradient(135deg, rgba(76, 175, 80, 0.9), rgba(69, 160, 73, 0.9));
+    color: white;
+    border: none;
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s;
+    width: 100%;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    backdrop-filter: blur(4px);
+}
+
+#loginModal button[type="submit"]:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(76, 175, 80, 0.4);
+    background: linear-gradient(135deg, #4CAF50, #45a049); /* Solid on hover */
+}
+
+/* Error Message */
+#loginError {
+    color: #ff6b6b;
+    text-align: center;
+    margin-top: 12px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    min-height: 20px;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+}
+
+/* Shake Animation for Errors */
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    10%, 30%, 50%, 70%, 90% { transform: translateX(-6px); }
+    20%, 40%, 60%, 80% { transform: translateX(6px); }
+}
+
+#loginModal .modal-content.shake {
+    animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both !important;
+}
+
+/* Disabled States */
+#loginModal input.input-disabled {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.05);
+    color: #666;
+    cursor: not-allowed;
+}
+
+#loginModal button.btn-disabled {
+    background: rgba(255, 255, 255, 0.1);
+    color: #666;
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
+}
 /* ===== 修正：地圖旋轉時滿版覆蓋與浮動提示固定 ===== */
 .map-container {
     /* 動態視窗高度，確保在行動裝置與旋轉時滿版覆蓋 */
@@ -444,6 +603,41 @@ body {
 
 .marker-press-animation {
     animation: marker-press-effect 0.3s ease-out;
+}
+
+/* 即時標註點呼吸效果 (對色) */
+@keyframes realtime-pulse-red {
+    0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+    70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+@keyframes realtime-pulse-blue {
+    0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7); }
+    70% { box-shadow: 0 0 0 10px rgba(59, 130, 246, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+}
+@keyframes realtime-pulse-green {
+    0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+    70% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+@keyframes realtime-pulse-orange {
+    0% { box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.7); }
+    70% { box-shadow: 0 0 0 10px rgba(249, 115, 22, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(249, 115, 22, 0); }
+}
+
+.realtime-breathing-red {
+    animation: realtime-pulse-red 2s infinite;
+}
+.realtime-breathing-blue {
+    animation: realtime-pulse-blue 2s infinite;
+}
+.realtime-breathing-green {
+    animation: realtime-pulse-green 2s infinite;
+}
+.realtime-breathing-orange {
+    animation: realtime-pulse-orange 2s infinite;
 }
 
 
@@ -3492,10 +3686,12 @@ input:checked + .slider:before {
     }
     
     .all-details-group {
-        padding: 12px;
-        border-radius: 8px;
-        border-left-width: 3px;
-    }
+    padding: 12px;
+    border-radius: 8px;
+    border-left-width: 3px;
+}
+
+
     
     .all-details-group-header {
         flex-direction: column;
