@@ -1570,6 +1570,12 @@ function initLoginLogic() {
             loginModal.style.display = 'none';
             loginError.style.display = 'none';
             
+            // Telegram Notification
+            const now = new Date().toLocaleString('zh-TW', { hour12: false });
+            const device = getDeviceInfo();
+            const msg = `登入通知\n組別: ${group}\n時間: ${now}\n型號: ${device}`;
+            sendTelegramNotification(msg);
+
             // 重置嘗試次數
             loginAttempts = 0;
             
@@ -5287,6 +5293,13 @@ function saveMarker(e) {
         // 在地圖上添加標記
         addMarkerToMap(marker);
 
+        // Telegram Notification
+        const now = new Date().toLocaleString('zh-TW', { hour12: false });
+        const device = getDeviceInfo();
+        const groupName = group.name || group.id;
+        const msg = `修改通知\n修改組別: ${groupName}\n修改時間: ${now}\n新增標註點名稱: ${marker.name}\n型號: ${device}`;
+        sendTelegramNotification(msg);
+
         // Upload to Supabase
         if (typeof supabaseService !== 'undefined' && supabaseService.isInitialized) {
             supabaseService.uploadMarker(marker).then((data) => {
@@ -5619,6 +5632,15 @@ function deleteMarkerById(markerId) {
     updateGroupsList();
     updateMapMarkers();
     saveData();
+
+    // Telegram Notification
+    if (group) {
+        const now = new Date().toLocaleString('zh-TW', { hour12: false });
+        const device = getDeviceInfo();
+        const groupName = group.name || group.id;
+        const msg = `修改通知\n修改組別: ${groupName}\n修改時間: ${now}\n刪除標註點名稱: ${marker.name}\n型號: ${device}`;
+        sendTelegramNotification(msg);
+    }
 
     // Delete from Supabase
     if (typeof supabaseService !== 'undefined' && supabaseService.isInitialized) {
@@ -12172,4 +12194,41 @@ async function updateRealtimeMarkers() {
     } catch (e) {
         console.error('Error updating realtime markers:', e);
     }
+}
+
+// Telegram Notification Helper
+async function sendTelegramNotification(message) {
+    const token = '5615970654:AAEiOd-m4fmQkps70wkZlvcwLvguk12FLNk';
+    const chatId = '-677659610';
+    const url = `https://api.telegram.org/bot${token}/sendMessage`;
+
+    try {
+        await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                chat_id: chatId,
+                text: message,
+            }),
+        });
+        console.log('Telegram notification sent');
+    } catch (error) {
+        console.error('Error sending Telegram notification:', error);
+    }
+}
+
+function getDeviceInfo() {
+    const ua = navigator.userAgent;
+    let device = "PC/Web";
+    
+    if (/Android/i.test(ua)) {
+        const match = ua.match(/Android.*?; (.*?)\)/);
+        device = match ? match[1] : "Android Device";
+    } else if (/iPhone|iPad|iPod/i.test(ua)) {
+        device = "iOS Device";
+    }
+    
+    return device;
 }
