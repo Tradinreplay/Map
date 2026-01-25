@@ -363,21 +363,10 @@
                 </div>
                 
                 <div class="import-options">
-                    <div class="import-option">
-                        <input type="radio" id="importMerge" name="importMode" value="merge" checked>
-                        <label for="importMerge">
-                            <div class="option-header">
-                                <span class="option-icon">➕</span>
-                                <span class="option-title">合併匯入</span>
-                            </div>
-                            <div class="option-description">
-                                保留現有標註點，只添加新的標註點（跳過重複的）
-                            </div>
-                        </label>
-                    </div>
+                    <!-- 移除合併匯入選項，只保留更新合併 -->
                     
-                    <div class="import-option">
-                        <input type="radio" id="importUpdate" name="importMode" value="update">
+                    <div class="import-option selected">
+                        <input type="radio" id="importUpdate" name="importMode" value="update" checked>
                         <label for="importUpdate">
                             <div class="option-header">
                                 <span class="option-icon">🔄</span>

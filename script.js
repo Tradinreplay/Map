@@ -9158,8 +9158,8 @@ function showImportOptionsModal(importData) {
     modal.importData = importData;
     modal.comparison = comparison;
     
-    // 設置預設選項為"合併匯入"
-    const defaultOption = document.getElementById('importMerge');
+    // 設置預設選項為"更新合併"
+    const defaultOption = document.getElementById('importUpdate');
     if (defaultOption) {
         defaultOption.checked = true;
         // 初始化視覺反饋
