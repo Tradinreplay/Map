@@ -12198,8 +12198,13 @@ async function updateRealtimeMarkers() {
 
 // Telegram Notification Helper
 async function sendTelegramNotification(message) {
-    const token = '7789873091:AAHTJkst24fjRXUQJu8-osQmh4y8lwKkSzI';
-    const chatId = '-5095692399';
+    if (!TELEGRAM_CONFIG || !TELEGRAM_CONFIG.BOT_TOKEN || !TELEGRAM_CONFIG.CHAT_ID) {
+        console.warn('Telegram configuration missing');
+        return;
+    }
+
+    const token = TELEGRAM_CONFIG.BOT_TOKEN;
+    const chatId = TELEGRAM_CONFIG.CHAT_ID;
     const url = `https://api.telegram.org/bot${token}/sendMessage`;
 
     try {
