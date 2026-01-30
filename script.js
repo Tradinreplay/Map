@@ -1522,6 +1522,21 @@ function createCustomMarkerIcon(color, icon, extraClass = '') {
 }
 
 
+// SHA-256 雜湊函數
+async function sha256(message) {
+    if (!crypto || !crypto.subtle) {
+        console.error("Crypto API not available. Please use HTTPS or localhost.");
+        // 在非安全環境下的降級處理或提示
+        alert("注意：由於瀏覽器安全限制，請使用 HTTPS 或 localhost 存取以進行登入驗證。");
+        return null;
+    }
+    const msgBuffer = new TextEncoder().encode(message);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    return hashHex;
+}
+
 // 初始化登入邏輯
 function initLoginLogic() {
     const loginForm = document.getElementById('loginForm');
@@ -1548,20 +1563,24 @@ function initLoginLogic() {
 
         const account = loginAccountInput.value;
         const password = loginPasswordInput.value;
+        
+        // 計算密碼雜湊
+        const passwordHash = await sha256(password);
+        
         let group = null;
 
-        // 硬編碼的帳密驗證
+        // 帳密驗證 (使用 SHA-256 雜湊比對)
         // 第一組: 1 / w5131 -> Group 1
         // 第二組: 2 / w5132 -> Group 2
         // 第三組: 3 / w5133 -> Group 3
         // 管理者: 179747 / 122232 -> admin
-        if (account === '1' && password === 'w5131') {
+        if (account === '1' && passwordHash === '20eb44287e61efda39a1f468d9508467ee28975c1983f5cb5ac28b6d0d0ab980') {
             group = '1';
-        } else if (account === '2' && password === 'w5132') {
+        } else if (account === '2' && passwordHash === 'f1305ad5669c46124644ab39edc21bcae318ca28ce606039cb437a4bad05d071') {
             group = '2';
-        } else if (account === '3' && password === 'w5133') {
+        } else if (account === '3' && passwordHash === '0efd48109aa239d33625c86605e07ee7d1370b2154a6d1440ed938835792582b') {
             group = '3';
-        } else if (account === '179747' && password === '122232') {
+        } else if (account === '179747' && passwordHash === '2e62970c2b94d405e4858f70ac601a53370273fcdf5d0aa04bd70c48c7e40ba9') {
             group = 'admin';
         }
 
