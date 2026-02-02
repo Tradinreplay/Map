@@ -147,6 +147,67 @@
     animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both !important;
 }
 
+/* Group Selector Styles */
+.group-selector {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    width: 100%;
+    margin-bottom: 5px;
+}
+
+.group-btn {
+    background: rgba(50, 50, 50, 0.8);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    position: relative;
+    overflow: hidden;
+    backdrop-filter: blur(4px);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+.group-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    background: rgba(70, 70, 70, 0.9);
+}
+
+.group-btn.selected {
+    background: #2196F3;
+    border-color: #2196F3;
+    transform: scale(1.02);
+    box-shadow: 0 0 15px rgba(33, 150, 243, 0.5);
+    font-weight: bold;
+}
+
+/* Ripple Effect */
+.group-btn::after {
+    content: "";
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+    background-image: radial-gradient(circle, rgba(255, 255, 255, 0.4) 10%, transparent 10.01%);
+    background-repeat: no-repeat;
+    background-position: 50%;
+    transform: scale(10, 10);
+    opacity: 0;
+    transition: transform 0.5s, opacity 1s;
+}
+
+.group-btn:active::after {
+    transform: scale(0, 0);
+    opacity: 0.3;
+    transition: 0s;
+}
+
 /* Disabled States */
 #loginModal input.input-disabled {
     background: rgba(255, 255, 255, 0.05);

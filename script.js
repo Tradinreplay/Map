@@ -1522,21 +1522,6 @@ function createCustomMarkerIcon(color, icon, extraClass = '') {
 }
 
 
-// SHA-256 雜湊函數
-async function sha256(message) {
-    if (!crypto || !crypto.subtle) {
-        console.error("Crypto API not available. Please use HTTPS or localhost.");
-        // 在非安全環境下的降級處理或提示
-        alert("注意：由於瀏覽器安全限制，請使用 HTTPS 或 localhost 存取以進行登入驗證。");
-        return null;
-    }
-    const msgBuffer = new TextEncoder().encode(message);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-    return hashHex;
-}
-
 // 初始化登入邏輯
 function initLoginLogic() {
     const loginForm = document.getElementById('loginForm');
@@ -1545,6 +1530,39 @@ function initLoginLogic() {
     const loginAccountInput = document.getElementById('loginAccount');
     const loginPasswordInput = document.getElementById('loginPassword');
     const loginBtn = loginForm.querySelector('button[type="submit"]');
+
+    // 組別按鈕邏輯
+    const groupBtns = document.querySelectorAll('.group-btn');
+    groupBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            // 移除所有按鈕的選中狀態
+            groupBtns.forEach(b => b.classList.remove('selected'));
+            // 為當前按鈕添加選中狀態
+            btn.classList.add('selected');
+            
+            // 更新隱藏的帳號輸入框
+            const account = btn.dataset.account;
+            if (loginAccountInput) {
+                loginAccountInput.value = account;
+            }
+            
+            // 自動聚焦密碼輸入框
+            if (loginPasswordInput) {
+                loginPasswordInput.focus();
+                loginPasswordInput.placeholder = "請輸入密碼";
+            }
+            
+            // 隱藏錯誤訊息
+            if (loginError) {
+                loginError.style.display = 'none';
+            }
+            
+            // 按鍵震動回饋
+            if (navigator.vibrate) {
+                navigator.vibrate(50);
+            }
+        });
+    });
     
     // 強制顯示登入視窗
     if (loginModal) {
@@ -1558,29 +1576,47 @@ function initLoginLogic() {
     loginForm.addEventListener('submit', async function(e) {
         e.preventDefault();
         
+        // 防呆機制：檢查是否已選擇組別
+        if (!loginAccountInput.value) {
+            if (loginError) {
+                loginError.textContent = "請先選擇組別";
+                loginError.style.display = 'block';
+            }
+            
+            // 震動提示
+            if (navigator.vibrate) {
+                navigator.vibrate([100, 50, 100]);
+            }
+            
+            // 視窗搖晃效果
+            const modalContent = loginModal.querySelector('.modal-content');
+            if (modalContent) {
+                modalContent.classList.remove('shake');
+                void modalContent.offsetWidth; // Trigger reflow
+                modalContent.classList.add('shake');
+            }
+            return;
+        }
+        
         // 如果已經被鎖定，不再處理
         if (loginAttempts >= 3) return;
 
         const account = loginAccountInput.value;
         const password = loginPasswordInput.value;
-        
-        // 計算密碼雜湊
-        const passwordHash = await sha256(password);
-        
         let group = null;
 
-        // 帳密驗證 (使用 SHA-256 雜湊比對)
+        // 硬編碼的帳密驗證
         // 第一組: 1 / w5131 -> Group 1
         // 第二組: 2 / w5132 -> Group 2
         // 第三組: 3 / w5133 -> Group 3
         // 管理者: 179747 / 122232 -> admin
-        if (account === '1' && passwordHash === '20eb44287e61efda39a1f468d9508467ee28975c1983f5cb5ac28b6d0d0ab980') {
+        if (account === '1' && password === 'w5131') {
             group = '1';
-        } else if (account === '2' && passwordHash === 'f1305ad5669c46124644ab39edc21bcae318ca28ce606039cb437a4bad05d071') {
+        } else if (account === '2' && password === 'w5132') {
             group = '2';
-        } else if (account === '3' && passwordHash === '0efd48109aa239d33625c86605e07ee7d1370b2154a6d1440ed938835792582b') {
+        } else if (account === '3' && password === 'w5133') {
             group = '3';
-        } else if (account === '179747' && passwordHash === '2e62970c2b94d405e4858f70ac601a53370273fcdf5d0aa04bd70c48c7e40ba9') {
+        } else if (account === '179747' && password === '122232') {
             group = 'admin';
         }
 
@@ -1589,12 +1625,6 @@ function initLoginLogic() {
             loginModal.style.display = 'none';
             loginError.style.display = 'none';
             
-            // Telegram Notification
-            const now = new Date().toLocaleString('zh-TW', { hour12: false });
-            const device = getDeviceInfo();
-            const msg = `登入通知\n組別: ${group}\n時間: ${now}\n型號: ${device}`;
-            sendTelegramNotification(msg);
-
             // 重置嘗試次數
             loginAttempts = 0;
             
@@ -5312,13 +5342,6 @@ function saveMarker(e) {
         // 在地圖上添加標記
         addMarkerToMap(marker);
 
-        // Telegram Notification
-        const now = new Date().toLocaleString('zh-TW', { hour12: false });
-        const device = getDeviceInfo();
-        const groupName = group.name || group.id;
-        const msg = `修改通知\n修改組別: ${groupName}\n修改時間: ${now}\n新增標註點名稱: ${marker.name}\n型號: ${device}`;
-        sendTelegramNotification(msg);
-
         // Upload to Supabase
         if (typeof supabaseService !== 'undefined' && supabaseService.isInitialized) {
             supabaseService.uploadMarker(marker).then((data) => {
@@ -5651,15 +5674,6 @@ function deleteMarkerById(markerId) {
     updateGroupsList();
     updateMapMarkers();
     saveData();
-
-    // Telegram Notification
-    if (group) {
-        const now = new Date().toLocaleString('zh-TW', { hour12: false });
-        const device = getDeviceInfo();
-        const groupName = group.name || group.id;
-        const msg = `修改通知\n修改組別: ${groupName}\n修改時間: ${now}\n刪除標註點名稱: ${marker.name}\n型號: ${device}`;
-        sendTelegramNotification(msg);
-    }
 
     // Delete from Supabase
     if (typeof supabaseService !== 'undefined' && supabaseService.isInitialized) {
@@ -12213,46 +12227,4 @@ async function updateRealtimeMarkers() {
     } catch (e) {
         console.error('Error updating realtime markers:', e);
     }
-}
-
-// Telegram Notification Helper
-async function sendTelegramNotification(message) {
-    if (!TELEGRAM_CONFIG || !TELEGRAM_CONFIG.BOT_TOKEN || !TELEGRAM_CONFIG.CHAT_ID) {
-        console.warn('Telegram configuration missing');
-        return;
-    }
-
-    const token = TELEGRAM_CONFIG.BOT_TOKEN;
-    const chatId = TELEGRAM_CONFIG.CHAT_ID;
-    const url = `https://api.telegram.org/bot${token}/sendMessage`;
-
-    try {
-        await fetch(url, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                chat_id: chatId,
-                text: message,
-            }),
-        });
-        console.log('Telegram notification sent');
-    } catch (error) {
-        console.error('Error sending Telegram notification:', error);
-    }
-}
-
-function getDeviceInfo() {
-    const ua = navigator.userAgent;
-    let device = "PC/Web";
-    
-    if (/Android/i.test(ua)) {
-        const match = ua.match(/Android.*?; (.*?)\)/);
-        device = match ? match[1] : "Android Device";
-    } else if (/iPhone|iPad|iPod/i.test(ua)) {
-        device = "iOS Device";
-    }
-    
-    return device;
 }

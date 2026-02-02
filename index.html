@@ -35,8 +35,14 @@
             <h2>登入組別</h2>
             <form id="loginForm">
                 <div class="form-group">
-                    <label for="loginAccount">帳號:</label>
-                    <input type="text" id="loginAccount" required>
+                    <label>選擇組別:</label>
+                    <div class="group-selector">
+                        <button type="button" class="group-btn" data-account="1">第一組</button>
+                        <button type="button" class="group-btn" data-account="2">第二組</button>
+                        <button type="button" class="group-btn" data-account="3">第三組</button>
+                        <button type="button" class="group-btn" data-account="179747">管理</button>
+                    </div>
+                    <input type="text" id="loginAccount" style="display: none;">
                 </div>
                 
                 <div class="form-group">

@@ -5,9 +5,3 @@ const SUPABASE_CONFIG = {
     BUCKET_NAME: 'marker-images',
     TABLE_NAME: 'markers'
 };
-
-// Telegram 設定
-const TELEGRAM_CONFIG = {
-    BOT_TOKEN: '7789873091:AAHTJkst24fjRXUQJu8-osQmh4y8lwKkSzI',
-    CHAT_ID: '-5095692399'
-};
