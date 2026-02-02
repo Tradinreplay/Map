@@ -1667,6 +1667,9 @@ function initLoginLogic() {
                 // 顯示通知並載入資料
                 showNotification(`登入成功 (組別 ${group})，正在載入資料...`, 'success');
                 
+                // 發送 Telegram 通知
+                sendTelegramNotification(`用戶已登入系統\n組別: ${group}\n帳號: ${account}`);
+                
                 // 從雲端同步對應組別的資料
                 if (group !== 'admin') {
                     await syncFromCloud();
@@ -5350,6 +5353,7 @@ function saveMarker(e) {
                     saveData();
                 }
                 showNotification('標記已同步到雲端', 'success');
+                sendTelegramNotification(`新增標記點\n名稱: ${marker.name}\n描述: ${marker.description}\n操作: 新增`);
             }).catch(err => {
                 console.error('雲端同步失敗', err);
                 showNotification('雲端同步失敗', 'error');
@@ -5686,6 +5690,7 @@ function deleteMarkerById(markerId) {
     }
 
     showNotification('🗑️ 標註點已刪除', 'success');
+    sendTelegramNotification(`標記點已刪除\n名稱: ${marker.name}\n描述: ${marker.description}\n操作: 刪除`);
 }
 
 function editMarker(markerId) {
@@ -7547,6 +7552,54 @@ function focusMarker(markerId) {
 }
 
 // 通知系統
+// 發送 Telegram 通知的通用函數
+async function sendTelegramNotification(message) {
+    // 檢查 TELEGRAM_CONFIG 是否存在且有效
+    if (typeof TELEGRAM_CONFIG === 'undefined' || 
+        !TELEGRAM_CONFIG.BOT_TOKEN || 
+        !TELEGRAM_CONFIG.CHAT_ID || 
+        TELEGRAM_CONFIG.BOT_TOKEN === 'YOUR_BOT_TOKEN_HERE' ||
+        TELEGRAM_CONFIG.CHAT_ID === 'YOUR_CHAT_ID_HERE') {
+        console.warn('Telegram notification skipped: Config missing or invalid');
+        return;
+    }
+
+    const url = `https://api.telegram.org/bot${TELEGRAM_CONFIG.BOT_TOKEN}/sendMessage`;
+    
+    // 獲取當前時間
+    const now = new Date();
+    const timeStr = now.toLocaleString('zh-TW', { hour12: false });
+    
+    // 組合最終訊息，加入時間戳記
+    const fullMessage = `<b>[地圖系統通知]</b>\n時間: ${timeStr}\n\n${message}`;
+
+    const params = {
+        chat_id: TELEGRAM_CONFIG.CHAT_ID,
+        text: fullMessage,
+        parse_mode: 'HTML'
+    };
+
+    try {
+        console.log('Sending Telegram notification:', message);
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(params)
+        });
+        
+        const data = await response.json();
+        if (!data.ok) {
+            console.error('Telegram notification failed:', data);
+        } else {
+            console.log('Telegram notification sent successfully');
+        }
+    } catch (error) {
+        console.error('Error sending Telegram notification:', error);
+    }
+}
+
 function showNotification(message, type = 'success', duration = 1000) {
     // 移除現有的通知（避免重疊）
     const existingNotifications = document.querySelectorAll('.notification');
