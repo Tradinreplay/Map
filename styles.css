@@ -597,20 +597,20 @@ body {
 
 /* 確保所有Leaflet控制項都有適當的z-index */
 .leaflet-control {
-    z-index: 1500 !important;
+    z-index: 21000 !important;
 }
 
 .leaflet-control-zoom {
-    z-index: 1500 !important;
+    z-index: 21000 !important;
 }
 
 .leaflet-control-attribution {
-    z-index: 1400 !important;
+    z-index: 20000 !important;
 }
 
 /* 確保圖層控制項在展開時有更高的z-index */
 .leaflet-control-layers-expanded {
-    z-index: 1600 !important;
+    z-index: 21000 !important;
 }
 
 /* Mobile Optimization for Layer Control */
@@ -953,7 +953,7 @@ body {
     position: absolute;
     top: 16px; /* 移動到右上角位置 */
     right: 16px;
-    z-index: 1650; /* 提高z-index以確保不被遮擋 */
+    z-index: 21000 !important; /* 提高z-index以確保不被遮擋 */
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -4062,7 +4062,7 @@ input:checked + .slider:before {
         0 4px 20px rgba(102, 126, 234, 0.4),
         0 2px 8px rgba(0, 0, 0, 0.1);
     transition: all 0.3s ease;
-    z-index: 10005;
+    z-index: 21000 !important;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -5136,7 +5136,7 @@ input:checked + .slider:before {
     font-size: 18px;
     cursor: move;
     box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-    z-index: 2000;
+    z-index: 21000 !important; /* Ensure visibility above fullscreen map */
     transition: background-color 0.2s;
     user-select: none;
     border: 1px solid #555;
