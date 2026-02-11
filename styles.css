@@ -5031,12 +5031,33 @@ input:checked + .slider:before {
     overflow: hidden;
     display: flex;
     flex-direction: column;
+    position: relative; /* Added for absolute positioning of close button */
+    padding: 10px 15px; /* Reduced padding */
+}
+
+/* Close button positioning */
+.history-modal-content .close {
+    position: absolute;
+    top: 8px;
+    right: 12px;
+    float: none;
+    font-size: 24px;
+    line-height: 20px;
+    margin: 0;
+    z-index: 10;
+}
+
+/* Header styling */
+.history-modal-content h2 {
+    font-size: 1.1rem; /* Smaller font */
+    margin: 0 0 8px 0; /* Compact margins */
+    padding-right: 24px; /* Make room for close button */
 }
 
 .table-container {
     overflow-y: auto;
     width: 100%;
-    margin-top: 15px;
+    margin-top: 5px; /* Reduced margin */
     border-radius: 8px;
     border: 1px solid rgba(255, 255, 255, 0.1);
 }
@@ -5045,11 +5066,11 @@ input:checked + .slider:before {
     width: 100%;
     border-collapse: collapse;
     color: #e0e0e0;
-    font-size: 0.9rem;
+    font-size: 0.8rem; /* Smaller font for table */
 }
 
 #historyTable th, #historyTable td {
-    padding: 12px;
+    padding: 6px 8px; /* Compact padding */
     text-align: left;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
