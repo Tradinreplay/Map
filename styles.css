@@ -613,6 +613,26 @@ body {
     z-index: 1600 !important;
 }
 
+/* Mobile Optimization for Layer Control */
+@media (max-width: 600px) {
+    .leaflet-control-layers-expanded {
+        max-height: 50vh !important; /* Limit height on mobile */
+        max-width: 70vw !important;  /* Limit width */
+        overflow-y: auto !important; /* Allow scrolling */
+        -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+    }
+    
+    .leaflet-control-layers-list {
+        padding-right: 10px !important; /* Avoid scrollbar overlap */
+    }
+
+    /* Ensure label text wraps properly */
+    .leaflet-control-layers label {
+        white-space: normal !important; 
+        max-width: 100%;
+    }
+}
+
 /* 地圖性能優化樣式 */
 .leaflet-map-pane {
     /* 移除transition以提升滑動性能 */
@@ -4996,10 +5016,17 @@ input:checked + .slider:before {
 }
 
 /* History Modal & Table Styles */
+#historyModal {
+    display: none; /* Controlled by JS */
+    align-items: center; /* Center vertically */
+    justify-content: center; /* Center horizontally */
+}
+
 .history-modal-content {
     width: 90% !important;
     max-width: 800px;
     max-height: 80vh;
+    height: auto; /* Ensure it fits content */
     overflow: hidden;
     display: flex;
     flex-direction: column;
@@ -5153,7 +5180,7 @@ input:checked + .slider:before {
         max-height: 55vh !important;
         height: auto !important; /* Adapt to content */
         width: 95% !important;
-        margin-top: 5vh;
+        margin: 0 !important; /* Remove margins to allow centering by parent flex */
         padding: 10px !important;
         display: flex;
         flex-direction: column;
@@ -5169,6 +5196,7 @@ input:checked + .slider:before {
         max-height: 40vh;
         height: auto !important; /* Adapt to content */
         overflow-y: auto;
+        flex-grow: 0; /* Do not grow to fill space */
     }
 }
 
