@@ -12443,7 +12443,7 @@ async function deleteLogEntry(log) {
     }
 }
 
-// Create History Button
+// Create History Button with Drag Support
 function createHistoryButton() {
     if (document.getElementById('historyFloatingBtn')) return;
     
@@ -12452,8 +12452,87 @@ function createHistoryButton() {
     btn.innerHTML = '📝'; // Icon
     btn.title = '查看編輯紀錄';
     document.body.appendChild(btn);
+
+    // Drag Logic
+    let isDragging = false;
+    let hasMoved = false; // To distinguish click vs drag
+    let startX, startY, initialLeft, initialTop;
+
+    function onStart(e) {
+        // Prevent default touch actions (like scrolling) if touching the button
+        // e.preventDefault(); // Don't prevent default immediately to allow click, but CSS touch-action: none handles scroll prevention
+        
+        isDragging = true;
+        hasMoved = false;
+        
+        const clientX = e.type === 'touchstart' ? e.touches[0].clientX : e.clientX;
+        const clientY = e.type === 'touchstart' ? e.touches[0].clientY : e.clientY;
+        
+        startX = clientX;
+        startY = clientY;
+        
+        const rect = btn.getBoundingClientRect();
+        initialLeft = rect.left;
+        initialTop = rect.top;
+        
+        btn.style.transition = 'none'; // Disable transition during drag
+    }
+
+    function onMove(e) {
+        if (!isDragging) return;
+        
+        const clientX = e.type === 'touchmove' ? e.touches[0].clientX : e.clientX;
+        const clientY = e.type === 'touchmove' ? e.touches[0].clientY : e.clientY;
+        
+        const dx = clientX - startX;
+        const dy = clientY - startY;
+        
+        // Threshold to consider it a move
+        if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+            hasMoved = true;
+        }
+
+        let newLeft = initialLeft + dx;
+        let newTop = initialTop + dy;
+        
+        // Boundary check
+        const maxLeft = window.innerWidth - btn.offsetWidth;
+        const maxTop = window.innerHeight - btn.offsetHeight;
+        
+        newLeft = Math.max(0, Math.min(newLeft, maxLeft));
+        newTop = Math.max(0, Math.min(newTop, maxTop));
+        
+        btn.style.left = `${newLeft}px`;
+        btn.style.top = `${newTop}px`;
+        // Clear right/bottom if set via CSS previously (though we use left/top in CSS now)
+        btn.style.right = 'auto';
+        btn.style.bottom = 'auto';
+    }
+
+    function onEnd(e) {
+        if (!isDragging) return;
+        isDragging = false;
+        btn.style.transition = ''; // Restore transition
+    }
+
+    // Mouse events
+    btn.addEventListener('mousedown', onStart);
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onEnd);
+
+    // Touch events
+    btn.addEventListener('touchstart', onStart, { passive: false });
+    document.addEventListener('touchmove', onMove, { passive: false });
+    document.addEventListener('touchend', onEnd);
     
-    btn.onclick = async () => {
+    // Click Handler (only if not dragged)
+    btn.onclick = async (e) => {
+        if (hasMoved) {
+            e.preventDefault();
+            e.stopPropagation();
+            return;
+        }
+
         if (!currentUserGroup) {
             alert('請先登入系統');
             return;
