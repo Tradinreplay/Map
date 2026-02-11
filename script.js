@@ -47,6 +47,7 @@ let alertTimers = new Map(); // 記錄每個標註點的定時器
 let markersInRange = new Set(); // 記錄當前在範圍內的標註點
 let trackingTarget = null; // 當前追蹤的目標標註點
 let currentFilter = null; // 當前過濾設定 { type: 'marker'|'group'|'subgroup', id: string }
+let currentUserGroup = null; // 當前登入的用戶組別 (1, 2, 3, admin)
 let realtimeUploadInterval = null; // 即時位置上傳定時器
 let realtimeFetchInterval = null; // 即時位置獲取定時器
 
@@ -1622,6 +1623,7 @@ function initLoginLogic() {
 
         if (group) {
             // 登入成功
+            currentUserGroup = group;
             loginModal.style.display = 'none';
             loginError.style.display = 'none';
             
@@ -12303,6 +12305,28 @@ function showHistoryModal(logs) {
     const modal = document.getElementById('historyModal');
     if (!modal) return;
     
+    // Set dark theme class
+    const content = modal.querySelector('.modal-content');
+    if (content) content.classList.add('dark-theme');
+
+    const table = document.getElementById('historyTable');
+    if (table) table.classList.add('dark-theme');
+    
+    const thead = table.querySelector('thead');
+    // Rebuild header based on admin status
+    const isAdmin = (currentUserGroup === 'admin');
+    
+    thead.innerHTML = `
+        <tr>
+            <th>時間</th>
+            ${isAdmin ? '<th>組別</th>' : ''}
+            <th>操作</th>
+            <th>名稱</th>
+            <th>說明</th>
+            ${isAdmin ? '<th>管理</th>' : ''}
+        </tr>
+    `;
+    
     const tbody = document.querySelector('#historyTable tbody');
     if (!tbody) return;
     
@@ -12311,7 +12335,10 @@ function showHistoryModal(logs) {
     if (!logs || logs.length === 0) {
         const row = tbody.insertRow();
         const cell = row.insertCell();
-        cell.colSpan = 5;
+        // Calculate colspan dynamically
+        let colCount = 4; // Time, Op, Name, Desc
+        if (isAdmin) colCount += 2; // +Group, +Manage
+        cell.colSpan = colCount;
         cell.textContent = '最近一周無編輯紀錄';
         cell.style.textAlign = 'center';
         cell.style.padding = '20px';
@@ -12325,8 +12352,12 @@ function showHistoryModal(logs) {
             const timeStr = date.toLocaleString('zh-TW', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
             row.insertCell().textContent = timeStr;
             
-            // 組別
-            row.insertCell().textContent = log.group_id || '-';
+            // 組別 (Only for Admin)
+            if (isAdmin) {
+                // 修改：使用 dataset_group 顯示組別
+                const groupText = log.dataset_group ? `第${log.dataset_group}組` : (log.group_id ? `第${log.group_id}組` : '-');
+                row.insertCell().textContent = groupText;
+            }
             
             // 操作
             const opCell = row.insertCell();
@@ -12345,6 +12376,27 @@ function showHistoryModal(logs) {
             descCell.style.overflow = 'hidden';
             descCell.style.textOverflow = 'ellipsis';
             descCell.style.whiteSpace = 'nowrap';
+
+            // Admin Edit/Delete Buttons
+            if (isAdmin) {
+                const actionCell = row.insertCell();
+                actionCell.style.display = 'flex';
+                actionCell.style.gap = '5px';
+                
+                // Edit
+                const editBtn = document.createElement('button');
+                editBtn.textContent = '編輯';
+                editBtn.className = 'edit-log-btn';
+                editBtn.onclick = () => editLogEntry(log);
+                actionCell.appendChild(editBtn);
+
+                // Delete
+                const deleteBtn = document.createElement('button');
+                deleteBtn.textContent = '刪除';
+                deleteBtn.className = 'delete-log-btn';
+                deleteBtn.onclick = () => deleteLogEntry(log);
+                actionCell.appendChild(deleteBtn);
+            }
         });
     }
 
@@ -12357,4 +12409,66 @@ function showHistoryModal(logs) {
         }
     }
 }
+
+async function editLogEntry(log) {
+    const newDesc = prompt('編輯說明:', log.description || '');
+    if (newDesc !== null && newDesc !== log.description) {
+        if (typeof supabaseService !== 'undefined') {
+            const result = await supabaseService.updateLog(log.id, { description: newDesc });
+            if (result) {
+                alert('更新成功');
+                // Refresh logs
+                const logs = await supabaseService.fetchRecentLogs(7);
+                showHistoryModal(logs);
+            } else {
+                alert('更新失敗');
+            }
+        }
+    }
+}
+
+async function deleteLogEntry(log) {
+    if (confirm(`確定要刪除這筆紀錄嗎？\n名稱: ${log.marker_name}\n操作: ${log.operation_type}`)) {
+        if (typeof supabaseService !== 'undefined') {
+            const success = await supabaseService.deleteLog(log.id);
+            if (success) {
+                alert('刪除成功');
+                // Refresh logs
+                const logs = await supabaseService.fetchRecentLogs(7);
+                showHistoryModal(logs);
+            } else {
+                alert('刪除失敗');
+            }
+        }
+    }
+}
+
+// Create History Button
+function createHistoryButton() {
+    if (document.getElementById('historyFloatingBtn')) return;
+    
+    const btn = document.createElement('div');
+    btn.id = 'historyFloatingBtn';
+    btn.innerHTML = '📝'; // Icon
+    btn.title = '查看編輯紀錄';
+    document.body.appendChild(btn);
+    
+    btn.onclick = async () => {
+        if (!currentUserGroup) {
+            alert('請先登入系統');
+            return;
+        }
+        
+        btn.style.opacity = '0.5';
+        if (typeof supabaseService !== 'undefined') {
+            const logs = await supabaseService.fetchRecentLogs(7);
+            showHistoryModal(logs);
+        }
+        btn.style.opacity = '1';
+    };
+}
+
+// Init button on load
+document.addEventListener('DOMContentLoaded', createHistoryButton);
+
 

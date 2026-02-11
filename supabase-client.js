@@ -376,6 +376,41 @@ class SupabaseService {
         }
     }
 
+    // 更新日誌 (僅限管理員或有權限者)
+    async updateLog(logId, updates) {
+        if (!this.isInitialized) return null;
+        try {
+            const { data, error } = await this.client
+                .from(SUPABASE_CONFIG.LOG_TABLE_NAME || 'marker_logs')
+                .update(updates)
+                .eq('id', logId)
+                .select();
+            
+            if (error) throw error;
+            return data;
+        } catch (error) {
+            console.error('Error updating log:', error);
+            return null;
+        }
+    }
+
+    // 刪除日誌 (僅限管理員)
+    async deleteLog(logId) {
+        if (!this.isInitialized) return false;
+        try {
+            const { error } = await this.client
+                .from(SUPABASE_CONFIG.LOG_TABLE_NAME || 'marker_logs')
+                .delete()
+                .eq('id', logId);
+            
+            if (error) throw error;
+            return true;
+        } catch (error) {
+            console.error('Error deleting log:', error);
+            return false;
+        }
+    }
+
     // 批量上傳所有標註點
     async syncAllMarkers(markers) {
         if (!this.isInitialized) return;

@@ -5046,3 +5046,127 @@ input:checked + .slider:before {
     color: #f44336;
 }
 
+
+/* History Modal Dark Theme */
+.modal-content.dark-theme {
+    background-color: #222 !important;
+    color: #eee !important;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    border: 1px solid #444;
+}
+
+.dark-theme h2 {
+    color: #fff !important;
+    border-bottom: 1px solid #444;
+    padding-bottom: 10px;
+}
+
+#historyTable.dark-theme th {
+    background-color: #333 !important;
+    color: #4CAF50 !important;
+    border-bottom: 1px solid #444 !important;
+}
+
+#historyTable.dark-theme td {
+    border-bottom: 1px solid #444 !important;
+    color: #ccc !important;
+}
+
+#historyTable.dark-theme tr:hover {
+    background-color: #333 !important;
+}
+
+/* Edit Button */
+.edit-log-btn {
+    background-color: #2196F3;
+    color: white;
+    border: none;
+    padding: 4px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.8rem;
+}
+
+.edit-log-btn:hover {
+    background-color: #1976D2;
+}
+
+/* Floating History Button */
+#historyFloatingBtn {
+    position: fixed;
+    right: 20px;
+    bottom: 140px; /* Above other potential buttons */
+    width: 50px;
+    height: 50px;
+    background-color: #333; /* Dark theme button */
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 24px;
+    cursor: pointer;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+    z-index: 2000;
+    transition: transform 0.2s, background-color 0.2s;
+    user-select: none;
+    border: 2px solid #555;
+}
+
+#historyFloatingBtn:hover {
+    transform: scale(1.1);
+    background-color: #444;
+    border-color: #4CAF50;
+}
+
+#historyFloatingBtn:active {
+    transform: scale(0.95);
+}
+
+@media (max-width: 600px) {
+    #historyFloatingBtn {
+        right: 15px;
+        bottom: 120px;
+        width: 45px;
+        height: 45px;
+        font-size: 20px;
+    }
+}
+
+
+/* Delete Button */
+.delete-log-btn {
+    background-color: #f44336;
+    color: white;
+    border: none;
+    padding: 4px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.8rem;
+}
+
+.delete-log-btn:hover {
+    background-color: #d32f2f;
+}
+
+/* Optimize Modal for Mobile */
+@media (max-width: 600px) {
+    .history-modal-content {
+        max-height: 55vh !important; /* Smaller height on mobile */
+        width: 95% !important;
+        margin-top: 5vh; /* Push down a bit */
+        padding: 10px !important;
+    }
+    
+    #historyTable th, #historyTable td {
+        padding: 6px 3px !important; /* Compact padding */
+        font-size: 0.75rem;
+    }
+    
+    /* Allow scrolling */
+    .table-container {
+        max-height: 40vh; /* Ensure container scrolls within modal */
+        overflow-y: auto;
+    }
+}
+
