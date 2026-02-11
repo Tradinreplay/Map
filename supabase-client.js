@@ -316,6 +316,66 @@ class SupabaseService {
         }
     }
 
+    // 記錄標註點操作日誌
+    async logMarkerOperation(operation, marker) {
+        if (!this.isInitialized) return null;
+
+        const logData = {
+            group_id: marker.groupId,
+            marker_name: marker.name,
+            description: marker.description || '',
+            operation_type: operation,
+            dataset_group: this.datasetGroup,
+            created_at: new Date().toISOString()
+        };
+
+        console.log(`[Supabase] Logging ${operation} operation for marker ${marker.name}`);
+
+        try {
+            const { data, error } = await this.client
+                .from(SUPABASE_CONFIG.LOG_TABLE_NAME || 'marker_logs')
+                .insert(logData)
+                .select();
+
+            if (error) throw error;
+            console.log('[Supabase] Operation logged successfully');
+            return data;
+        } catch (error) {
+            console.error('[Supabase] Failed to log operation:', error);
+            // Don't throw, just log error so it doesn't break the main flow
+            return null;
+        }
+    }
+
+    // 獲取最近的標註點操作日誌
+    async fetchRecentLogs(days = 7) {
+        if (!this.isInitialized) return null;
+
+        const date = new Date();
+        date.setDate(date.getDate() - days);
+        const dateStr = date.toISOString();
+
+        try {
+            let query = this.client
+                .from(SUPABASE_CONFIG.LOG_TABLE_NAME || 'marker_logs')
+                .select('*')
+                .gte('created_at', dateStr)
+                .order('created_at', { ascending: false });
+
+            // If not admin (datasetGroup is set), filter by it
+            if (this.datasetGroup) {
+                query = query.eq('dataset_group', this.datasetGroup);
+            }
+
+            const { data, error } = await query;
+            if (error) throw error;
+            return data;
+        } catch (error) {
+            console.error('Error fetching logs:', error);
+            return [];
+        }
+    }
+
     // 批量上傳所有標註點
     async syncAllMarkers(markers) {
         if (!this.isInitialized) return;

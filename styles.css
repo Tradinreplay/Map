@@ -4994,3 +4994,55 @@ input:checked + .slider:before {
         margin-bottom: 8px;
     }
 }
+
+/* History Modal & Table Styles */
+.history-modal-content {
+    width: 90% !important;
+    max-width: 800px;
+    max-height: 80vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.table-container {
+    overflow-y: auto;
+    width: 100%;
+    margin-top: 15px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+#historyTable {
+    width: 100%;
+    border-collapse: collapse;
+    color: #e0e0e0;
+    font-size: 0.9rem;
+}
+
+#historyTable th, #historyTable td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+#historyTable th {
+    background-color: rgba(0, 0, 0, 0.4);
+    position: sticky;
+    top: 0;
+    font-weight: 600;
+    color: #4CAF50;
+}
+
+#historyTable tr:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+#historyTable td.operation-add {
+    color: #4CAF50;
+}
+
+#historyTable td.operation-delete {
+    color: #f44336;
+}
+

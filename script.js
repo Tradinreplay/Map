@@ -1667,6 +1667,15 @@ function initLoginLogic() {
                 // 顯示通知並載入資料
                 showNotification(`登入成功 (組別 ${group})，正在載入資料...`, 'success');
                 
+                // 顯示最近一周編輯紀錄
+                if (typeof supabaseService !== 'undefined') {
+                    supabaseService.fetchRecentLogs(7).then(logs => {
+                        if (logs && logs.length > 0) {
+                            showHistoryModal(logs);
+                        }
+                    });
+                }
+                
                 // 發送 Telegram 通知
                 sendTelegramNotification(`用戶已登入系統\n組別: ${group}\n帳號: ${account}`);
                 
@@ -5354,6 +5363,8 @@ function saveMarker(e) {
                 }
                 showNotification('標記已同步到雲端', 'success');
                 sendTelegramNotification(`新增標記點\n名稱: ${marker.name}\n描述: ${marker.description}\n操作: 新增`);
+                // 記錄操作日誌
+                supabaseService.logMarkerOperation('add', marker);
             }).catch(err => {
                 console.error('雲端同步失敗', err);
                 showNotification('雲端同步失敗', 'error');
@@ -5691,6 +5702,11 @@ function deleteMarkerById(markerId) {
 
     showNotification('🗑️ 標註點已刪除', 'success');
     sendTelegramNotification(`標記點已刪除\n名稱: ${marker.name}\n描述: ${marker.description}\n操作: 刪除`);
+    
+    // 記錄操作日誌
+    if (typeof supabaseService !== 'undefined' && supabaseService.isInitialized) {
+        supabaseService.logMarkerOperation('delete', marker);
+    }
 }
 
 function editMarker(markerId) {
@@ -12281,3 +12297,64 @@ async function updateRealtimeMarkers() {
         console.error('Error updating realtime markers:', e);
     }
 }
+
+// 顯示歷史紀錄彈窗
+function showHistoryModal(logs) {
+    const modal = document.getElementById('historyModal');
+    if (!modal) return;
+    
+    const tbody = document.querySelector('#historyTable tbody');
+    if (!tbody) return;
+    
+    tbody.innerHTML = '';
+
+    if (!logs || logs.length === 0) {
+        const row = tbody.insertRow();
+        const cell = row.insertCell();
+        cell.colSpan = 5;
+        cell.textContent = '最近一周無編輯紀錄';
+        cell.style.textAlign = 'center';
+        cell.style.padding = '20px';
+        cell.style.color = '#888';
+    } else {
+        logs.forEach(log => {
+            const row = tbody.insertRow();
+            
+            // 時間
+            const date = new Date(log.created_at);
+            const timeStr = date.toLocaleString('zh-TW', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+            row.insertCell().textContent = timeStr;
+            
+            // 組別
+            row.insertCell().textContent = log.group_id || '-';
+            
+            // 操作
+            const opCell = row.insertCell();
+            const opText = log.operation_type === 'add' ? '新增' : (log.operation_type === 'delete' ? '刪除' : log.operation_type);
+            opCell.textContent = opText;
+            opCell.className = log.operation_type === 'add' ? 'operation-add' : (log.operation_type === 'delete' ? 'operation-delete' : '');
+            
+            // 名稱
+            row.insertCell().textContent = log.marker_name || '(未命名)';
+            
+            // 說明
+            const descCell = row.insertCell();
+            descCell.textContent = log.description || '';
+            descCell.title = log.description || ''; // Tooltip
+            descCell.style.maxWidth = '200px';
+            descCell.style.overflow = 'hidden';
+            descCell.style.textOverflow = 'ellipsis';
+            descCell.style.whiteSpace = 'nowrap';
+        });
+    }
+
+    modal.style.display = 'flex';
+    
+    // 點擊背景關閉
+    modal.onclick = function(event) {
+        if (event.target === modal) {
+            modal.style.display = 'none';
+        }
+    }
+}
+

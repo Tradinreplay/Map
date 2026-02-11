@@ -835,6 +835,30 @@
         </div>
     </div>
 
+    <!-- 歷史紀錄彈窗 -->
+    <div id="historyModal" class="modal">
+        <div class="modal-content history-modal-content">
+            <span class="close" onclick="document.getElementById('historyModal').style.display='none'">&times;</span>
+            <h2>最近一周編輯紀錄</h2>
+            <div class="table-container">
+                <table id="historyTable">
+                    <thead>
+                        <tr>
+                            <th>時間</th>
+                            <th>組別</th>
+                            <th>操作</th>
+                            <th>名稱</th>
+                            <th>說明</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- 動態內容 -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     
     <!-- 通知音效腳本 -->
