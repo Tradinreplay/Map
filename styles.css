@@ -5023,8 +5023,9 @@ input:checked + .slider:before {
 }
 
 .history-modal-content {
-    width: 90% !important;
-    max-width: 800px;
+    width: fit-content !important;
+    min-width: 300px;
+    max-width: 95vw;
     max-height: 80vh;
     height: auto; /* Ensure it fits content */
     overflow: hidden;
@@ -5122,7 +5123,8 @@ input:checked + .slider:before {
 #historyFloatingBtn {
     position: fixed;
     top: 20px;
-    left: 70px; /* Next to Settings button (20px + ~40px width + 10px gap) */
+    left: 50%; /* Center horizontally */
+    transform: translateX(-50%); /* Adjust for button width */
     width: 36px;
     height: 36px;
     background-color: rgba(34, 34, 34, 0.9);
@@ -5183,7 +5185,9 @@ input:checked + .slider:before {
     .history-modal-content {
         max-height: 55vh !important;
         height: auto !important; /* Adapt to content */
-        width: 95% !important;
+        width: fit-content !important;
+        min-width: 90%;
+        max-width: 95% !important;
         margin: 0 !important; /* Remove margins to allow centering by parent flex */
         padding: 10px !important;
         display: flex;

@@ -12472,6 +12472,12 @@ function createHistoryButton() {
         startY = clientY;
         
         const rect = btn.getBoundingClientRect();
+        
+        // Reset transform to ensure absolute positioning works correctly during drag
+        btn.style.transform = 'none';
+        btn.style.left = `${rect.left}px`;
+        btn.style.top = `${rect.top}px`;
+        
         initialLeft = rect.left;
         initialTop = rect.top;
         
