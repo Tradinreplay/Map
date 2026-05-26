@@ -557,6 +557,14 @@ function initAndroidIntegration() {
 
 function onDeviceReady() {
     console.log('設備就绪');
+
+    try {
+        if (typeof window.initAppBackButtonHandler === 'function') {
+            window.initAppBackButtonHandler();
+        }
+    } catch (error) {
+        console.warn('初始化返回鍵處理失敗:', error);
+    }
     
     // 获取设备信息
     AndroidDevice.getDeviceInfo().then(info => {

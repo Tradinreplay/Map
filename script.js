@@ -221,15 +221,41 @@ function initAppBackButtonHandler() {
 
     appBackButtonHandlerInitialized = true;
 
+    const ensureBackTrapState = () => {
+        try {
+            if (window.history && window.history.pushState) {
+                const state = window.history.state || {};
+                if (!state || state.__appBackTrap !== true) {
+                    window.history.pushState({ __appBackTrap: true, t: Date.now() }, document.title, window.location.href);
+                }
+            }
+        } catch (e) {
+            console.warn('建立返回鍵攔截歷史狀態失敗:', e);
+        }
+    };
+
+    ensureBackTrapState();
+
     document.addEventListener('backbutton', function(e) {
         e.preventDefault();
         handleAppBackButton();
     }, false);
 
+    window.addEventListener('popstate', function(e) {
+        const state = e.state || {};
+        if (state.__appBackTrap === true || typeof isAndroidApp === 'function' && isAndroidApp()) {
+            const shouldExit = handleAppBackButton();
+            if (!shouldExit) {
+                ensureBackTrapState();
+            }
+        }
+    });
+
     try {
         const capacitorApp = window.CapacitorApp || window.Capacitor?.Plugins?.App;
         if (capacitorApp?.addListener) {
-            capacitorApp.addListener('backButton', function() {
+            capacitorApp.addListener('backButton', function(ev) {
+                try { if (ev && typeof ev.canGoBack === 'boolean' && ev.canGoBack) window.history.back(); } catch (e) {}
                 handleAppBackButton();
             });
         }
@@ -1765,14 +1791,6 @@ function initLoginLogic() {
             const loginModeText = accessMode === 'guest' ? '訪客登入' : '登入成功';
             showNotification(`${loginModeText} (組別 ${group})，正在載入資料...`, 'success');
 
-            if (typeof supabaseService !== 'undefined') {
-                supabaseService.fetchRecentLogs(7).then(logs => {
-                    if (logs && logs.length > 0) {
-                        showHistoryModal(logs);
-                    }
-                });
-            }
-
             const accessText = accessMode === 'guest' ? '訪客' : '正式';
             sendTelegramNotification(`用戶已登入系統\n模式: ${accessText}\n組別: ${group}\n帳號: ${account}`);
 
@@ -1783,6 +1801,14 @@ function initLoginLogic() {
             updateGroupsList();
             updateMarkersList();
             updateReadOnlyUI();
+
+            if (typeof supabaseService !== 'undefined') {
+                supabaseService.fetchRecentLogs(7).then(logs => {
+                    if (logs && logs.length > 0) {
+                        showHistoryModal(logs);
+                    }
+                });
+            }
 
             if (group === 'admin') {
                 if (typeof updateRealtimeMarkers === 'function') {
@@ -7816,36 +7842,64 @@ function focusMarker(markerId) {
 function focusMarkerByLogEntry(log) {
     if (!log) return;
 
-    let candidates = markers.filter(marker => marker.name === (log.marker_name || ''));
-    if (candidates.length === 0) {
-        showNotification('找不到對應的標註點', 'warning');
+    const tryFindMarker = () => {
+        let candidates = [];
+
+        if (log.marker_id) {
+            candidates = markers.filter(marker => marker.id === log.marker_id);
+        }
+
+        if (candidates.length === 0) {
+            candidates = markers.filter(marker => marker.name === (log.marker_name || ''));
+        }
+
+        if (candidates.length === 0) return null;
+
+        if (log.group_id) {
+            const sameGroup = candidates.filter(marker => marker.groupId === log.group_id);
+            if (sameGroup.length > 0) {
+                candidates = sameGroup;
+            }
+        }
+
+        if (typeof log.description === 'string' && log.description.trim()) {
+            const sameDescription = candidates.filter(marker => (marker.description || '') === log.description);
+            if (sameDescription.length > 0) {
+                candidates = sameDescription;
+            }
+        }
+
+        return candidates[0] || null;
+    };
+
+    const focusFoundMarker = (marker) => {
+        showOnlyThisMarker(marker.id);
+        setTimeout(() => {
+            focusMarker(marker.id);
+        }, 180);
+    };
+
+    const foundMarker = tryFindMarker();
+    if (foundMarker) {
+        focusFoundMarker(foundMarker);
         return;
     }
 
-    if (log.group_id) {
-        const sameGroup = candidates.filter(marker => marker.groupId === log.group_id);
-        if (sameGroup.length > 0) {
-            candidates = sameGroup;
+    let retryCount = 0;
+    const retryTimer = setInterval(() => {
+        retryCount++;
+        const marker = tryFindMarker();
+        if (marker) {
+            clearInterval(retryTimer);
+            focusFoundMarker(marker);
+            return;
         }
-    }
 
-    if (typeof log.description === 'string' && log.description.trim()) {
-        const sameDescription = candidates.filter(marker => (marker.description || '') === log.description);
-        if (sameDescription.length > 0) {
-            candidates = sameDescription;
+        if (retryCount >= 10) {
+            clearInterval(retryTimer);
+            showNotification('找不到對應的標註點', 'warning');
         }
-    }
-
-    const marker = candidates[0];
-    if (!marker) {
-        showNotification('找不到對應的標註點', 'warning');
-        return;
-    }
-
-    showOnlyThisMarker(marker.id);
-    setTimeout(() => {
-        focusMarker(marker.id);
-    }, 150);
+    }, 250);
 }
 
 // 通知系統

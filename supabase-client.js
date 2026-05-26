@@ -321,6 +321,7 @@ class SupabaseService {
         if (!this.isInitialized) return null;
 
         const logData = {
+            marker_id: marker.id,
             group_id: marker.groupId,
             marker_name: marker.name,
             description: marker.description || '',
