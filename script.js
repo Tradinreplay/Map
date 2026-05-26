@@ -1696,6 +1696,26 @@ function initLoginLogic() {
         loginError.style.display = message ? 'block' : 'none';
     };
 
+    const runGuestLogin = async () => {
+        const account = loginAccountInput.value;
+        if (!account) {
+            setLoginError('請先選擇組別');
+            return;
+        }
+
+        if (account === '179747') {
+            setLoginError('管理帳號不支援訪客登入');
+            return;
+        }
+
+        const group = account;
+        await completeLogin({
+            account: `guest-${account}`,
+            group,
+            accessMode: 'guest'
+        });
+    };
+
     const updateGuestLoginState = () => {
         if (!guestLoginBtn || !loginAccountInput) return;
         const selectedAccount = loginAccountInput.value;
@@ -1923,25 +1943,16 @@ function initLoginLogic() {
     });
 
     if (guestLoginBtn) {
+        let lastGuestTouchAt = 0;
         guestLoginBtn.addEventListener('click', async function() {
-            const account = loginAccountInput.value;
-            if (!account) {
-                setLoginError('請先選擇組別');
-                return;
-            }
-
-            if (account === '179747') {
-                setLoginError('管理帳號不支援訪客登入');
-                return;
-            }
-
-            const group = account;
-            await completeLogin({
-                account: `guest-${account}`,
-                group,
-                accessMode: 'guest'
-            });
+            if (Date.now() - lastGuestTouchAt < 500) return;
+            await runGuestLogin();
         });
+        guestLoginBtn.addEventListener('touchend', async function(e) {
+            e.preventDefault();
+            lastGuestTouchAt = Date.now();
+            await runGuestLogin();
+        }, { passive: false });
     }
 }
 
@@ -5598,9 +5609,10 @@ function saveMarker(e) {
     }, 2000); // 2秒後自動關閉
 
     if (newlyAddedMarkerId) {
+        showOnlyThisMarker(newlyAddedMarkerId);
         setTimeout(() => {
             focusMarker(newlyAddedMarkerId);
-        }, 150);
+        }, 200);
     }
 }
 
@@ -5661,6 +5673,21 @@ function addMarkerToMap(marker) {
         
         // 阻止事件冒泡，避免觸發地圖點擊事件
         e.originalEvent.stopPropagation();
+
+        const dispCoord = getMapDisplayCoord(marker.lat, marker.lng);
+        map.setView([dispCoord.lat, dispCoord.lng], Math.max(map.getZoom(), 18), {
+            animate: true,
+            duration: 0.35
+        });
+
+        setTimeout(() => {
+            try {
+                updateMarkerPopup(marker);
+                leafletMarker.openPopup();
+            } catch (err) {
+                console.warn('開啟標註內容失敗:', err);
+            }
+        }, 80);
     });
     
     marker.leafletMarker = leafletMarker;
@@ -7724,7 +7751,12 @@ function showOnlyThisMarker(markerId) {
 
 function focusMarker(markerId) {
     const marker = markers.find(m => m.id === markerId);
-    if (marker && marker.leafletMarker) {
+    if (marker) {
+        if (!marker.leafletMarker) {
+            updateMapMarkers();
+        }
+        if (!marker.leafletMarker) return;
+
         // 添加按壓效果 - 觸覺反饋
         if ('vibrate' in navigator) {
             navigator.vibrate(50); // 短暫振動50毫秒
@@ -7746,11 +7778,16 @@ function focusMarker(markerId) {
         }
         
         closeGroupDetailsModal();
+        const historyModal = document.getElementById('historyModal');
+        if (historyModal) {
+            historyModal.style.display = 'none';
+        }
         // 關閉浮動設定視窗（如果開啟的話）
         hideFloatingSettings();
         
         // 添加地圖定位動畫效果
-        map.setView([marker.lat, marker.lng], 18, {
+        const dispCoord = getMapDisplayCoord(marker.lat, marker.lng);
+        map.setView([dispCoord.lat, dispCoord.lng], 18, {
             animate: true,
             duration: 0.5
         });
@@ -7774,6 +7811,41 @@ function focusMarker(markerId) {
         // 顯示定位成功通知
         showNotification(`已定位到 "${marker.name}"`, 'success', 2000);
     }
+}
+
+function focusMarkerByLogEntry(log) {
+    if (!log) return;
+
+    let candidates = markers.filter(marker => marker.name === (log.marker_name || ''));
+    if (candidates.length === 0) {
+        showNotification('找不到對應的標註點', 'warning');
+        return;
+    }
+
+    if (log.group_id) {
+        const sameGroup = candidates.filter(marker => marker.groupId === log.group_id);
+        if (sameGroup.length > 0) {
+            candidates = sameGroup;
+        }
+    }
+
+    if (typeof log.description === 'string' && log.description.trim()) {
+        const sameDescription = candidates.filter(marker => (marker.description || '') === log.description);
+        if (sameDescription.length > 0) {
+            candidates = sameDescription;
+        }
+    }
+
+    const marker = candidates[0];
+    if (!marker) {
+        showNotification('找不到對應的標註點', 'warning');
+        return;
+    }
+
+    showOnlyThisMarker(marker.id);
+    setTimeout(() => {
+        focusMarker(marker.id);
+    }, 150);
 }
 
 // 通知系統
@@ -12560,6 +12632,12 @@ function showHistoryModal(logs) {
     } else {
         logs.forEach(log => {
             const row = tbody.insertRow();
+            row.classList.add('history-row-clickable');
+            row.title = '點選可定位到對應標註點';
+            row.addEventListener('click', (event) => {
+                if (event.target.closest('button')) return;
+                focusMarkerByLogEntry(log);
+            });
             
             // 時間
             const date = new Date(log.created_at);

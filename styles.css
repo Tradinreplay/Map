@@ -126,22 +126,26 @@
 }
 
 #loginModal .guest-login-btn {
-    margin-top: 4px;
-    background: rgba(255, 255, 255, 0.08);
-    color: #fff;
-    border: 1px solid rgba(255, 255, 255, 0.18);
+    margin-top: 10px;
+    background: linear-gradient(135deg, rgba(33, 150, 243, 0.95), rgba(25, 118, 210, 0.95));
+    color: white;
+    border: none;
     padding: 12px;
     border-radius: 8px;
     font-size: 1rem;
-    font-weight: 600;
+    font-weight: bold;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all 0.2s;
     width: 100%;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    backdrop-filter: blur(4px);
 }
 
 #loginModal .guest-login-btn:hover {
-    background: rgba(255, 255, 255, 0.14);
-    transform: translateY(-1px);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(33, 150, 243, 0.4);
+    background: linear-gradient(135deg, #2196F3, #1976D2);
 }
 
 /* Error Message */
@@ -247,10 +251,15 @@
 #loginModal .guest-login-btn:disabled {
     background: rgba(255, 255, 255, 0.08);
     color: #777;
+    border: none;
     cursor: not-allowed;
     box-shadow: none;
     transform: none;
     opacity: 0.7;
+}
+
+.history-row-clickable {
+    cursor: pointer;
 }
 /* ===== 修正：地圖旋轉時滿版覆蓋與浮動提示固定 ===== */
 .map-container {
