@@ -48,8 +48,12 @@ let markersInRange = new Set(); // 記錄當前在範圍內的標註點
 let trackingTarget = null; // 當前追蹤的目標標註點
 let currentFilter = null; // 當前過濾設定 { type: 'marker'|'group'|'subgroup', id: string }
 let currentUserGroup = null; // 當前登入的用戶組別 (1, 2, 3, admin)
+let currentUserAccessMode = 'normal'; // normal | guest
 let realtimeUploadInterval = null; // 即時位置上傳定時器
 let realtimeFetchInterval = null; // 即時位置獲取定時器
+let lastAppBackPressAt = 0;
+let lastAppBackEventAt = 0;
+let appBackButtonHandlerInitialized = false;
 
 // 調試：監控 displayedRouteLines 的變化
 let originalDisplayedRouteLines = null;
@@ -78,6 +82,159 @@ function setupRouteLineMonitoring() {
     if (!originalDisplayedRouteLines) {
         originalDisplayedRouteLines = window.displayedRouteLines;
         window.displayedRouteLines = new Proxy(window.displayedRouteLines, handler);
+    }
+}
+
+function isGuestUser() {
+    return currentUserAccessMode === 'guest';
+}
+
+function canEditData(showMessage = true) {
+    if (!isGuestUser()) return true;
+    if (showMessage && typeof showNotification === 'function') {
+        showNotification('訪客登入僅可瀏覽資料，無法新增或編輯', 'warning');
+    }
+    return false;
+}
+
+function updateReadOnlyUI() {
+    const isGuest = isGuestUser();
+    document.body.classList.toggle('guest-mode', isGuest);
+
+    const addMarkerBtn = document.getElementById('addMarkerBtn');
+    if (addMarkerBtn) {
+        addMarkerBtn.style.display = isGuest ? 'none' : '';
+    }
+
+    const addGroupBtn = document.getElementById('addGroupBtn');
+    if (addGroupBtn) {
+        addGroupBtn.style.display = isGuest ? 'none' : '';
+    }
+
+    const groupNameInput = document.getElementById('groupNameInput');
+    if (groupNameInput) {
+        groupNameInput.disabled = isGuest;
+        if (isGuest) {
+            groupNameInput.value = '';
+        }
+    }
+
+    const syncBtn = document.getElementById('floatingSyncSupabaseBtn');
+    if (syncBtn) {
+        syncBtn.style.display = isGuest ? 'none' : '';
+    }
+
+    const importBtn = document.getElementById('floatingImportDataBtn');
+    if (importBtn) {
+        importBtn.style.display = isGuest ? 'none' : '';
+    }
+
+    if (isGuest && isAddingMarker) {
+        isAddingMarker = false;
+        if (map && map.getContainer) {
+            map.getContainer().style.cursor = '';
+        }
+    }
+}
+
+function showAppExitToast(message = '再按一次返回鍵關閉程式') {
+    let toast = document.getElementById('appExitToast');
+    if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'appExitToast';
+        toast.style.cssText = `
+            position: fixed;
+            left: 50%;
+            bottom: 28px;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.82);
+            color: #fff;
+            padding: 10px 18px;
+            border-radius: 999px;
+            font-size: 14px;
+            z-index: 120000;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.24);
+            white-space: nowrap;
+        `;
+        document.body.appendChild(toast);
+    }
+
+    toast.textContent = message;
+    toast.style.opacity = '1';
+
+    clearTimeout(toast._hideTimer);
+    toast._hideTimer = setTimeout(() => {
+        toast.style.opacity = '0';
+    }, 1600);
+}
+
+function performAppExit() {
+    try {
+        if (window.CapacitorApp && typeof window.CapacitorApp.exitApp === 'function') {
+            window.CapacitorApp.exitApp();
+            return;
+        }
+    } catch (e) {}
+
+    try {
+        if (window.Capacitor?.Plugins?.App?.exitApp) {
+            window.Capacitor.Plugins.App.exitApp();
+            return;
+        }
+    } catch (e) {}
+
+    try {
+        if (window.navigator?.app?.exitApp) {
+            window.navigator.app.exitApp();
+            return;
+        }
+    } catch (e) {}
+
+    try {
+        window.close();
+    } catch (e) {}
+}
+
+function handleAppBackButton() {
+    const now = Date.now();
+    if (now - lastAppBackEventAt < 250) {
+        return false;
+    }
+    lastAppBackEventAt = now;
+
+    if (now - lastAppBackPressAt <= 2000) {
+        performAppExit();
+        return true;
+    }
+
+    lastAppBackPressAt = now;
+    showAppExitToast();
+    return false;
+}
+
+function initAppBackButtonHandler() {
+    if (appBackButtonHandlerInitialized) return;
+    if (typeof isAndroidApp !== 'function' || !isAndroidApp()) return;
+
+    appBackButtonHandlerInitialized = true;
+
+    document.addEventListener('backbutton', function(e) {
+        e.preventDefault();
+        handleAppBackButton();
+    }, false);
+
+    try {
+        const capacitorApp = window.CapacitorApp || window.Capacitor?.Plugins?.App;
+        if (capacitorApp?.addListener) {
+            capacitorApp.addListener('backButton', function() {
+                handleAppBackButton();
+            });
+        }
+    } catch (e) {
+        console.warn('Capacitor 返回鍵監聽初始化失敗:', e);
     }
 }
 
@@ -1531,6 +1688,115 @@ function initLoginLogic() {
     const loginAccountInput = document.getElementById('loginAccount');
     const loginPasswordInput = document.getElementById('loginPassword');
     const loginBtn = loginForm.querySelector('button[type="submit"]');
+    const guestLoginBtn = document.getElementById('guestLoginBtn');
+
+    const setLoginError = (message) => {
+        if (!loginError) return;
+        loginError.textContent = message;
+        loginError.style.display = message ? 'block' : 'none';
+    };
+
+    const updateGuestLoginState = () => {
+        if (!guestLoginBtn || !loginAccountInput) return;
+        const selectedAccount = loginAccountInput.value;
+        const guestAllowed = selectedAccount && selectedAccount !== '179747';
+        guestLoginBtn.disabled = !guestAllowed;
+        guestLoginBtn.classList.toggle('btn-disabled', !guestAllowed);
+        guestLoginBtn.title = guestAllowed ? '以訪客身份查看所選組別資料' : '請先選擇第一組、第二組或第三組';
+    };
+
+    const completeLogin = async ({ account, group, accessMode }) => {
+        currentUserGroup = group;
+        currentUserAccessMode = accessMode;
+        loginModal.style.display = 'none';
+        setLoginError('');
+        loginAttempts = 0;
+
+        if (typeof supabaseService !== 'undefined') {
+            if (realtimeUploadInterval) {
+                clearInterval(realtimeUploadInterval);
+                realtimeUploadInterval = null;
+            }
+            if (realtimeFetchInterval) {
+                clearInterval(realtimeFetchInterval);
+                realtimeFetchInterval = null;
+            }
+
+            if (group === 'admin') {
+                supabaseService.setDatasetGroup(null);
+            } else {
+                supabaseService.setDatasetGroup(group);
+            }
+
+            markers = [];
+            groups = [];
+            saveData();
+
+            if (map) {
+                const layersToRemove = [];
+                map.eachLayer((layer) => {
+                    if (layer instanceof L.Marker && layer !== currentLocationMarker) {
+                        layersToRemove.push(layer);
+                    }
+                });
+                layersToRemove.forEach(layer => map.removeLayer(layer));
+            }
+
+            const loginModeText = accessMode === 'guest' ? '訪客登入' : '登入成功';
+            showNotification(`${loginModeText} (組別 ${group})，正在載入資料...`, 'success');
+
+            if (typeof supabaseService !== 'undefined') {
+                supabaseService.fetchRecentLogs(7).then(logs => {
+                    if (logs && logs.length > 0) {
+                        showHistoryModal(logs);
+                    }
+                });
+            }
+
+            const accessText = accessMode === 'guest' ? '訪客' : '正式';
+            sendTelegramNotification(`用戶已登入系統\n模式: ${accessText}\n組別: ${group}\n帳號: ${account}`);
+
+            if (group !== 'admin') {
+                await syncFromCloud();
+            }
+
+            updateGroupsList();
+            updateMarkersList();
+            updateReadOnlyUI();
+
+            if (group === 'admin') {
+                if (typeof updateRealtimeMarkers === 'function') {
+                    await updateRealtimeMarkers();
+                }
+
+                realtimeFetchInterval = setInterval(async () => {
+                    if (typeof updateRealtimeMarkers === 'function') {
+                        await updateRealtimeMarkers();
+                    }
+                }, 5000);
+                showNotification('管理者模式：已啟動即時位置監控', 'info');
+            } else if (accessMode !== 'guest') {
+                console.log(`Starting realtime upload for group ${group}`);
+
+                if (currentPosition) {
+                    supabaseService.uploadRealtimeLocation(group, currentPosition.lat, currentPosition.lng);
+                }
+
+                realtimeUploadInterval = setInterval(() => {
+                    if (currentPosition) {
+                        supabaseService.uploadRealtimeLocation(group, currentPosition.lat, currentPosition.lng);
+                    } else if (window.lastPosition) {
+                        supabaseService.uploadRealtimeLocation(group, window.lastPosition.lat, window.lastPosition.lng);
+                    }
+                }, 5000);
+            } else {
+                showNotification(`訪客模式：正在瀏覽第 ${group} 組資料`, 'info');
+            }
+        } else {
+            console.error('Supabase service not available');
+            showNotification('系統錯誤：無法連接資料庫服務', 'error');
+        }
+    };
 
     // 組別按鈕邏輯
     const groupBtns = document.querySelectorAll('.group-btn');
@@ -1546,6 +1812,7 @@ function initLoginLogic() {
             if (loginAccountInput) {
                 loginAccountInput.value = account;
             }
+            updateGuestLoginState();
             
             // 自動聚焦密碼輸入框
             if (loginPasswordInput) {
@@ -1554,9 +1821,7 @@ function initLoginLogic() {
             }
             
             // 隱藏錯誤訊息
-            if (loginError) {
-                loginError.style.display = 'none';
-            }
+            setLoginError('');
             
             // 按鍵震動回饋
             if (navigator.vibrate) {
@@ -1573,16 +1838,14 @@ function initLoginLogic() {
     let loginAttempts = 0;
 
     if (!loginForm) return;
+    updateGuestLoginState();
 
     loginForm.addEventListener('submit', async function(e) {
         e.preventDefault();
         
         // 防呆機制：檢查是否已選擇組別
         if (!loginAccountInput.value) {
-            if (loginError) {
-                loginError.textContent = "請先選擇組別";
-                loginError.style.display = 'block';
-            }
+            setLoginError('請先選擇組別');
             
             // 震動提示
             if (navigator.vibrate) {
@@ -1622,114 +1885,7 @@ function initLoginLogic() {
         }
 
         if (group) {
-            // 登入成功
-            currentUserGroup = group;
-            loginModal.style.display = 'none';
-            loginError.style.display = 'none';
-            
-            // 重置嘗試次數
-            loginAttempts = 0;
-            
-            if (typeof supabaseService !== 'undefined') {
-                // 清除之前的即時監控定時器
-                if (realtimeUploadInterval) {
-                    clearInterval(realtimeUploadInterval);
-                    realtimeUploadInterval = null;
-                }
-                if (realtimeFetchInterval) {
-                    clearInterval(realtimeFetchInterval);
-                    realtimeFetchInterval = null;
-                }
-
-                if (group === 'admin') {
-                    // 管理者可以看到所有資料，包含 realtime_tracking
-                    supabaseService.setDatasetGroup(null); 
-                } else {
-                    supabaseService.setDatasetGroup(group);
-                }
-                
-                // 清除現有資料以確保隔離
-                markers = [];
-                groups = [];
-                // 立即儲存清空狀態，避免重新整理後載入舊資料
-                saveData();
-
-                // 清除地圖上的標記
-                if (map) {
-                    const layersToRemove = [];
-                    map.eachLayer((layer) => {
-                        // 保留當前位置標記，移除其他標記
-                        if (layer instanceof L.Marker && layer !== currentLocationMarker) {
-                            layersToRemove.push(layer);
-                        }
-                    });
-                    layersToRemove.forEach(layer => map.removeLayer(layer));
-                }
-                
-                // 顯示通知並載入資料
-                showNotification(`登入成功 (組別 ${group})，正在載入資料...`, 'success');
-                
-                // 顯示最近一周編輯紀錄
-                if (typeof supabaseService !== 'undefined') {
-                    supabaseService.fetchRecentLogs(7).then(logs => {
-                        if (logs && logs.length > 0) {
-                            showHistoryModal(logs);
-                        }
-                    });
-                }
-                
-                // 發送 Telegram 通知
-                sendTelegramNotification(`用戶已登入系統\n組別: ${group}\n帳號: ${account}`);
-                
-                // 從雲端同步對應組別的資料
-                if (group !== 'admin') {
-                    await syncFromCloud();
-                }
-                
-                updateGroupsList();
-                updateMarkersList();
-
-                // 啟動即時位置功能
-                if (group === 'admin') {
-                    // 管理者：只更新即時標註點
-                    // 立即執行一次
-                    if (typeof updateRealtimeMarkers === 'function') {
-                        await updateRealtimeMarkers();
-                    }
-
-                    // 管理者：每5秒更新一次即時標註點
-                    console.log('Starting admin realtime fetch interval');
-                    realtimeFetchInterval = setInterval(async () => {
-                        // 更新即時追蹤標記（處理過期刪除）
-                        if (typeof updateRealtimeMarkers === 'function') {
-                            await updateRealtimeMarkers();
-                        }
-                    }, 5000);
-                    showNotification('管理者模式：已啟動即時位置監控', 'info');
-                } else {
-                    // 一般組別：每5秒上傳一次位置
-                    console.log(`Starting realtime upload for group ${group}`);
-                    
-                    // 立即上傳一次
-                    if (currentPosition) {
-                        supabaseService.uploadRealtimeLocation(group, currentPosition.lat, currentPosition.lng);
-                    }
-
-                    realtimeUploadInterval = setInterval(() => {
-                        if (currentPosition) {
-                            supabaseService.uploadRealtimeLocation(group, currentPosition.lat, currentPosition.lng);
-                        } else {
-                             // 嘗試獲取位置
-                             if (window.lastPosition) {
-                                 supabaseService.uploadRealtimeLocation(group, window.lastPosition.lat, window.lastPosition.lng);
-                             }
-                        }
-                    }, 5000);
-                }
-            } else {
-                console.error('Supabase service not available');
-                showNotification('系統錯誤：無法連接資料庫服務', 'error');
-            }
+            await completeLogin({ account, group, accessMode: 'normal' });
         } else {
             // 登入失敗
             loginAttempts++;
@@ -1745,8 +1901,7 @@ function initLoginLogic() {
 
             if (loginAttempts >= 3) {
                 // 錯誤3次，鎖定介面
-                loginError.textContent = '請確認帳密後再使用';
-                loginError.style.display = 'block';
+                setLoginError('請確認帳密後再使用');
                 
                 // 反灰並禁用輸入框
                 loginAccountInput.disabled = true;
@@ -1761,12 +1916,33 @@ function initLoginLogic() {
                 showNotification('登入失敗次數過多，已鎖定', 'error');
             } else {
                 // 一般錯誤提示
-                loginError.textContent = '帳號或密碼錯誤';
-                loginError.style.display = 'block';
+                setLoginError('帳號或密碼錯誤');
                 showNotification(`帳號或密碼錯誤 (剩餘嘗試次數: ${3 - loginAttempts})`, 'error');
             }
         }
     });
+
+    if (guestLoginBtn) {
+        guestLoginBtn.addEventListener('click', async function() {
+            const account = loginAccountInput.value;
+            if (!account) {
+                setLoginError('請先選擇組別');
+                return;
+            }
+
+            if (account === '179747') {
+                setLoginError('管理帳號不支援訪客登入');
+                return;
+            }
+
+            const group = account;
+            await completeLogin({
+                account: `guest-${account}`,
+                group,
+                accessMode: 'guest'
+            });
+        });
+    }
 }
 
 // 初始化事件監聽器
@@ -2999,6 +3175,7 @@ function showSaveSharedMarkerPrompt(payload) {
 
 // 程式化：將共享標註與其路線保存為正式資料
 function saveSharedMarkerAndRoutes(payload) {
+    if (!canEditData()) return;
     try {
         // 1) 解析群組/子群組（以名稱）
         let group = null;
@@ -4884,6 +5061,7 @@ function updateCurrentLocationMarker() {
 
 // 組別管理功能
 function addGroup() {
+    if (!canEditData()) return;
     const groupNameInput = document.getElementById('groupNameInput');
     const groupName = groupNameInput.value.trim();
     
@@ -4907,6 +5085,7 @@ function addGroup() {
 }
 
 function deleteGroup(groupId) {
+    if (!canEditData()) return;
     if (confirm('確定要刪除此組別嗎？這將同時刪除所有相關的標註點。')) {
         // 刪除地圖上的標記
         const group = groups.find(g => g.id === groupId);
@@ -4943,6 +5122,7 @@ function deleteGroup(groupId) {
 }
 
 function addSubgroup(groupId) {
+    if (!canEditData()) return;
     const subgroupName = prompt('請輸入群組名稱:');
     if (!subgroupName) return;
     
@@ -4963,6 +5143,7 @@ function addSubgroup(groupId) {
 }
 
 function deleteSubgroup(groupId, subgroupId) {
+    if (!canEditData()) return;
     if (confirm('確定要刪除此群組嗎？這將同時刪除所有相關的標註點。')) {
         const group = groups.find(g => g.id === groupId);
         if (group) {
@@ -5034,6 +5215,7 @@ function selectGroup(groupId, subgroupId = null) {
 
 // 編輯組別名稱
 function editGroupName(groupId) {
+    if (!canEditData()) return;
     const group = groups.find(g => g.id === groupId);
     if (!group) return;
     
@@ -5054,6 +5236,7 @@ function editGroupName(groupId) {
 
 // 編輯子群組名稱
 function editSubgroupName(groupId, subgroupId) {
+    if (!canEditData()) return;
     const group = groups.find(g => g.id === groupId);
     if (!group) return;
     
@@ -5077,6 +5260,7 @@ function editSubgroupName(groupId, subgroupId) {
 
 // 標註功能
 function toggleAddMarkerMode() {
+    if (!canEditData()) return;
     isAddingMarker = !isAddingMarker;
     const btn = document.getElementById('addMarkerBtn');
     
@@ -5092,6 +5276,11 @@ function toggleAddMarkerMode() {
 }
 
 function showMarkerModal(lat, lng, existingMarker = null) {
+    if (isGuestUser()) {
+        showNotification('訪客登入僅可查看標註內容', 'warning');
+        return;
+    }
+
     const modal = document.getElementById('markerModal');
     const form = document.getElementById('markerForm');
     const groupSelect = document.getElementById('markerGroup');
@@ -5222,6 +5411,7 @@ function updateSubgroupOptions(groupId) {
 
 function saveMarker(e) {
     e.preventDefault();
+    if (!canEditData()) return;
     
     const form = e.target;
     const name = document.getElementById('markerName').value.trim();
@@ -5266,6 +5456,7 @@ function saveMarker(e) {
         }
     }
     
+    let newlyAddedMarkerId = null;
     if (form.dataset.markerId) {
         // 編輯現有標記
         const markerId = form.dataset.markerId;
@@ -5355,6 +5546,7 @@ function saveMarker(e) {
         
         // 在地圖上添加標記
         addMarkerToMap(marker);
+        newlyAddedMarkerId = marker.id;
 
         // Upload to Supabase
         if (typeof supabaseService !== 'undefined' && supabaseService.isInitialized) {
@@ -5404,6 +5596,12 @@ function saveMarker(e) {
     setTimeout(() => {
         notification.remove();
     }, 2000); // 2秒後自動關閉
+
+    if (newlyAddedMarkerId) {
+        setTimeout(() => {
+            focusMarker(newlyAddedMarkerId);
+        }, 150);
+    }
 }
 
 function addMarkerToMap(marker) {
@@ -5545,6 +5743,7 @@ function attachLongPressHandlers(marker) {
 
 // 顯示標註點的操作選單（移動 / 刪除）
 function showMarkerActionMenu(marker, iconEl) {
+    if (!canEditData()) return;
     const rect = iconEl.getBoundingClientRect();
     const menu = document.createElement('div');
     menu.className = 'marker-action-menu';
@@ -5613,6 +5812,7 @@ function showMarkerActionMenu(marker, iconEl) {
 }
 
 function startMarkerDrag(marker) {
+    if (!canEditData()) return;
     if (!marker.leafletMarker) return;
     const mk = marker.leafletMarker;
     try { mk.dragging.enable(); } catch (e) {}
@@ -5633,6 +5833,7 @@ function startMarkerDrag(marker) {
 }
 
 function confirmDeleteMarker(markerId) {
+    if (!canEditData()) return;
     // 簡單確認提示（未使用瀏覽器 confirm 以維持一致 UI）
     const overlay = document.createElement('div');
     overlay.style.cssText = `
@@ -5663,6 +5864,7 @@ function confirmDeleteMarker(markerId) {
 }
 
 function deleteMarkerById(markerId) {
+    if (!canEditData()) return;
     const marker = markers.find(m => m.id === markerId);
     if (!marker) return;
 
@@ -5712,6 +5914,7 @@ function deleteMarkerById(markerId) {
 }
 
 function editMarker(markerId) {
+    if (!canEditData()) return;
     const marker = markers.find(m => m.id === markerId);
     if (marker) {
         closeGroupDetailsModal();
@@ -5842,6 +6045,7 @@ function refreshAllMarkerPopups() {
 }
 
 function updateMarkerPopup(marker) {
+    const allowEditing = canEditData(false);
     const groupName = marker.groupId ? (groups.find(g => g.id === marker.groupId)?.name || '未知群組') : '無群組';
     const subgroupName = marker.subgroupId ? 
         (groups.find(g => g.id === marker.groupId)?.subgroups.find(sg => sg.id === marker.subgroupId)?.name || '未知子群組') : 
@@ -5933,8 +6137,8 @@ function updateMarkerPopup(marker) {
                             style="padding: 2px 6px; font-size: 10px; background-color: #757575; color: white; border: none; border-radius: 2px; cursor: pointer;">隱藏</button>
                     <button onclick="handleRouteAction('${marker.id}', 'use')" 
                             style="padding: 2px 6px; font-size: 10px; background-color: #FF9800; color: white; border: none; border-radius: 2px; cursor: pointer;">使用</button>
-                    <button onclick="handleRouteAction('${marker.id}', 'delete'); updateMarkerPopup(markers.find(m => m.id === '${marker.id}'))" 
-                            style="padding: 2px 6px; font-size: 10px; background-color: #f44336; color: white; border: none; border-radius: 2px; cursor: pointer;">刪除</button>
+                    ${allowEditing ? `<button onclick="handleRouteAction('${marker.id}', 'delete'); updateMarkerPopup(markers.find(m => m.id === '${marker.id}'))" 
+                            style="padding: 2px 6px; font-size: 10px; background-color: #f44336; color: white; border: none; border-radius: 2px; cursor: pointer;">刪除</button>` : ''}
                     <button onclick="hideAllDisplayedRoutes('${marker.id}'); updateMarkerPopup(markers.find(m => m.id === '${marker.id}'))" 
                             style="padding: 2px 6px; font-size: 10px; background-color: #9E9E9E; color: white; border: none; border-radius: 2px; cursor: pointer;">全部隱藏</button>
                 </div>
@@ -5969,8 +6173,8 @@ function updateMarkerPopup(marker) {
                         }
                         <button onclick="useRoute('${marker.id}', ${index})" 
                                 style="padding: 2px 6px; font-size: 10px; background-color: #FF9800; color: white; border: none; border-radius: 2px; cursor: pointer;">使用</button>
-                        <button onclick="deleteRoute('${marker.id}', ${index}); updateMarkerPopup(markers.find(m => m.id === '${marker.id}'))" 
-                                style="padding: 2px 6px; font-size: 10px; background-color: #f44336; color: white; border: none; border-radius: 2px; cursor: pointer;">刪除</button>
+                        ${allowEditing ? `<button onclick="deleteRoute('${marker.id}', ${index}); updateMarkerPopup(markers.find(m => m.id === '${marker.id}'))" 
+                                style="padding: 2px 6px; font-size: 10px; background-color: #f44336; color: white; border: none; border-radius: 2px; cursor: pointer;">刪除</button>` : ''}
                         <button onclick="hideAllDisplayedRoutes('${marker.id}'); updateMarkerPopup(markers.find(m => m.id === '${marker.id}'))" 
                                 style="padding: 2px 6px; font-size: 10px; background-color: #9E9E9E; color: white; border: none; border-radius: 2px; cursor: pointer;">全部隱藏</button>
                     </div>
@@ -5983,10 +6187,10 @@ function updateMarkerPopup(marker) {
                 <div style="font-size: 12px; font-weight: bold; margin-bottom: 6px; color: #333;">路線記錄 (${count})</div>
                 ${routeListHtml}
                 <div style="text-align: center; margin-top: 6px;">
-                    <button onclick="startNewRouteRecording('${marker.id}')" 
-                            style="padding: 4px 8px; font-size: 11px; background-color: #4CAF50; color: white; border: none; border-radius: 3px; cursor: pointer;">新增路線記錄</button>
+                    ${allowEditing ? `<button onclick="startNewRouteRecording('${marker.id}')" 
+                            style="padding: 4px 8px; font-size: 11px; background-color: #4CAF50; color: white; border: none; border-radius: 3px; cursor: pointer;">新增路線記錄</button>` : ''}
                     <button onclick="showRouteManagement('${marker.id}')" 
-                            style="padding: 4px 8px; font-size: 11px; background-color: #2196F3; color: white; border: none; border-radius: 3px; cursor: pointer; margin-left: 4px;">詳細管理</button>
+                            style="padding: 4px 8px; font-size: 11px; background-color: #2196F3; color: white; border: none; border-radius: 3px; cursor: pointer; ${allowEditing ? 'margin-left: 4px;' : ''}">詳細管理</button>
                 </div>
             </div>
         `;
@@ -5995,8 +6199,8 @@ function updateMarkerPopup(marker) {
             <div style="margin: 8px 0; border-top: 1px solid #eee; padding-top: 8px; text-align: center;">
                 <button onclick="showDefaultRoute('${marker.id}')" 
                         style="padding: 4px 8px; font-size: 11px; background-color: #ff9800; color: white; border: none; border-radius: 3px; cursor: pointer;">顯示預設路線</button>
-                <button onclick="startNewRouteRecording('${marker.id}')" 
-                        style="padding: 4px 8px; font-size: 11px; background-color: #4CAF50; color: white; border: none; border-radius: 3px; cursor: pointer; margin-left: 4px;">新增路線記錄</button>
+                ${allowEditing ? `<button onclick="startNewRouteRecording('${marker.id}')" 
+                        style="padding: 4px 8px; font-size: 11px; background-color: #4CAF50; color: white; border: none; border-radius: 3px; cursor: pointer; margin-left: 4px;">新增路線記錄</button>` : ''}
             </div>
         `;
     }
@@ -6112,8 +6316,9 @@ function updateMarkerPopup(marker) {
             ${distanceDisplay}
             <div style="font-size: 12px; color: #666; margin-bottom: 8px;">群組: ${groupName}</div>
             <div style="font-size: 12px; color: #666; margin-bottom: 12px;">子群組: ${subgroupName}</div>
+            ${isGuestUser() ? `<div style="font-size: 11px; color: #b45309; background: #fff7ed; padding: 6px 8px; border-radius: 6px; margin-bottom: 10px;">訪客模式：僅可查看內容，無法新增或編輯</div>` : ''}
             <div style="display: flex; gap: 5px; justify-content: center; flex-wrap: wrap;">
-                <button onclick="editMarker('${marker.id}')" style="padding: 4px 8px; font-size: 12px;">編輯</button>
+                ${allowEditing ? `<button onclick="editMarker('${marker.id}')" style="padding: 4px 8px; font-size: 12px;">編輯</button>` : ''}
                 ${trackingButton}
                 <button onclick="showOnlyThisMarker('${marker.id}')" style="padding: 4px 8px; font-size: 12px;">只顯示</button>
 <button onclick="shareMarkerByIdPointUrl('${marker.id}')" style="padding: 4px 8px; font-size: 12px;">僅座標/名稱網址分享</button>
@@ -6147,6 +6352,7 @@ function updateMarkerPopup(marker) {
 }
 
 function deleteCurrentMarker() {
+    if (!canEditData()) return;
     const form = document.getElementById('markerForm');
     const markerId = form.dataset.markerId;
     
@@ -7325,6 +7531,7 @@ function updateLocationDisplay() {
 function updateGroupsList() {
     const groupsList = document.getElementById('groupsList');
     groupsList.innerHTML = '';
+    const allowEditing = canEditData(false);
     
     // 添加"顯示所有標註點"選項
     const allMarkersDiv = document.createElement('div');
@@ -7347,9 +7554,9 @@ function updateGroupsList() {
         groupDiv.innerHTML = `
             <div class="group-name" onclick="selectGroup('${group.id}')" oncontextmenu="event.preventDefault(); showGroupDetailsModal('${group.id}');" title="左鍵選擇組別，右鍵查看詳情">${group.name}</div>
             <div class="group-actions">
-                <button onclick="editGroupName('${group.id}')">編輯</button>
-                <button onclick="addSubgroup('${group.id}')">新增群組</button>
-                <button onclick="deleteGroup('${group.id}')">刪除</button>
+                ${allowEditing ? `<button onclick="editGroupName('${group.id}')">編輯</button>` : ''}
+                ${allowEditing ? `<button onclick="addSubgroup('${group.id}')">新增群組</button>` : ''}
+                ${allowEditing ? `<button onclick="deleteGroup('${group.id}')">刪除</button>` : ''}
                 <button onclick="showGroupDetailsModal('${group.id}')" title="查看組別詳情">詳情</button>
             </div>
         `;
@@ -7379,8 +7586,8 @@ function updateGroupsList() {
             subgroupDiv.innerHTML = `
                 <div class="subgroup-name" onclick="selectGroup('${group.id}', '${subgroup.id}')" oncontextmenu="event.preventDefault(); showGroupDetailsModal('${group.id}', '${subgroup.id}');" title="左鍵選擇群組，右鍵查看詳情">${subgroup.name}</div>
                 <div class="subgroup-actions">
-                    <button onclick="editSubgroupName('${group.id}', '${subgroup.id}')">編輯</button>
-                    <button onclick="deleteSubgroup('${group.id}', '${subgroup.id}')">刪除</button>
+                    ${allowEditing ? `<button onclick="editSubgroupName('${group.id}', '${subgroup.id}')">編輯</button>` : ''}
+                    ${allowEditing ? `<button onclick="deleteSubgroup('${group.id}', '${subgroup.id}')">刪除</button>` : ''}
                     <button onclick="showGroupDetailsModal('${group.id}', '${subgroup.id}')" title="查看群組詳情">詳情</button>
                 </div>
             `;
@@ -8882,6 +9089,7 @@ async function exportMarkerData() {
 
 // 匯入標註點資料
 function importMarkerData(file) {
+    if (!canEditData()) return;
     try {
         const reader = new FileReader();
         const isGzip = file && file.name && file.name.toLowerCase().endsWith('.gz');
@@ -9659,6 +9867,7 @@ function showGroupDetailsModal(groupId, subgroupId = null) {
     const markersList = document.getElementById('groupDetailsMarkersList');
     
     let targetGroup, targetSubgroup, targetMarkers, titleText;
+    const allowEditing = canEditData(false);
     
     if (subgroupId) {
         // 顯示子群組詳情
@@ -9718,7 +9927,7 @@ function showGroupDetailsModal(groupId, subgroupId = null) {
                 </div>
                 <div class="marker-actions">
                     <button onclick="focusMarker('${marker.id}')" class="btn-focus">定位</button>
-                    <button onclick="editMarker('${marker.id}')" class="btn-edit">編輯</button>
+                    ${allowEditing ? `<button onclick="editMarker('${marker.id}')" class="btn-edit">編輯</button>` : ''}
                 </div>
             </div>
         `;
@@ -10767,6 +10976,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     
     // 初始化登入邏輯
     initLoginLogic();
+    initAppBackButtonHandler();
     
     // 初始化 Supabase
     if (typeof supabaseService !== 'undefined') {
@@ -11548,6 +11758,7 @@ window.hideHelpModal = hideHelpModal;
 // 路線管理功能
 function showRouteManagement(markerId) {
     const marker = markers.find(m => m.id === markerId);
+    const allowEditing = canEditData(false);
     if (!marker || !marker.routeRecords || marker.routeRecords.length === 0) {
         alert('此標記沒有記錄的路線');
         return;
@@ -11591,10 +11802,10 @@ function showRouteManagement(markerId) {
             </button>
         </div>
         <div style="margin-bottom: 15px; text-align: center;">
-            <button onclick="startNewRouteRecording('${markerId}')" 
+            ${allowEditing ? `<button onclick="startNewRouteRecording('${markerId}')" 
                     style="padding: 8px 16px; background-color: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer;">
                 新增路線記錄
-            </button>
+            </button>` : `<div style="font-size: 12px; color: #8a6d3b;">訪客模式僅可查看既有路線</div>`}
         </div>
         <div style="border-top: 1px solid #eee; padding-top: 15px;">`;
     
@@ -11630,10 +11841,10 @@ function showRouteManagement(markerId) {
                             style="padding: 4px 8px; font-size: 11px; background-color: #FF9800; color: white; border: none; border-radius: 3px; cursor: pointer;">
                         使用
                     </button>
-                    <button onclick="deleteRoute('${markerId}', ${index})" 
+                    ${allowEditing ? `<button onclick="deleteRoute('${markerId}', ${index})" 
                             style="padding: 4px 8px; font-size: 11px; background-color: #f44336; color: white; border: none; border-radius: 3px; cursor: pointer;">
                         刪除
-                    </button>
+                    </button>` : ''}
                 </div>
             </div>
         `;
@@ -11712,6 +11923,7 @@ function closeRouteManagement() {
 
 // 開始新的路線記錄（改為先選擇起始標示點）
 function startNewRouteRecording(markerId) {
+    if (!canEditData()) return;
     const marker = markers.find(m => m.id === markerId);
     if (!marker) {
         alert('找不到指定的標記');
@@ -11824,6 +12036,7 @@ function showStartMarkerSelector(targetMarkerId) {
 
 // 以選定起點開始記錄路線
 function beginRouteRecordingWithStart(targetMarkerId, startMarkerId) {
+    if (!canEditData()) return;
     const targetMarker = markers.find(m => m.id === targetMarkerId);
     const startMarker = markers.find(m => m.id === startMarkerId);
     if (!targetMarker || !startMarker) {
@@ -11949,6 +12162,7 @@ function useRoute(markerId, routeIndex) {
 
 // 刪除指定路線
 function deleteRoute(markerId, routeIndex) {
+    if (!canEditData()) return;
     const marker = markers.find(m => m.id === markerId);
     if (!marker || !marker.routeRecords || !marker.routeRecords[routeIndex]) {
         alert('找不到指定的路線');

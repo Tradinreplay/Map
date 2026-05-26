@@ -125,6 +125,25 @@
     background: linear-gradient(135deg, #4CAF50, #45a049); /* Solid on hover */
 }
 
+#loginModal .guest-login-btn {
+    margin-top: 4px;
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    width: 100%;
+}
+
+#loginModal .guest-login-btn:hover {
+    background: rgba(255, 255, 255, 0.14);
+    transform: translateY(-1px);
+}
+
 /* Error Message */
 #loginError {
     color: #ff6b6b;
@@ -222,6 +241,16 @@
     cursor: not-allowed;
     box-shadow: none;
     transform: none;
+}
+
+#loginModal .guest-login-btn.btn-disabled,
+#loginModal .guest-login-btn:disabled {
+    background: rgba(255, 255, 255, 0.08);
+    color: #777;
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
+    opacity: 0.7;
 }
 /* ===== 修正：地圖旋轉時滿版覆蓋與浮動提示固定 ===== */
 .map-container {
