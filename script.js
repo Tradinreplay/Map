@@ -97,9 +97,24 @@ function canEditData(showMessage = true) {
     return false;
 }
 
+function canUseGuestRestrictedFeature(showMessage = true) {
+    if (!isGuestUser()) return true;
+    if (showMessage && typeof showNotification === 'function') {
+        showNotification('訪客登入僅可瀏覽資料，此功能已停用', 'warning');
+    }
+    return false;
+}
+
 function updateReadOnlyUI() {
     const isGuest = isGuestUser();
     document.body.classList.toggle('guest-mode', isGuest);
+
+    const setButtonDisabled = (id, disabled) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.disabled = disabled;
+        el.classList.toggle('btn-disabled', disabled);
+    };
 
     const addMarkerBtn = document.getElementById('addMarkerBtn');
     if (addMarkerBtn) {
@@ -128,6 +143,13 @@ function updateReadOnlyUI() {
     if (importBtn) {
         importBtn.style.display = isGuest ? 'none' : '';
     }
+
+    setButtonDisabled('floatingSaveSettingsBtn', isGuest);
+    setButtonDisabled('floatingLoadSettingsBtn', isGuest);
+    setButtonDisabled('floatingResetSettingsBtn', isGuest);
+    setButtonDisabled('floatingExportDataBtn', isGuest);
+    setButtonDisabled('floatingImportDataBtn', isGuest);
+    setButtonDisabled('floatingSyncSupabaseBtn', isGuest);
 
     if (isGuest && isAddingMarker) {
         isAddingMarker = false;
@@ -217,7 +239,10 @@ function handleAppBackButton() {
 
 function initAppBackButtonHandler() {
     if (appBackButtonHandlerInitialized) return;
-    if (typeof isAndroidApp !== 'function' || !isAndroidApp()) return;
+    const ua = navigator.userAgent || '';
+    const looksLikeAndroidDevice = /Android/i.test(ua);
+    const isAppLikeEnv = (typeof isAndroidApp === 'function' && isAndroidApp()) || !!window.Capacitor || !!window.cordova || looksLikeAndroidDevice;
+    if (!isAppLikeEnv) return;
 
     appBackButtonHandlerInitialized = true;
 
@@ -243,7 +268,7 @@ function initAppBackButtonHandler() {
 
     window.addEventListener('popstate', function(e) {
         const state = e.state || {};
-        if (state.__appBackTrap === true || typeof isAndroidApp === 'function' && isAndroidApp()) {
+        if (state.__appBackTrap === true || isAppLikeEnv) {
             const shouldExit = handleAppBackButton();
             if (!shouldExit) {
                 ensureBackTrapState();
@@ -10748,6 +10773,7 @@ function initFloatingSettingsEventListeners() {
     const floatingSaveBtn = document.getElementById('floatingSaveSettingsBtn');
     if (floatingSaveBtn) {
         floatingSaveBtn.addEventListener('click', async function() {
+            if (!canUseGuestRestrictedFeature()) return;
             await saveCurrentSettings();
         });
     }
@@ -10755,6 +10781,7 @@ function initFloatingSettingsEventListeners() {
     const floatingLoadBtn = document.getElementById('floatingLoadSettingsBtn');
     if (floatingLoadBtn) {
         floatingLoadBtn.addEventListener('click', async function() {
+            if (!canUseGuestRestrictedFeature()) return;
             await loadSavedSettings();
         });
     }
@@ -10762,6 +10789,7 @@ function initFloatingSettingsEventListeners() {
     const floatingResetBtn = document.getElementById('floatingResetSettingsBtn');
     if (floatingResetBtn) {
         floatingResetBtn.addEventListener('click', function() {
+            if (!canUseGuestRestrictedFeature()) return;
             resetToDefaultSettings();
         });
     }
@@ -10769,6 +10797,7 @@ function initFloatingSettingsEventListeners() {
     const floatingExportBtn = document.getElementById('floatingExportDataBtn');
     if (floatingExportBtn) {
         floatingExportBtn.addEventListener('click', async function() {
+            if (!canUseGuestRestrictedFeature()) return;
             await exportMarkerData();
         });
     }
@@ -10776,6 +10805,7 @@ function initFloatingSettingsEventListeners() {
     const floatingImportBtn = document.getElementById('floatingImportDataBtn');
     if (floatingImportBtn) {
         floatingImportBtn.addEventListener('click', function() {
+            if (!canUseGuestRestrictedFeature()) return;
             const fileInput = document.getElementById('floatingImportFileInput');
             if (fileInput) {
                 fileInput.click();
@@ -10787,6 +10817,7 @@ function initFloatingSettingsEventListeners() {
     const syncBtn = document.getElementById('floatingSyncSupabaseBtn');
     if (syncBtn) {
         syncBtn.addEventListener('click', async function() {
+            if (!canUseGuestRestrictedFeature()) return;
             if (typeof supabaseService === 'undefined' || !supabaseService.isInitialized) {
                 showNotification('Supabase 未設定或初始化失敗', 'error');
                 return;

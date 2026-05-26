@@ -261,6 +261,15 @@
 .history-row-clickable {
     cursor: pointer;
 }
+
+.floating-settings-body .settings-btn:disabled,
+.floating-settings-body .settings-btn.btn-disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
+    filter: grayscale(0.2);
+}
 /* ===== 修正：地圖旋轉時滿版覆蓋與浮動提示固定 ===== */
 .map-container {
     /* 動態視窗高度，確保在行動裝置與旋轉時滿版覆蓋 */

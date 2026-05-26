@@ -565,6 +565,43 @@ function onDeviceReady() {
     } catch (error) {
         console.warn('初始化返回鍵處理失敗:', error);
     }
+
+    try {
+        document.removeEventListener('backbutton', window.__appDirectBackHandler, false);
+    } catch (error) {}
+
+    window.__appDirectBackHandler = function(event) {
+        try {
+            if (event && typeof event.preventDefault === 'function') event.preventDefault();
+            if (event && typeof event.stopImmediatePropagation === 'function') event.stopImmediatePropagation();
+            if (typeof window.handleAppBackButton === 'function') {
+                window.handleAppBackButton();
+            }
+            return false;
+        } catch (error) {
+            console.warn('直接返回鍵處理失敗:', error);
+            return false;
+        }
+    };
+
+    document.addEventListener('backbutton', window.__appDirectBackHandler, false);
+
+    try {
+        const capacitorApp = window.CapacitorApp || window.Capacitor?.Plugins?.App;
+        if (capacitorApp?.addListener && !window.__appCapacitorBackListenerBound) {
+            window.__appCapacitorBackListenerBound = true;
+            capacitorApp.addListener('backButton', function(event) {
+                try {
+                    if (event && typeof event.preventDefault === 'function') event.preventDefault();
+                } catch (e) {}
+                if (typeof window.handleAppBackButton === 'function') {
+                    window.handleAppBackButton();
+                }
+            });
+        }
+    } catch (error) {
+        console.warn('Capacitor 直接返回鍵綁定失敗:', error);
+    }
     
     // 获取设备信息
     AndroidDevice.getDeviceInfo().then(info => {
